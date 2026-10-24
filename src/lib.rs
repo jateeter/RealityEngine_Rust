@@ -2,7 +2,7 @@ use axum::{
     Json, Router,
     body::Bytes,
     extract::Query,
-    extract::{Path, State},
+    extract::{Path, State, rejection::JsonRejection},
     http::StatusCode,
     routing::{get, post},
 };
@@ -805,6 +805,10 @@ fn error_response(error: EngineError) -> (StatusCode, Json<Value>) {
     (error.status, Json(json!({ "error": error.message })))
 }
 
+fn json_rejection(error: JsonRejection) -> (StatusCode, Json<Value>) {
+    error_response(EngineError::bad_request(error.to_string()))
+}
+
 fn lock_error() -> EngineError {
     EngineError {
         status: StatusCode::INTERNAL_SERVER_ERROR,
@@ -861,8 +865,9 @@ async fn list_machines(
 
 async fn add_machine(
     State(engine): State<SharedEngine>,
-    Json(input): Json<Value>,
+    input: Result<Json<Value>, JsonRejection>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let Json(input) = input.map_err(json_rejection)?;
     let mut state = engine.write().map_err(|_| error_response(lock_error()))?;
     state
         .load_machine(input)
@@ -916,8 +921,9 @@ fn input_from_body(body: &Value) -> Result<Vec<f64>, EngineError> {
 async fn process_machine(
     State(engine): State<SharedEngine>,
     Path(id): Path<String>,
-    Json(body): Json<Value>,
+    body: Result<Json<Value>, JsonRejection>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let Json(body) = body.map_err(json_rejection)?;
     let input = input_from_body(&body).map_err(error_response)?;
     let mut state = engine.write().map_err(|_| error_response(lock_error()))?;
     state
@@ -928,8 +934,9 @@ async fn process_machine(
 
 async fn process_all(
     State(engine): State<SharedEngine>,
-    Json(body): Json<Value>,
+    body: Result<Json<Value>, JsonRejection>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let Json(body) = body.map_err(json_rejection)?;
     let input = input_from_body(&body).map_err(error_response)?;
     let mut state = engine.write().map_err(|_| error_response(lock_error()))?;
     Ok(Json(json!({ "result": state.process_all(&input) })))
@@ -1117,6 +1124,20 @@ mod tests {
     #[tokio::test]
     async fn api_accepts_machines_and_processes_transitions() {
         let app = app(Engine::new(8));
+        let invalid_response = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/machines")
+                    .header("content-type", "application/json")
+                    .body(Body::from("{"))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(invalid_response.status(), StatusCode::BAD_REQUEST);
+
         let response = app
             .clone()
             .oneshot(
