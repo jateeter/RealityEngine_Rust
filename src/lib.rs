@@ -1,14 +1,18 @@
 use axum::{
     Json, Router,
+    body::Bytes,
+    extract::Query,
     extract::{Path, State},
     http::StatusCode,
     routing::{get, post},
 };
 use serde_json::{Value, json};
 use std::{
-    collections::BTreeMap,
+    collections::HashMap,
+    collections::{BTreeMap, VecDeque},
     fs,
     path::Path as FsPath,
+    sync::atomic::{AtomicU64, Ordering},
     sync::{Arc, RwLock},
     time::{SystemTime, UNIX_EPOCH},
 };
@@ -96,7 +100,7 @@ pub struct Engine {
     dimension: usize,
     threshold: f64,
     step: u64,
-    history: Vec<Value>,
+    history: VecDeque<Value>,
 }
 
 fn now_ms() -> u128 {
@@ -130,6 +134,30 @@ fn json_vector(value: Option<&Value>) -> Vec<f64> {
         .collect()
 }
 
+fn new_machine_id() -> String {
+    static NEXT_ID: AtomicU64 = AtomicU64::new(0);
+    let timestamp = now_ms() & 0x0000_ffff_ffff_ffff;
+    let counter = NEXT_ID.fetch_add(1, Ordering::Relaxed) as u128;
+    format!(
+        "machine-{:08x}-{:04x}-7{:03x}-8{:03x}-{:012x}",
+        (timestamp >> 16) as u32,
+        timestamp as u16,
+        (counter & 0x0fff) as u16,
+        ((counter >> 12) & 0x0fff) as u16,
+        counter & 0x0000_ffff_ffff_ffff
+    )
+}
+
+fn version_base(name: &str) -> &str {
+    if let Some((base, suffix)) = name.rsplit_once(" v")
+        && suffix.parse::<u64>().is_ok()
+    {
+        base
+    } else {
+        name
+    }
+}
+
 impl Machine {
     fn from_json(input: Value) -> Result<Self, EngineError> {
         let root = input
@@ -154,10 +182,7 @@ impl Machine {
                 "machine.name is required and must not be empty",
             ));
         }
-        let id = string(root.get("id").or_else(|| machine.get("id")), name.as_str());
-        if id.trim().is_empty() {
-            return Err(EngineError::bad_request("machine id must not be empty"));
-        }
+        let id = string(root.get("id").or_else(|| machine.get("id")), "");
 
         let mapping = machine.get("perceptualMapping").unwrap_or(&Value::Null);
         let input_region = mapping.get("input").unwrap_or(&Value::Null);
@@ -294,6 +319,28 @@ impl Machine {
         })
     }
 
+    fn version_name(&mut self, name: String, input_offset: usize) {
+        self.name = name;
+        self.raw["name"] = json!(self.name);
+        if !self.raw["perceptualMapping"].is_object() {
+            return;
+        }
+        let input_length = self.input_length;
+        let mapping = self.raw["perceptualMapping"].as_object_mut().unwrap();
+        let previous_output = mapping.get("output").cloned().unwrap_or_else(|| json!({}));
+        let output_length = integer(previous_output.get("length"), 0);
+        let output_offset = input_offset.saturating_add(input_length);
+        mapping.insert(
+            "input".to_owned(),
+            json!({ "offset": input_offset, "length": input_length }),
+        );
+        mapping.insert(
+            "output".to_owned(),
+            json!({ "offset": output_offset, "length": output_length }),
+        );
+        self.input_offset = input_offset;
+    }
+
     fn reset(&mut self) {
         for sequence in self.sequences.values_mut() {
             for event in sequence.events.values_mut() {
@@ -364,12 +411,12 @@ impl Machine {
                 }
             }
             for (next_id, provenance) in pending {
-                if let Some(next) = sequence.events.get_mut(&next_id) {
-                    if !next.active {
-                        next.active = true;
-                        next.predecessor_chain = provenance;
-                        activated.push(next_id);
-                    }
+                if let Some(next) = sequence.events.get_mut(&next_id)
+                    && !next.active
+                {
+                    next.active = true;
+                    next.predecessor_chain = provenance;
+                    activated.push(next_id);
                 }
             }
             if !emitted.is_empty() {
@@ -499,7 +546,7 @@ fn fold_outputs(
                 let top = chain_top.unwrap_or_default() as f64;
                 (cells.iter().sum::<f64>() - top * (cells.len() - 1) as f64).max(0.0)
             }
-            "or" | _ => f64::from(asserted > 0),
+            _ => f64::from(asserted > 0),
         };
         result.push(value);
     }
@@ -516,12 +563,54 @@ impl Engine {
     }
 
     pub fn load_machine(&mut self, input: Value) -> Result<Value, EngineError> {
-        let machine = Machine::from_json(input)?;
-        if self.machines.contains_key(&machine.id) {
-            return Err(EngineError {
-                status: StatusCode::CONFLICT,
-                message: format!("machine {} already exists", machine.id),
-            });
+        let mut machine = Machine::from_json(input)?;
+        let name_is_resident = self
+            .machines
+            .values()
+            .any(|resident| resident.name == machine.name);
+        if name_is_resident {
+            let base = version_base(&machine.name).to_owned();
+            let mut version = 2_u64;
+            loop {
+                let candidate = format!("{base} v{version}");
+                if !self
+                    .machines
+                    .values()
+                    .any(|resident| resident.name == candidate)
+                {
+                    machine.version_name(candidate, self.dimension);
+                    let mapping = machine.raw.get("perceptualMapping");
+                    if mapping.is_some_and(Value::is_object) {
+                        let output = mapping.and_then(|value| value.get("output"));
+                        self.dimension = self
+                            .dimension
+                            .saturating_add(machine.input_length)
+                            .saturating_add(integer(
+                                output.and_then(|region| region.get("length")),
+                                0,
+                            ));
+                    }
+                    break;
+                }
+                version = version.saturating_add(1);
+            }
+        }
+        if machine.id.is_empty() || self.machines.contains_key(&machine.id) {
+            machine.id = new_machine_id();
+        }
+        machine.raw["id"] = json!(machine.id);
+        let mapping = machine.raw.get("perceptualMapping");
+        if let Some(mapping) = mapping {
+            let input = mapping.get("input");
+            let output = mapping.get("output");
+            self.dimension = self
+                .dimension
+                .max(machine.input_offset.saturating_add(machine.input_length))
+                .max(
+                    integer(output.and_then(|region| region.get("offset")), 0)
+                        .saturating_add(integer(output.and_then(|region| region.get("length")), 0)),
+                )
+                .max(integer(input.and_then(|region| region.get("offset")), 0));
         }
         let summary = machine.summary();
         self.machines.insert(machine.id.clone(), machine);
@@ -532,33 +621,62 @@ impl Engine {
         if !directory.exists() {
             return Ok(0);
         }
-        let entries = fs::read_dir(directory).map_err(|error| EngineError {
-            status: StatusCode::INTERNAL_SERVER_ERROR,
-            message: format!("could not read machine directory: {error}"),
-        })?;
-        let mut paths = entries
-            .map(|entry| {
-                entry
-                    .map(|entry| entry.path())
-                    .map_err(|error| EngineError {
-                        status: StatusCode::INTERNAL_SERVER_ERROR,
-                        message: format!("could not read machine directory entry: {error}"),
-                    })
-            })
-            .collect::<Result<Vec<_>, _>>()?;
+
+        fn collect_json_files(
+            directory: &FsPath,
+            paths: &mut Vec<std::path::PathBuf>,
+        ) -> Result<(), EngineError> {
+            let entries = fs::read_dir(directory).map_err(|error| EngineError {
+                status: StatusCode::INTERNAL_SERVER_ERROR,
+                message: format!("could not read {}: {error}", directory.display()),
+            })?;
+            for entry in entries {
+                let entry = entry.map_err(|error| EngineError {
+                    status: StatusCode::INTERNAL_SERVER_ERROR,
+                    message: format!("could not read entry in {}: {error}", directory.display()),
+                })?;
+                let path = entry.path();
+                let file_type = entry.file_type().map_err(|error| EngineError {
+                    status: StatusCode::INTERNAL_SERVER_ERROR,
+                    message: format!("could not inspect {}: {error}", path.display()),
+                })?;
+                if file_type.is_dir() {
+                    collect_json_files(&path, paths)?;
+                } else if file_type.is_file()
+                    && path.extension().and_then(|extension| extension.to_str()) == Some("json")
+                {
+                    paths.push(path);
+                }
+            }
+            Ok(())
+        }
+
+        let mut paths = Vec::new();
+        collect_json_files(directory, &mut paths)?;
         paths.sort();
         let mut loaded = 0;
-        for path in paths.into_iter().filter(|path| {
-            path.extension().and_then(|extension| extension.to_str()) == Some("json")
-        }) {
+        for path in paths {
             let contents = fs::read_to_string(&path).map_err(|error| EngineError {
                 status: StatusCode::INTERNAL_SERVER_ERROR,
                 message: format!("could not read {}: {error}", path.display()),
             })?;
-            let definition = serde_json::from_str(&contents).map_err(|error| EngineError {
-                status: StatusCode::BAD_REQUEST,
-                message: format!("invalid machine JSON in {}: {error}", path.display()),
-            })?;
+            let mut definition: Value =
+                serde_json::from_str(&contents).map_err(|error| EngineError {
+                    status: StatusCode::BAD_REQUEST,
+                    message: format!("invalid machine JSON in {}: {error}", path.display()),
+                })?;
+            let file_id = path
+                .file_stem()
+                .and_then(|stem| stem.to_str())
+                .ok_or_else(|| {
+                    EngineError::bad_request(format!(
+                        "machine file has no UTF-8 name: {}",
+                        path.display()
+                    ))
+                })?;
+            if let Some(object) = definition.as_object_mut() {
+                object.insert("id".to_owned(), json!(format!("machine-{file_id}")));
+            }
             self.load_machine(definition)?;
             loaded += 1;
         }
@@ -596,6 +714,14 @@ impl Engine {
         json!({ "history": self.history })
     }
 
+    fn record_history(&mut self, result: Value) {
+        const HISTORY_LIMIT: usize = 256;
+        if self.history.len() == HISTORY_LIMIT {
+            self.history.pop_front();
+        }
+        self.history.push_back(result);
+    }
+
     pub fn process_machine(&mut self, id: &str, input: &[f64]) -> Result<Value, EngineError> {
         let machine = self
             .machines
@@ -610,7 +736,7 @@ impl Engine {
         }
         self.step += 1;
         let result = machine.transition(input);
-        self.history.push(result.clone());
+        self.record_history(result.clone());
         Ok(result)
     }
 
@@ -650,16 +776,18 @@ impl Engine {
             "timestamp": timestamp,
             "outputs": outputs,
         });
-        self.history.push(result.clone());
+        self.record_history(result.clone());
         result
     }
 
-    pub fn reset(&mut self) {
+    pub fn reset(&mut self, clear_audit: bool) {
         for machine in self.machines.values_mut() {
             machine.reset();
         }
         self.step = 0;
-        self.history.clear();
+        if clear_audit {
+            self.history.clear();
+        }
     }
 
     fn health(&self) -> Value {
@@ -749,7 +877,7 @@ async fn get_machine(
     let state = engine.read().map_err(|_| error_response(lock_error()))?;
     state
         .machine(&id)
-        .map(|machine| Json(machine))
+        .map(Json)
         .ok_or_else(|| error_response(EngineError::not_found(format!("machine {id} not found"))))
 }
 
@@ -809,9 +937,27 @@ async fn process_all(
 
 async fn reset(
     State(engine): State<SharedEngine>,
+    Query(query): Query<HashMap<String, String>>,
+    body: Bytes,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let body: Value = if body.is_empty() {
+        Value::Null
+    } else {
+        serde_json::from_slice(&body).map_err(|error| {
+            error_response(EngineError::bad_request(format!(
+                "invalid JSON body: {error}"
+            )))
+        })?
+    };
+    let clear_audit = query
+        .get("clearAudit")
+        .is_some_and(|value| value.eq_ignore_ascii_case("true"))
+        || body
+            .get("clearAudit")
+            .and_then(Value::as_bool)
+            .unwrap_or(false);
     let mut state = engine.write().map_err(|_| error_response(lock_error()))?;
-    state.reset();
+    state.reset(clear_audit);
     Ok(Json(json!({ "success": true, "message": "engine reset" })))
 }
 
@@ -824,8 +970,11 @@ pub fn app(engine: Engine) -> Router {
         .route("/api/config", get(config))
         .route("/api/machines", get(list_machines).post(add_machine))
         .route("/api/machines/json/list", get(list_machines))
-        .route("/api/machines/:id", get(get_machine).delete(delete_machine))
-        .route("/api/machines/:id/process", post(process_machine))
+        .route(
+            "/api/machines/{id}",
+            get(get_machine).delete(delete_machine),
+        )
+        .route("/api/machines/{id}/process", post(process_machine))
         .route("/api/engine/process", post(process_all))
         .route("/api/engine/stats", get(engine_stats))
         .route("/api/engine/history", get(engine_history))
@@ -858,6 +1007,9 @@ pub async fn serve() -> Result<(), Box<dyn std::error::Error>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use axum::body::{Body, to_bytes};
+    use axum::http::Request;
+    use tower::ServiceExt;
 
     fn machine_definition() -> Value {
         json!({
@@ -891,9 +1043,12 @@ mod tests {
     #[test]
     fn event_successors_activate_after_current_transition_and_emit_next_cycle() {
         let mut engine = Engine::new(8);
-        engine.load_machine(machine_definition()).unwrap();
+        let machine_id = engine.load_machine(machine_definition()).unwrap()["id"]
+            .as_str()
+            .unwrap()
+            .to_owned();
 
-        let first = engine.process_machine("two-step", &[1.0]).unwrap();
+        let first = engine.process_machine(&machine_id, &[1.0]).unwrap();
         assert_eq!(
             first["sequenceResults"]["sequence"]["matchedEvents"][0],
             "start"
@@ -904,7 +1059,7 @@ mod tests {
         );
         assert!(first["machineOutput"].is_null());
 
-        let second = engine.process_machine("two-step", &[0.0]).unwrap();
+        let second = engine.process_machine(&machine_id, &[0.0]).unwrap();
         assert_eq!(second["machineOutput"]["vector"][0], 1.0);
         assert_eq!(second["mergedOutput"][0], 1.0);
     }
@@ -912,15 +1067,21 @@ mod tests {
     #[test]
     fn reset_restores_initial_events_and_clears_match_state() {
         let mut engine = Engine::new(8);
-        engine.load_machine(machine_definition()).unwrap();
-        engine.process_machine("two-step", &[1.0]).unwrap();
-        engine.process_machine("two-step", &[0.0]).unwrap();
-        engine.reset();
-        let result = engine.process_machine("two-step", &[1.0]).unwrap();
+        let machine_id = engine.load_machine(machine_definition()).unwrap()["id"]
+            .as_str()
+            .unwrap()
+            .to_owned();
+        engine.process_machine(&machine_id, &[1.0]).unwrap();
+        engine.process_machine(&machine_id, &[0.0]).unwrap();
+        engine.reset(false);
+        assert_eq!(engine.history.len(), 2);
+        let result = engine.process_machine(&machine_id, &[1.0]).unwrap();
         assert_eq!(
             result["sequenceResults"]["sequence"]["matchedEvents"][0],
             "start"
         );
+        engine.reset(true);
+        assert!(engine.history.is_empty());
     }
 
     #[test]
@@ -951,5 +1112,111 @@ mod tests {
             .unwrap()
             .remove("name");
         assert!(Engine::new(1).load_machine(missing_name).is_err());
+    }
+
+    #[tokio::test]
+    async fn api_accepts_machines_and_processes_transitions() {
+        let app = app(Engine::new(8));
+        let response = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/machines")
+                    .header("content-type", "application/json")
+                    .body(Body::from(machine_definition().to_string()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        let registered: Value = serde_json::from_slice(&body).unwrap();
+        let machine_id = registered["machine"]["id"].as_str().unwrap();
+
+        for (vector, expecting_output) in [(json!([1.0]), false), (json!([0.0]), true)] {
+            let response = app
+                .clone()
+                .oneshot(
+                    Request::builder()
+                        .method("POST")
+                        .uri(format!("/api/machines/{machine_id}/process"))
+                        .header("content-type", "application/json")
+                        .body(Body::from(json!({ "vector": vector.clone() }).to_string()))
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+            assert_eq!(response.status(), StatusCode::OK);
+            let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+            let result: Value = serde_json::from_slice(&body).unwrap();
+            if expecting_output {
+                assert_eq!(result["result"]["machineOutput"]["vector"][0], 1.0);
+            } else {
+                assert!(result["result"]["machineOutput"].is_null());
+            }
+        }
+
+        let response = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/engine/reset?clearAudit=true")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/api/engine/history")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        let history: Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(history["history"], json!([]));
+    }
+
+    #[test]
+    fn duplicate_machine_names_are_versioned_and_regions_reallocated() {
+        let mut engine = Engine::new(8);
+        let first = engine.load_machine(machine_definition()).unwrap();
+        let second = engine.load_machine(machine_definition()).unwrap();
+        assert_eq!(first["name"], "two-step");
+        assert_eq!(second["name"], "two-step v2");
+        assert_ne!(first["id"], second["id"]);
+        assert_eq!(second["perceptualMapping"]["input"]["offset"], 8);
+        assert_eq!(second["perceptualMapping"]["output"]["offset"], 9);
+    }
+
+    #[test]
+    fn declared_machine_ids_are_kept_when_available() {
+        let mut definition = machine_definition();
+        definition["id"] = json!("machine-declared");
+        let loaded = Engine::new(8).load_machine(definition).unwrap();
+        assert_eq!(loaded["id"], "machine-declared");
+    }
+
+    #[test]
+    fn machine_files_load_recursively_with_file_stem_ids() {
+        let directory = std::env::temp_dir().join(new_machine_id());
+        let nested = directory.join("nested");
+        fs::create_dir_all(&nested).unwrap();
+        fs::write(
+            nested.join("fixture.json"),
+            machine_definition().to_string(),
+        )
+        .unwrap();
+
+        let mut engine = Engine::new(8);
+        assert_eq!(engine.load_directory(&directory).unwrap(), 1);
+        assert!(engine.machine("machine-fixture").is_some());
+        fs::remove_dir_all(directory).unwrap();
     }
 }
