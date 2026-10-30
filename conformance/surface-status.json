@@ -1,0 +1,527 @@
+{
+  "purpose": "Implementation status of every SURFACE_SPEC route in this repo. Rewrite with SURFACE_RECORD=1 cargo test --test surface; then give every UNCLASSIFIED entry its issue.",
+  "routes": {
+    "PE DELETE /api/sources/:id": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#17"
+    },
+    "PE GET /": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#17"
+    },
+    "PE GET /api/dispatch/ledger": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#17"
+    },
+    "PE GET /api/dispatch/records/:id": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#17"
+    },
+    "PE GET /api/health": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#17"
+    },
+    "PE GET /api/integrations/acp/status": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#17"
+    },
+    "PE GET /api/integrations/carekit/status": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#17"
+    },
+    "PE GET /api/integrations/healthkit/status": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#17"
+    },
+    "PE GET /api/integrations/localai/catalog": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#17"
+    },
+    "PE GET /api/integrations/localai/ledger": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#17"
+    },
+    "PE GET /api/integrations/localai/status": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#17"
+    },
+    "PE GET /api/integrations/ollama/status": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#17"
+    },
+    "PE GET /api/integrations/openai/status": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#17"
+    },
+    "PE GET /api/integrations/status": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#17"
+    },
+    "PE GET /api/machines": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#17"
+    },
+    "PE GET /api/mqtt/mappings": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#17"
+    },
+    "PE GET /api/mqtt/status": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#17"
+    },
+    "PE GET /api/push/:id": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#17"
+    },
+    "PE GET /api/sources": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#17"
+    },
+    "PE GET /api/sources/contention": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#17"
+    },
+    "PE GET /api/state": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#17"
+    },
+    "PE GET /api/triggers/status": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#17"
+    },
+    "PE PATCH /api/config": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#17"
+    },
+    "PE PATCH /api/dispatch/records/:id": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#17"
+    },
+    "PE PATCH /api/sources/:id": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#17"
+    },
+    "PE POST /api/auto/start": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#17"
+    },
+    "PE POST /api/auto/stop": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#17"
+    },
+    "PE POST /api/dispatch/records/:id/replay": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#17"
+    },
+    "PE POST /api/integrations/acp/dispatch": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#17"
+    },
+    "PE POST /api/integrations/carekit/ingest": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#17"
+    },
+    "PE POST /api/integrations/completions": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#17"
+    },
+    "PE POST /api/integrations/healthkit/ingest": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#17"
+    },
+    "PE POST /api/integrations/localai/bootstrap": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#17"
+    },
+    "PE POST /api/integrations/localai/invoke": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#17"
+    },
+    "PE POST /api/integrations/ollama/dispatch": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#17"
+    },
+    "PE POST /api/integrations/openai/dispatch": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#17"
+    },
+    "PE POST /api/mqtt/disable": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#17"
+    },
+    "PE POST /api/mqtt/enable": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#17"
+    },
+    "PE POST /api/push": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#17"
+    },
+    "PE POST /api/reset": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#17"
+    },
+    "PE POST /api/sensors/:sensorId": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#17"
+    },
+    "PE POST /api/signals": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#17"
+    },
+    "PE POST /api/sources": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#17"
+    },
+    "PE POST /api/sources/bootstrap-from-machines": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#17"
+    },
+    "PE PUT /api/mqtt/mappings": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#17"
+    },
+    "PE SSE /api/events": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#17"
+    },
+    "PE WS /ws": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#17"
+    },
+    "RE DELETE /api/engine/config/:control": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#10"
+    },
+    "RE DELETE /api/machines/:id": {
+      "status": "implemented"
+    },
+    "RE DELETE /api/machines/:machineId/checkpoints/:cpId": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#13"
+    },
+    "RE DELETE /api/sequences/:id": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#13"
+    },
+    "RE DELETE /api/vectors/:id": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#13"
+    },
+    "RE GET /": {
+      "status": "implemented"
+    },
+    "RE GET /api": {
+      "status": "implemented"
+    },
+    "RE GET /api/arbitration": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#12"
+    },
+    "RE GET /api/buses/semantic": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#13"
+    },
+    "RE GET /api/buses/semantic/:id": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#13"
+    },
+    "RE GET /api/config": {
+      "notes": "reports dimension/threshold, not eventDimension/matchThreshold: jateeter/RealityEngine_Rust#6",
+      "status": "implemented"
+    },
+    "RE GET /api/demo/data-center": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#13"
+    },
+    "RE GET /api/demo/kleene-star": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#13"
+    },
+    "RE GET /api/demo/multi-step": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#13"
+    },
+    "RE GET /api/engine/active": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#11"
+    },
+    "RE GET /api/engine/clock": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#12"
+    },
+    "RE GET /api/engine/config": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#10"
+    },
+    "RE GET /api/engine/config/:control": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#10"
+    },
+    "RE GET /api/engine/history": {
+      "status": "implemented"
+    },
+    "RE GET /api/engine/isre-history": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#11"
+    },
+    "RE GET /api/engine/osre-history": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#11"
+    },
+    "RE GET /api/engine/stats": {
+      "status": "implemented"
+    },
+    "RE GET /api/engine/steps/:n/pair": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#11"
+    },
+    "RE GET /api/governance/route": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#13"
+    },
+    "RE GET /api/health": {
+      "notes": "follows the spec {status,timestamp,version}; the three engines return {status}: RealityEngine_CI#610, owner ruling pending",
+      "status": "implemented"
+    },
+    "RE GET /api/machine-graph": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#13"
+    },
+    "RE GET /api/machines": {
+      "status": "implemented"
+    },
+    "RE GET /api/machines/:id": {
+      "status": "implemented"
+    },
+    "RE GET /api/machines/:id/checkpoints": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#13"
+    },
+    "RE GET /api/machines/:id/export": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#13"
+    },
+    "RE GET /api/machines/json/:name": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#13"
+    },
+    "RE GET /api/machines/json/list": {
+      "notes": "aliased to the /api/machines list, lacks relFile/filename/semanticsHash/semanticsIri/version: jateeter/RealityEngine_Rust#7",
+      "status": "implemented"
+    },
+    "RE GET /api/metrics": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#10"
+    },
+    "RE GET /api/perceptual-simulation/history": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#11"
+    },
+    "RE GET /api/perceptual-simulation/state": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#11"
+    },
+    "RE GET /api/runtime/metrics": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#10"
+    },
+    "RE GET /api/runtime/options": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#10"
+    },
+    "RE GET /api/runtime/storage-footprint": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#10"
+    },
+    "RE GET /api/runtime/vector-space": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#10"
+    },
+    "RE GET /api/sampler/stats": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#13"
+    },
+    "RE GET /api/sequences": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#13"
+    },
+    "RE GET /api/sequences/:id": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#13"
+    },
+    "RE GET /api/vectors/:id": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#13"
+    },
+    "RE PATCH /api/machines/:id": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#13"
+    },
+    "RE PATCH /api/runtime/options": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#10"
+    },
+    "RE POST /api/engine/process": {
+      "notes": "outputs[] is the per-machine result, not the arbitrated output: jateeter/RealityEngine_Rust#5",
+      "status": "implemented"
+    },
+    "RE POST /api/engine/reset": {
+      "status": "implemented"
+    },
+    "RE POST /api/machines": {
+      "status": "implemented"
+    },
+    "RE POST /api/machines/:id/checkpoints": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#13"
+    },
+    "RE POST /api/machines/:id/process": {
+      "notes": "answers inputVector, not inputEvent: jateeter/RealityEngine_Rust#6",
+      "status": "implemented"
+    },
+    "RE POST /api/machines/:id/process-universal": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#13"
+    },
+    "RE POST /api/machines/:id/whatif": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#13"
+    },
+    "RE POST /api/machines/:id/whatif-universal": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#13"
+    },
+    "RE POST /api/machines/:machineId/checkpoints/:cpId/restore": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#13"
+    },
+    "RE POST /api/machines/json/import": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#13"
+    },
+    "RE POST /api/machines/process-universal/all": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#13"
+    },
+    "RE POST /api/perceive": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#11"
+    },
+    "RE POST /api/perception/diagnostic": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#13"
+    },
+    "RE POST /api/perception/observe": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#13"
+    },
+    "RE POST /api/perceptual-simulation/configure/chunk": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#11"
+    },
+    "RE POST /api/perceptual-simulation/configure/commit": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#11"
+    },
+    "RE POST /api/perceptual-simulation/reset": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#11"
+    },
+    "RE POST /api/perceptual-simulation/start": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#11"
+    },
+    "RE POST /api/perceptual-simulation/step": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#11"
+    },
+    "RE POST /api/perceptual-simulation/stop": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#11"
+    },
+    "RE POST /api/sampler/sample": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#13"
+    },
+    "RE POST /api/sampler/start": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#13"
+    },
+    "RE POST /api/sampler/stop": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#13"
+    },
+    "RE POST /api/sequences": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#13"
+    },
+    "RE POST /api/sequences/:id/reset": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#13"
+    },
+    "RE POST /api/sequences/:id/vectors": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#13"
+    },
+    "RE POST /api/sequences/persist": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#13"
+    },
+    "RE POST /api/vectors": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#13"
+    },
+    "RE POST /api/vectors/search": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#13"
+    },
+    "RE PUT /api/config/dimension": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#10"
+    },
+    "RE PUT /api/config/threshold": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#10"
+    },
+    "RE PUT /api/engine/config/:control": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#10"
+    },
+    "RE PUT /api/machines/:id": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#13"
+    },
+    "RE SSE /api/engine/stream": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#11"
+    },
+    "RE-phase2 DELETE /api/runtime/snapshot/:id": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#2 (K-line snapshots, spec phase 2; no item yet)"
+    },
+    "RE-phase2 GET /api/runtime/snapshot/:id": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#2 (K-line snapshots, spec phase 2; no item yet)"
+    },
+    "RE-phase2 GET /api/runtime/snapshots": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#2 (K-line snapshots, spec phase 2; no item yet)"
+    },
+    "RE-phase2 POST /api/runtime/restore": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#2 (K-line snapshots, spec phase 2; no item yet)"
+    },
+    "RE-phase2 POST /api/runtime/snapshot": {
+      "status": "missing",
+      "tracking": "jateeter/RealityEngine_Rust#2 (K-line snapshots, spec phase 2; no item yet)"
+    }
+  },
+  "schema": 1,
+  "spec": {
+    "commit": "fc60831f9123fc6328a34ec6b0e648f10c7b3f4e",
+    "path": "SURFACE_SPEC.md",
+    "repository": "jateeter/RealityEngine_CI",
+    "sha256": "16c52b5ec597dec523db13c79c725d1249666d62ef467c3d193911d10aaa35ae"
+  }
+}

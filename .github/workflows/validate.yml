@@ -6,7 +6,8 @@
 # itself"). Both tiers run from this checkout alone: no sibling repositories,
 # no universe. R1 replays the vendored regression corpus (conformance/corpus/,
 # pinned by conformance/corpus.lock.json) through the HTTP router against what
-# the corpus declares.
+# the corpus declares, and probes every SURFACE_SPEC.md route (vendored in
+# conformance/surface/) for its implementation status.
 #
 # WHAT THIS DOES NOT COVER
 #   R2  agreement with the three reference engines, beside a live universe
@@ -49,10 +50,12 @@ jobs:
       - name: R1 conformance
         run: scripts/validate.sh r1
 
-      - name: R1 report
+      - name: R1 reports
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: r1-report
-          path: target/conformance/r1-report.json
+          name: r1-reports
+          path: |
+            target/conformance/r1-report.json
+            target/conformance/surface-report.json
           if-no-files-found: warn

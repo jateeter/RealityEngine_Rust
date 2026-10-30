@@ -6,7 +6,9 @@
 #
 #   R0  static       fmt, clippy -D warnings, unit tests, release build
 #   R1  conformance  the vendored regression corpus replayed through the HTTP
-#                    router against what the corpus declares (tests/conformance.rs)
+#                    router against what the corpus declares (tests/conformance.rs),
+#                    and every SURFACE_SPEC route probed for its implementation
+#                    status (tests/surface.rs)
 #   R2  follower     beside a live 3-of-3 universe, as a non-voting follower;
 #                    local only, needs sibling checkouts (RealityEngine_CI#607)
 #
@@ -83,11 +85,30 @@ print(f"corpus snapshot: {len(locked)} machines from {src['repository']}@{src['c
 PY
 }
 
+verify_surface_snapshot() {
+  python3 -I - "$repo_root/conformance/surface/spec-routes.json" <<'PY'
+import hashlib, json, sys
+doc = json.load(open(sys.argv[1]))
+rows = [{k: r[k] for k in ("id", "layer", "group", "method", "path")} for r in doc["routes"]]
+canonical = json.dumps(rows, sort_keys=True, separators=(",", ":"))
+if hashlib.sha256(canonical.encode()).hexdigest() != doc["routesSha256"]:
+    print("spec-routes.json does not match its routesSha256: edited by hand?")
+    print("re-vendor with scripts/refresh-surface.sh; never edit it by hand")
+    sys.exit(1)
+src = doc["source"]
+print(f"surface snapshot: {doc['counts']} from {src['repository']} {src['path']}@{src['commit'][:12]}")
+PY
+}
+
 tier_r1() {
   say "R1 conformance: corpus snapshot"
   verify_corpus_lock || return 1
   say "R1 conformance: corpus replay"
   cargo test --locked --test conformance -- --nocapture || return 1
+  say "R1 conformance: surface snapshot"
+  verify_surface_snapshot || return 1
+  say "R1 conformance: API surface"
+  cargo test --locked --test surface -- --nocapture || return 1
 }
 
 tier_r2() {
@@ -100,6 +121,7 @@ tier_r2() {
     return 3
   fi
   bash scripts/refresh-corpus.sh --check || return 1
+  bash scripts/refresh-surface.sh --check || return 1
   "$runner" --rust-repo "$repo_root" || return 1
 }
 

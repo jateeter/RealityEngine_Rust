@@ -13,6 +13,9 @@ This repo is the Rust Reality Engine. It is a **non-voting conformance follower*
 - `src/lib.rs`: the engine (`Engine`, machine transitions, arbitration, output merge) and the axum router (`app`).
 - `src/main.rs`: entrypoint; `serve()` reads `REALITY_ENGINE_PORT`, `VECTOR_DIMENSION`, `MACHINES_DIR`.
 - `tests/conformance.rs`: tier R1, the corpus replay.
+- `tests/surface.rs`: tier R1, every SURFACE_SPEC route probed for its implementation status.
+- `conformance/SURFACE_STATUS.md`: **the readable answer to "which documented APIs exist"**, generated from `conformance/surface-status.json`, which records each route's status and tracking issue.
+- `conformance/surface/spec-routes.json`: the spec's route tables, vendored by `scripts/refresh-surface.sh`. Generated; never edit by hand.
 - `conformance/corpus/`: the vendored regression corpus R1 replays. **Generated; never edit by hand.**
 - `conformance/corpus.lock.json`: its provenance (Machines commit, manifest digest, one sha256 per file).
 - `conformance/known-failures.json`: the R1 ratchet; every entry is a failure with an issue.
@@ -33,6 +36,7 @@ scripts/validate.sh r0       # fmt, clippy -D warnings, unit tests, release buil
 scripts/validate.sh r1       # corpus snapshot check + corpus replay
 scripts/validate.sh r2       # beside a live universe; local only
 scripts/refresh-corpus.sh    # re-vendor from a clean RealityEngine_Machines
+scripts/refresh-surface.sh   # re-vendor SURFACE_SPEC.md's route tables
 ```
 
 On a Mac run them with `/opt/homebrew/bin/bash`. Exit 3 means a tier was
@@ -50,6 +54,14 @@ Rules that bite:
   R1; so does a listed failure that now passes. After a fix, delete the entries
   it closed. `R1_RECORD_KNOWN=1 cargo test --test conformance` rewrites the file
   with `UNCLASSIFIED` issues, which fail until each names its issue.
+- **Every specified route has a known status.** `tests/surface.rs` probes each
+  route of `SURFACE_SPEC.md`'s RE and PE tables (and the phase-2 K-line routes)
+  and classifies it `implemented`, `implemented-bad-envelope`,
+  `implemented-error`, `declared-unsupported` or `missing`. When you add or
+  change a route the test fails until you re-record:
+  `SURFACE_RECORD=1 cargo test --test surface`, then name the issue for any new
+  non-implemented entry. Re-vendor the spec with `scripts/refresh-surface.sh`
+  when it changes. Status says a route exists, not that it behaves.
 - **Read canonical keys first.** R1 reads `eventDimension`, `outputs[].vector`,
   `events`; where Rust answers otherwise it falls back so the rest still
   measures, and records the key as a failing check.

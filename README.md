@@ -21,8 +21,10 @@ scripts/validate.sh        # R0 (fmt, clippy, unit tests, release build) + R1 (c
 ```
 
 R1 replays the regression corpus vendored in `conformance/corpus/` through the
-HTTP router and checks each input sequence against what the corpus declares.
-It needs nothing but this checkout. Agreement with the C++, LSP and Scala
+HTTP router and checks each input sequence against what the corpus declares,
+and probes every route `SURFACE_SPEC.md` defines for its implementation status.
+It needs nothing but this checkout. Which documented APIs exist today is
+[`conformance/SURFACE_STATUS.md`](conformance/SURFACE_STATUS.md). Agreement with the C++, LSP and Scala
 engines is checked beside a live universe (R2) and by the full
 RealityEngine_CI regression suite (R3), on a slower cadence. The protocol is
 `RealityEngine_CI/docs/RUST_VALIDATION_WORKFLOW.md`; repo guidance is

@@ -1,0 +1,1069 @@
+{
+  "schema": 1,
+  "purpose": "Route tables of SURFACE_SPEC.md; regenerate with scripts/refresh-surface.sh, never by hand",
+  "source": {
+    "repository": "jateeter/RealityEngine_CI",
+    "path": "SURFACE_SPEC.md",
+    "commit": "fc60831f9123fc6328a34ec6b0e648f10c7b3f4e",
+    "sha256": "16c52b5ec597dec523db13c79c725d1249666d62ef467c3d193911d10aaa35ae"
+  },
+  "excluded": [
+    "Manager (Visualizer) Surface: Manager's surface, not an engine's"
+  ],
+  "counts": {
+    "RE": 79,
+    "PE": 47,
+    "RE-phase2": 5
+  },
+  "routesSha256": "378d20ad8ecf33558ad0a87b98ba39156007838d96ad60613186abf29ba9650f",
+  "routes": [
+    {
+      "id": "RE GET /",
+      "layer": "RE",
+      "group": "Info & Health",
+      "method": "GET",
+      "path": "/",
+      "specLine": 196
+    },
+    {
+      "id": "RE GET /api",
+      "layer": "RE",
+      "group": "Info & Health",
+      "method": "GET",
+      "path": "/api",
+      "specLine": 197
+    },
+    {
+      "id": "RE GET /api/health",
+      "layer": "RE",
+      "group": "Info & Health",
+      "method": "GET",
+      "path": "/api/health",
+      "specLine": 198
+    },
+    {
+      "id": "RE GET /api/metrics",
+      "layer": "RE",
+      "group": "Info & Health",
+      "method": "GET",
+      "path": "/api/metrics",
+      "specLine": 199
+    },
+    {
+      "id": "RE GET /api/config",
+      "layer": "RE",
+      "group": "Configuration",
+      "method": "GET",
+      "path": "/api/config",
+      "specLine": 245
+    },
+    {
+      "id": "RE PUT /api/config/dimension",
+      "layer": "RE",
+      "group": "Configuration",
+      "method": "PUT",
+      "path": "/api/config/dimension",
+      "specLine": 246
+    },
+    {
+      "id": "RE PUT /api/config/threshold",
+      "layer": "RE",
+      "group": "Configuration",
+      "method": "PUT",
+      "path": "/api/config/threshold",
+      "specLine": 247
+    },
+    {
+      "id": "RE GET /api/engine/config",
+      "layer": "RE",
+      "group": "Configuration",
+      "method": "GET",
+      "path": "/api/engine/config",
+      "specLine": 248
+    },
+    {
+      "id": "RE GET /api/engine/config/:control",
+      "layer": "RE",
+      "group": "Configuration",
+      "method": "GET",
+      "path": "/api/engine/config/:control",
+      "specLine": 249
+    },
+    {
+      "id": "RE PUT /api/engine/config/:control",
+      "layer": "RE",
+      "group": "Configuration",
+      "method": "PUT",
+      "path": "/api/engine/config/:control",
+      "specLine": 250
+    },
+    {
+      "id": "RE DELETE /api/engine/config/:control",
+      "layer": "RE",
+      "group": "Configuration",
+      "method": "DELETE",
+      "path": "/api/engine/config/:control",
+      "specLine": 251
+    },
+    {
+      "id": "RE GET /api/runtime/metrics",
+      "layer": "RE",
+      "group": "Runtime Introspection",
+      "method": "GET",
+      "path": "/api/runtime/metrics",
+      "specLine": 906
+    },
+    {
+      "id": "RE GET /api/runtime/vector-space",
+      "layer": "RE",
+      "group": "Runtime Introspection",
+      "method": "GET",
+      "path": "/api/runtime/vector-space",
+      "specLine": 907
+    },
+    {
+      "id": "RE GET /api/runtime/storage-footprint",
+      "layer": "RE",
+      "group": "Runtime Introspection",
+      "method": "GET",
+      "path": "/api/runtime/storage-footprint",
+      "specLine": 908
+    },
+    {
+      "id": "RE GET /api/runtime/options",
+      "layer": "RE",
+      "group": "Runtime Introspection",
+      "method": "GET",
+      "path": "/api/runtime/options",
+      "specLine": 909
+    },
+    {
+      "id": "RE PATCH /api/runtime/options",
+      "layer": "RE",
+      "group": "Runtime Introspection",
+      "method": "PATCH",
+      "path": "/api/runtime/options",
+      "specLine": 910
+    },
+    {
+      "id": "RE POST /api/vectors/search",
+      "layer": "RE",
+      "group": "Vectors",
+      "method": "POST",
+      "path": "/api/vectors/search",
+      "specLine": 916
+    },
+    {
+      "id": "RE POST /api/vectors",
+      "layer": "RE",
+      "group": "Vectors",
+      "method": "POST",
+      "path": "/api/vectors",
+      "specLine": 917
+    },
+    {
+      "id": "RE GET /api/vectors/:id",
+      "layer": "RE",
+      "group": "Vectors",
+      "method": "GET",
+      "path": "/api/vectors/:id",
+      "specLine": 918
+    },
+    {
+      "id": "RE DELETE /api/vectors/:id",
+      "layer": "RE",
+      "group": "Vectors",
+      "method": "DELETE",
+      "path": "/api/vectors/:id",
+      "specLine": 919
+    },
+    {
+      "id": "RE GET /api/sequences",
+      "layer": "RE",
+      "group": "Sequences",
+      "method": "GET",
+      "path": "/api/sequences",
+      "specLine": 925
+    },
+    {
+      "id": "RE POST /api/sequences",
+      "layer": "RE",
+      "group": "Sequences",
+      "method": "POST",
+      "path": "/api/sequences",
+      "specLine": 926
+    },
+    {
+      "id": "RE GET /api/sequences/:id",
+      "layer": "RE",
+      "group": "Sequences",
+      "method": "GET",
+      "path": "/api/sequences/:id",
+      "specLine": 927
+    },
+    {
+      "id": "RE DELETE /api/sequences/:id",
+      "layer": "RE",
+      "group": "Sequences",
+      "method": "DELETE",
+      "path": "/api/sequences/:id",
+      "specLine": 928
+    },
+    {
+      "id": "RE POST /api/sequences/:id/reset",
+      "layer": "RE",
+      "group": "Sequences",
+      "method": "POST",
+      "path": "/api/sequences/:id/reset",
+      "specLine": 929
+    },
+    {
+      "id": "RE POST /api/sequences/:id/vectors",
+      "layer": "RE",
+      "group": "Sequences",
+      "method": "POST",
+      "path": "/api/sequences/:id/vectors",
+      "specLine": 930
+    },
+    {
+      "id": "RE POST /api/sequences/persist",
+      "layer": "RE",
+      "group": "Sequences",
+      "method": "POST",
+      "path": "/api/sequences/persist",
+      "specLine": 931
+    },
+    {
+      "id": "RE GET /api/engine/stats",
+      "layer": "RE",
+      "group": "Engine",
+      "method": "GET",
+      "path": "/api/engine/stats",
+      "specLine": 937
+    },
+    {
+      "id": "RE GET /api/engine/active",
+      "layer": "RE",
+      "group": "Engine",
+      "method": "GET",
+      "path": "/api/engine/active",
+      "specLine": 938
+    },
+    {
+      "id": "RE GET /api/engine/history",
+      "layer": "RE",
+      "group": "Engine",
+      "method": "GET",
+      "path": "/api/engine/history",
+      "specLine": 939
+    },
+    {
+      "id": "RE GET /api/engine/osre-history",
+      "layer": "RE",
+      "group": "Engine",
+      "method": "GET",
+      "path": "/api/engine/osre-history",
+      "specLine": 940
+    },
+    {
+      "id": "RE GET /api/engine/isre-history",
+      "layer": "RE",
+      "group": "Engine",
+      "method": "GET",
+      "path": "/api/engine/isre-history",
+      "specLine": 941
+    },
+    {
+      "id": "RE GET /api/engine/steps/:n/pair",
+      "layer": "RE",
+      "group": "Engine",
+      "method": "GET",
+      "path": "/api/engine/steps/:n/pair",
+      "specLine": 942
+    },
+    {
+      "id": "RE GET /api/engine/clock",
+      "layer": "RE",
+      "group": "Engine",
+      "method": "GET",
+      "path": "/api/engine/clock",
+      "specLine": 943
+    },
+    {
+      "id": "RE GET /api/arbitration",
+      "layer": "RE",
+      "group": "Engine",
+      "method": "GET",
+      "path": "/api/arbitration",
+      "specLine": 944
+    },
+    {
+      "id": "RE POST /api/engine/process",
+      "layer": "RE",
+      "group": "Engine",
+      "method": "POST",
+      "path": "/api/engine/process",
+      "specLine": 945
+    },
+    {
+      "id": "RE POST /api/engine/reset",
+      "layer": "RE",
+      "group": "Engine",
+      "method": "POST",
+      "path": "/api/engine/reset",
+      "specLine": 946
+    },
+    {
+      "id": "RE GET /api/machines",
+      "layer": "RE",
+      "group": "Machines",
+      "method": "GET",
+      "path": "/api/machines",
+      "specLine": 1452
+    },
+    {
+      "id": "RE POST /api/machines",
+      "layer": "RE",
+      "group": "Machines",
+      "method": "POST",
+      "path": "/api/machines",
+      "specLine": 1453
+    },
+    {
+      "id": "RE GET /api/machines/:id",
+      "layer": "RE",
+      "group": "Machines",
+      "method": "GET",
+      "path": "/api/machines/:id",
+      "specLine": 1454
+    },
+    {
+      "id": "RE PUT /api/machines/:id",
+      "layer": "RE",
+      "group": "Machines",
+      "method": "PUT",
+      "path": "/api/machines/:id",
+      "specLine": 1455
+    },
+    {
+      "id": "RE PATCH /api/machines/:id",
+      "layer": "RE",
+      "group": "Machines",
+      "method": "PATCH",
+      "path": "/api/machines/:id",
+      "specLine": 1456
+    },
+    {
+      "id": "RE DELETE /api/machines/:id",
+      "layer": "RE",
+      "group": "Machines",
+      "method": "DELETE",
+      "path": "/api/machines/:id",
+      "specLine": 1457
+    },
+    {
+      "id": "RE POST /api/machines/:id/process",
+      "layer": "RE",
+      "group": "Machines",
+      "method": "POST",
+      "path": "/api/machines/:id/process",
+      "specLine": 1458
+    },
+    {
+      "id": "RE POST /api/machines/:id/process-universal",
+      "layer": "RE",
+      "group": "Machines",
+      "method": "POST",
+      "path": "/api/machines/:id/process-universal",
+      "specLine": 1459
+    },
+    {
+      "id": "RE POST /api/machines/:id/whatif",
+      "layer": "RE",
+      "group": "Machines",
+      "method": "POST",
+      "path": "/api/machines/:id/whatif",
+      "specLine": 1460
+    },
+    {
+      "id": "RE POST /api/machines/:id/whatif-universal",
+      "layer": "RE",
+      "group": "Machines",
+      "method": "POST",
+      "path": "/api/machines/:id/whatif-universal",
+      "specLine": 1461
+    },
+    {
+      "id": "RE POST /api/machines/process-universal/all",
+      "layer": "RE",
+      "group": "Machines",
+      "method": "POST",
+      "path": "/api/machines/process-universal/all",
+      "specLine": 1462
+    },
+    {
+      "id": "RE GET /api/machines/json/list",
+      "layer": "RE",
+      "group": "Machines",
+      "method": "GET",
+      "path": "/api/machines/json/list",
+      "specLine": 1463
+    },
+    {
+      "id": "RE GET /api/machines/json/:name",
+      "layer": "RE",
+      "group": "Machines",
+      "method": "GET",
+      "path": "/api/machines/json/:name",
+      "specLine": 1464
+    },
+    {
+      "id": "RE POST /api/machines/json/import",
+      "layer": "RE",
+      "group": "Machines",
+      "method": "POST",
+      "path": "/api/machines/json/import",
+      "specLine": 1465
+    },
+    {
+      "id": "RE GET /api/machines/:id/export",
+      "layer": "RE",
+      "group": "Machines",
+      "method": "GET",
+      "path": "/api/machines/:id/export",
+      "specLine": 1466
+    },
+    {
+      "id": "RE GET /api/machines/:id/checkpoints",
+      "layer": "RE",
+      "group": "Machines",
+      "method": "GET",
+      "path": "/api/machines/:id/checkpoints",
+      "specLine": 1467
+    },
+    {
+      "id": "RE POST /api/machines/:id/checkpoints",
+      "layer": "RE",
+      "group": "Machines",
+      "method": "POST",
+      "path": "/api/machines/:id/checkpoints",
+      "specLine": 1468
+    },
+    {
+      "id": "RE POST /api/machines/:machineId/checkpoints/:cpId/restore",
+      "layer": "RE",
+      "group": "Machines",
+      "method": "POST",
+      "path": "/api/machines/:machineId/checkpoints/:cpId/restore",
+      "specLine": 1469
+    },
+    {
+      "id": "RE DELETE /api/machines/:machineId/checkpoints/:cpId",
+      "layer": "RE",
+      "group": "Machines",
+      "method": "DELETE",
+      "path": "/api/machines/:machineId/checkpoints/:cpId",
+      "specLine": 1470
+    },
+    {
+      "id": "RE GET /api/buses/semantic",
+      "layer": "RE",
+      "group": "Machines",
+      "method": "GET",
+      "path": "/api/buses/semantic",
+      "specLine": 1471
+    },
+    {
+      "id": "RE GET /api/buses/semantic/:id",
+      "layer": "RE",
+      "group": "Machines",
+      "method": "GET",
+      "path": "/api/buses/semantic/:id",
+      "specLine": 1472
+    },
+    {
+      "id": "RE GET /api/machine-graph",
+      "layer": "RE",
+      "group": "Machine Graph",
+      "method": "GET",
+      "path": "/api/machine-graph",
+      "specLine": 1478
+    },
+    {
+      "id": "RE POST /api/perceptual-simulation/configure/chunk",
+      "layer": "RE",
+      "group": "Perceptual Simulation",
+      "method": "POST",
+      "path": "/api/perceptual-simulation/configure/chunk",
+      "specLine": 1484
+    },
+    {
+      "id": "RE POST /api/perceptual-simulation/configure/commit",
+      "layer": "RE",
+      "group": "Perceptual Simulation",
+      "method": "POST",
+      "path": "/api/perceptual-simulation/configure/commit",
+      "specLine": 1485
+    },
+    {
+      "id": "RE POST /api/perceptual-simulation/start",
+      "layer": "RE",
+      "group": "Perceptual Simulation",
+      "method": "POST",
+      "path": "/api/perceptual-simulation/start",
+      "specLine": 1486
+    },
+    {
+      "id": "RE POST /api/perceptual-simulation/stop",
+      "layer": "RE",
+      "group": "Perceptual Simulation",
+      "method": "POST",
+      "path": "/api/perceptual-simulation/stop",
+      "specLine": 1487
+    },
+    {
+      "id": "RE POST /api/perceptual-simulation/step",
+      "layer": "RE",
+      "group": "Perceptual Simulation",
+      "method": "POST",
+      "path": "/api/perceptual-simulation/step",
+      "specLine": 1488
+    },
+    {
+      "id": "RE POST /api/perceptual-simulation/reset",
+      "layer": "RE",
+      "group": "Perceptual Simulation",
+      "method": "POST",
+      "path": "/api/perceptual-simulation/reset",
+      "specLine": 1489
+    },
+    {
+      "id": "RE GET /api/perceptual-simulation/state",
+      "layer": "RE",
+      "group": "Perceptual Simulation",
+      "method": "GET",
+      "path": "/api/perceptual-simulation/state",
+      "specLine": 1490
+    },
+    {
+      "id": "RE GET /api/perceptual-simulation/history",
+      "layer": "RE",
+      "group": "Perceptual Simulation",
+      "method": "GET",
+      "path": "/api/perceptual-simulation/history",
+      "specLine": 1491
+    },
+    {
+      "id": "RE POST /api/sampler/start",
+      "layer": "RE",
+      "group": "Sampler",
+      "method": "POST",
+      "path": "/api/sampler/start",
+      "specLine": 1668
+    },
+    {
+      "id": "RE POST /api/sampler/stop",
+      "layer": "RE",
+      "group": "Sampler",
+      "method": "POST",
+      "path": "/api/sampler/stop",
+      "specLine": 1669
+    },
+    {
+      "id": "RE POST /api/sampler/sample",
+      "layer": "RE",
+      "group": "Sampler",
+      "method": "POST",
+      "path": "/api/sampler/sample",
+      "specLine": 1670
+    },
+    {
+      "id": "RE GET /api/sampler/stats",
+      "layer": "RE",
+      "group": "Sampler",
+      "method": "GET",
+      "path": "/api/sampler/stats",
+      "specLine": 1671
+    },
+    {
+      "id": "RE POST /api/perception/observe",
+      "layer": "RE",
+      "group": "Perception",
+      "method": "POST",
+      "path": "/api/perception/observe",
+      "specLine": 1677
+    },
+    {
+      "id": "RE POST /api/perception/diagnostic",
+      "layer": "RE",
+      "group": "Perception",
+      "method": "POST",
+      "path": "/api/perception/diagnostic",
+      "specLine": 1678
+    },
+    {
+      "id": "RE POST /api/perceive",
+      "layer": "RE",
+      "group": "Perception",
+      "method": "POST",
+      "path": "/api/perceive",
+      "specLine": 1679
+    },
+    {
+      "id": "RE GET /api/governance/route",
+      "layer": "RE",
+      "group": "Governance",
+      "method": "GET",
+      "path": "/api/governance/route",
+      "specLine": 1685
+    },
+    {
+      "id": "RE GET /api/demo/multi-step",
+      "layer": "RE",
+      "group": "Demos",
+      "method": "GET",
+      "path": "/api/demo/multi-step",
+      "specLine": 1691
+    },
+    {
+      "id": "RE GET /api/demo/data-center",
+      "layer": "RE",
+      "group": "Demos",
+      "method": "GET",
+      "path": "/api/demo/data-center",
+      "specLine": 1692
+    },
+    {
+      "id": "RE GET /api/demo/kleene-star",
+      "layer": "RE",
+      "group": "Demos",
+      "method": "GET",
+      "path": "/api/demo/kleene-star",
+      "specLine": 1693
+    },
+    {
+      "id": "RE SSE /api/engine/stream",
+      "layer": "RE",
+      "group": "Streaming",
+      "method": "SSE",
+      "path": "/api/engine/stream",
+      "specLine": 1699
+    },
+    {
+      "id": "PE GET /",
+      "layer": "PE",
+      "group": "Info & Health",
+      "method": "GET",
+      "path": "/",
+      "specLine": 1790
+    },
+    {
+      "id": "PE GET /api/health",
+      "layer": "PE",
+      "group": "Info & Health",
+      "method": "GET",
+      "path": "/api/health",
+      "specLine": 1791
+    },
+    {
+      "id": "PE GET /api/state",
+      "layer": "PE",
+      "group": "Info & Health",
+      "method": "GET",
+      "path": "/api/state",
+      "specLine": 1792
+    },
+    {
+      "id": "PE POST /api/push",
+      "layer": "PE",
+      "group": "Push Cycle",
+      "method": "POST",
+      "path": "/api/push",
+      "specLine": 1933
+    },
+    {
+      "id": "PE GET /api/push/:id",
+      "layer": "PE",
+      "group": "Push Cycle",
+      "method": "GET",
+      "path": "/api/push/:id",
+      "specLine": 1934
+    },
+    {
+      "id": "PE POST /api/auto/start",
+      "layer": "PE",
+      "group": "Push Cycle",
+      "method": "POST",
+      "path": "/api/auto/start",
+      "specLine": 1935
+    },
+    {
+      "id": "PE POST /api/auto/stop",
+      "layer": "PE",
+      "group": "Push Cycle",
+      "method": "POST",
+      "path": "/api/auto/stop",
+      "specLine": 1936
+    },
+    {
+      "id": "PE PATCH /api/config",
+      "layer": "PE",
+      "group": "Configuration & Reset",
+      "method": "PATCH",
+      "path": "/api/config",
+      "specLine": 2017
+    },
+    {
+      "id": "PE POST /api/reset",
+      "layer": "PE",
+      "group": "Configuration & Reset",
+      "method": "POST",
+      "path": "/api/reset",
+      "specLine": 2018
+    },
+    {
+      "id": "PE GET /api/sources",
+      "layer": "PE",
+      "group": "Sources & Sensors",
+      "method": "GET",
+      "path": "/api/sources",
+      "specLine": 2079
+    },
+    {
+      "id": "PE POST /api/sources",
+      "layer": "PE",
+      "group": "Sources & Sensors",
+      "method": "POST",
+      "path": "/api/sources",
+      "specLine": 2080
+    },
+    {
+      "id": "PE PATCH /api/sources/:id",
+      "layer": "PE",
+      "group": "Sources & Sensors",
+      "method": "PATCH",
+      "path": "/api/sources/:id",
+      "specLine": 2081
+    },
+    {
+      "id": "PE DELETE /api/sources/:id",
+      "layer": "PE",
+      "group": "Sources & Sensors",
+      "method": "DELETE",
+      "path": "/api/sources/:id",
+      "specLine": 2082
+    },
+    {
+      "id": "PE POST /api/sources/bootstrap-from-machines",
+      "layer": "PE",
+      "group": "Sources & Sensors",
+      "method": "POST",
+      "path": "/api/sources/bootstrap-from-machines",
+      "specLine": 2083
+    },
+    {
+      "id": "PE GET /api/sources/contention",
+      "layer": "PE",
+      "group": "Sources & Sensors",
+      "method": "GET",
+      "path": "/api/sources/contention",
+      "specLine": 2084
+    },
+    {
+      "id": "PE POST /api/sensors/:sensorId",
+      "layer": "PE",
+      "group": "Sources & Sensors",
+      "method": "POST",
+      "path": "/api/sensors/:sensorId",
+      "specLine": 2085
+    },
+    {
+      "id": "PE POST /api/signals",
+      "layer": "PE",
+      "group": "Signals",
+      "method": "POST",
+      "path": "/api/signals",
+      "specLine": 2251
+    },
+    {
+      "id": "PE GET /api/machines",
+      "layer": "PE",
+      "group": "Machines Proxy",
+      "method": "GET",
+      "path": "/api/machines",
+      "specLine": 2257
+    },
+    {
+      "id": "PE GET /api/integrations/status",
+      "layer": "PE",
+      "group": "Integrations",
+      "method": "GET",
+      "path": "/api/integrations/status",
+      "specLine": 2263
+    },
+    {
+      "id": "PE POST /api/integrations/completions",
+      "layer": "PE",
+      "group": "Integrations",
+      "method": "POST",
+      "path": "/api/integrations/completions",
+      "specLine": 2264
+    },
+    {
+      "id": "PE GET /api/integrations/ollama/status",
+      "layer": "PE",
+      "group": "Integrations",
+      "method": "GET",
+      "path": "/api/integrations/ollama/status",
+      "specLine": 2265
+    },
+    {
+      "id": "PE POST /api/integrations/ollama/dispatch",
+      "layer": "PE",
+      "group": "Integrations",
+      "method": "POST",
+      "path": "/api/integrations/ollama/dispatch",
+      "specLine": 2266
+    },
+    {
+      "id": "PE GET /api/integrations/openai/status",
+      "layer": "PE",
+      "group": "Integrations",
+      "method": "GET",
+      "path": "/api/integrations/openai/status",
+      "specLine": 2267
+    },
+    {
+      "id": "PE POST /api/integrations/openai/dispatch",
+      "layer": "PE",
+      "group": "Integrations",
+      "method": "POST",
+      "path": "/api/integrations/openai/dispatch",
+      "specLine": 2268
+    },
+    {
+      "id": "PE GET /api/integrations/acp/status",
+      "layer": "PE",
+      "group": "Integrations",
+      "method": "GET",
+      "path": "/api/integrations/acp/status",
+      "specLine": 2269
+    },
+    {
+      "id": "PE POST /api/integrations/acp/dispatch",
+      "layer": "PE",
+      "group": "Integrations",
+      "method": "POST",
+      "path": "/api/integrations/acp/dispatch",
+      "specLine": 2270
+    },
+    {
+      "id": "PE GET /api/integrations/healthkit/status",
+      "layer": "PE",
+      "group": "Integrations",
+      "method": "GET",
+      "path": "/api/integrations/healthkit/status",
+      "specLine": 2271
+    },
+    {
+      "id": "PE POST /api/integrations/healthkit/ingest",
+      "layer": "PE",
+      "group": "Integrations",
+      "method": "POST",
+      "path": "/api/integrations/healthkit/ingest",
+      "specLine": 2272
+    },
+    {
+      "id": "PE GET /api/integrations/carekit/status",
+      "layer": "PE",
+      "group": "Integrations",
+      "method": "GET",
+      "path": "/api/integrations/carekit/status",
+      "specLine": 2273
+    },
+    {
+      "id": "PE POST /api/integrations/carekit/ingest",
+      "layer": "PE",
+      "group": "Integrations",
+      "method": "POST",
+      "path": "/api/integrations/carekit/ingest",
+      "specLine": 2274
+    },
+    {
+      "id": "PE GET /api/integrations/localai/status",
+      "layer": "PE",
+      "group": "Integrations",
+      "method": "GET",
+      "path": "/api/integrations/localai/status",
+      "specLine": 2275
+    },
+    {
+      "id": "PE GET /api/integrations/localai/catalog",
+      "layer": "PE",
+      "group": "Integrations",
+      "method": "GET",
+      "path": "/api/integrations/localai/catalog",
+      "specLine": 2276
+    },
+    {
+      "id": "PE POST /api/integrations/localai/bootstrap",
+      "layer": "PE",
+      "group": "Integrations",
+      "method": "POST",
+      "path": "/api/integrations/localai/bootstrap",
+      "specLine": 2277
+    },
+    {
+      "id": "PE POST /api/integrations/localai/invoke",
+      "layer": "PE",
+      "group": "Integrations",
+      "method": "POST",
+      "path": "/api/integrations/localai/invoke",
+      "specLine": 2278
+    },
+    {
+      "id": "PE GET /api/integrations/localai/ledger",
+      "layer": "PE",
+      "group": "Integrations",
+      "method": "GET",
+      "path": "/api/integrations/localai/ledger",
+      "specLine": 2279
+    },
+    {
+      "id": "PE GET /api/dispatch/ledger",
+      "layer": "PE",
+      "group": "Dispatch & Triggers",
+      "method": "GET",
+      "path": "/api/dispatch/ledger",
+      "specLine": 2336
+    },
+    {
+      "id": "PE GET /api/dispatch/records/:id",
+      "layer": "PE",
+      "group": "Dispatch & Triggers",
+      "method": "GET",
+      "path": "/api/dispatch/records/:id",
+      "specLine": 2337
+    },
+    {
+      "id": "PE PATCH /api/dispatch/records/:id",
+      "layer": "PE",
+      "group": "Dispatch & Triggers",
+      "method": "PATCH",
+      "path": "/api/dispatch/records/:id",
+      "specLine": 2338
+    },
+    {
+      "id": "PE POST /api/dispatch/records/:id/replay",
+      "layer": "PE",
+      "group": "Dispatch & Triggers",
+      "method": "POST",
+      "path": "/api/dispatch/records/:id/replay",
+      "specLine": 2339
+    },
+    {
+      "id": "PE GET /api/triggers/status",
+      "layer": "PE",
+      "group": "Dispatch & Triggers",
+      "method": "GET",
+      "path": "/api/triggers/status",
+      "specLine": 2340
+    },
+    {
+      "id": "PE GET /api/mqtt/status",
+      "layer": "PE",
+      "group": "MQTT Bridge",
+      "method": "GET",
+      "path": "/api/mqtt/status",
+      "specLine": 2454
+    },
+    {
+      "id": "PE GET /api/mqtt/mappings",
+      "layer": "PE",
+      "group": "MQTT Bridge",
+      "method": "GET",
+      "path": "/api/mqtt/mappings",
+      "specLine": 2455
+    },
+    {
+      "id": "PE PUT /api/mqtt/mappings",
+      "layer": "PE",
+      "group": "MQTT Bridge",
+      "method": "PUT",
+      "path": "/api/mqtt/mappings",
+      "specLine": 2456
+    },
+    {
+      "id": "PE POST /api/mqtt/enable",
+      "layer": "PE",
+      "group": "MQTT Bridge",
+      "method": "POST",
+      "path": "/api/mqtt/enable",
+      "specLine": 2457
+    },
+    {
+      "id": "PE POST /api/mqtt/disable",
+      "layer": "PE",
+      "group": "MQTT Bridge",
+      "method": "POST",
+      "path": "/api/mqtt/disable",
+      "specLine": 2458
+    },
+    {
+      "id": "PE SSE /api/events",
+      "layer": "PE",
+      "group": "Streaming",
+      "method": "SSE",
+      "path": "/api/events",
+      "specLine": 2464
+    },
+    {
+      "id": "PE WS /ws",
+      "layer": "PE",
+      "group": "Streaming",
+      "method": "WS",
+      "path": "/ws",
+      "specLine": 2465
+    },
+    {
+      "id": "RE-phase2 POST /api/runtime/snapshot",
+      "layer": "RE-phase2",
+      "group": "Routes",
+      "method": "POST",
+      "path": "/api/runtime/snapshot",
+      "specLine": 2927
+    },
+    {
+      "id": "RE-phase2 GET /api/runtime/snapshots",
+      "layer": "RE-phase2",
+      "group": "Routes",
+      "method": "GET",
+      "path": "/api/runtime/snapshots",
+      "specLine": 2928
+    },
+    {
+      "id": "RE-phase2 GET /api/runtime/snapshot/:id",
+      "layer": "RE-phase2",
+      "group": "Routes",
+      "method": "GET",
+      "path": "/api/runtime/snapshot/:id",
+      "specLine": 2929
+    },
+    {
+      "id": "RE-phase2 POST /api/runtime/restore",
+      "layer": "RE-phase2",
+      "group": "Routes",
+      "method": "POST",
+      "path": "/api/runtime/restore",
+      "specLine": 2930
+    },
+    {
+      "id": "RE-phase2 DELETE /api/runtime/snapshot/:id",
+      "layer": "RE-phase2",
+      "group": "Routes",
+      "method": "DELETE",
+      "path": "/api/runtime/snapshot/:id",
+      "specLine": 2931
+    }
+  ]
+}
