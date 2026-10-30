@@ -1,0 +1,503 @@
+{
+  "version": "1.0.0",
+  "machine": {
+    "name": "Qualification Verification Monitor",
+    "description": "Tracks identity verification, income verification, program-specific qualification criteria, and active enrollment status for community service participants. Qualification verification is the formal determination layer sitting between eligibility screening and active benefit delivery — it catches identity mismatches, income discrepancies, and program-specific rules (residency duration, asset limits, household composition) that screening tools miss. Output at [964:967] feeds the Workflow Completion Monitor.",
+    "metadata": {
+      "category": "community-services",
+      "domain": "Community Services — Qualification Verification / Enrollment",
+      "author": "Reality Engine",
+      "outputSpace": "4D binary at [964:967]: [1,0,0,0]=QUALIFICATION_FAILED, [0,1,0,0]=REVERIFICATION_REQUIRED, [0,0,1,0]=CONDITIONALLY_QUALIFIED, [0,0,0,1]=FULLY_QUALIFIED",
+      "tags": [
+        "benefits-eligibility",
+        "ces-sequences",
+        "ces-sequences-3",
+        "community-services",
+        "community-services-qualification-verification-enrollment",
+        "enrollment",
+        "identity-verification",
+        "income-verification",
+        "input-sequences",
+        "input-sequences-1",
+        "kleene-plus",
+        "qualification-verification",
+        "qualification-verification-monitor",
+        "qualification-workflow",
+        "startup-loadable"
+      ],
+      "sequenceCount": 3,
+      "populationFocus": "Benefits program enrollees requiring formal qualification determination; participants at annual redetermination; newly enrolled individuals with pending verification holds",
+      "sensorNormalization": {
+        "identity_verification_norm": "0.0=identity cannot be verified (no SSN, no acceptable ID, data mismatch with DMV or SSA records), 0.5=identity partially verified (one of two factors confirmed), 1.0=identity fully verified through authoritative source",
+        "income_verification_norm": "0.0=income cannot be verified (self-employment undocumented, cash income only, employer unresponsive), 0.5=income partially verified (one income source confirmed; second source pending), 1.0=all income sources verified against pay stubs, tax records, or benefit award letters",
+        "program_qualification_norm": "0.0=program-specific rules not met (asset limit exceeded, residency duration insufficient, household composition mismatch), 0.5=program rules met but one qualifier requires additional documentation, 1.0=all program-specific qualification criteria confirmed",
+        "enrollment_active_norm": "0.0=enrollment lapsed, suspended, or terminated; benefits not flowing, 0.5=enrollment conditionally active (provisional benefits; verification hold), 1.0=enrollment fully active; benefits flowing without restriction"
+      },
+      "downstreamMachine": "WorkflowCompletionMonitor (reads [960:967])",
+      "tagging": {
+        "schemaVersion": "1.0.0",
+        "managedBy": "scripts/manage_machine_tags.mjs",
+        "primaryDomain": "community-services",
+        "domainTags": [
+          "community-services",
+          "enrollment",
+          "qualification-verification"
+        ],
+        "family": "qualification-verification-monitor",
+        "machineCode": "qualification-verification-monitor",
+        "capabilityTags": [
+          "qualification-workflow"
+        ],
+        "workflowTags": [
+          "benefits-eligibility",
+          "community-services-qualification-verification-enrollment",
+          "identity-verification",
+          "income-verification",
+          "kleene-plus",
+          "qualification-verification-monitor"
+        ],
+        "integrationTags": [],
+        "validationTags": [
+          "ces-sequences",
+          "ces-sequences-3",
+          "input-sequences",
+          "input-sequences-1",
+          "startup-loadable"
+        ],
+        "allTags": [
+          "benefits-eligibility",
+          "ces-sequences",
+          "ces-sequences-3",
+          "community-services",
+          "community-services-qualification-verification-enrollment",
+          "enrollment",
+          "identity-verification",
+          "income-verification",
+          "input-sequences",
+          "input-sequences-1",
+          "kleene-plus",
+          "qualification-verification",
+          "qualification-verification-monitor",
+          "qualification-workflow",
+          "startup-loadable"
+        ]
+      },
+      "governance": {
+        "schemaVersion": "1.0.0",
+        "ownerTeam": "social-services-on-call",
+        "runbook": "https://runbooks.example.org/community-services/qualificationverificationmonitor",
+        "escalationPolicy": "pagerduty:social-services",
+        "contact": {
+          "primary": "social-services-on-call-primary@example.org",
+          "secondary": "social-services-on-call-secondary@example.org"
+        },
+        "sla": {
+          "ok": null,
+          "info": null,
+          "warning": 1800,
+          "error": 600
+        },
+        "notes": "Auto-backfilled by scripts/backfill-governance.mjs from primaryDomain=\"community-services\".  Review and tune the routing as the team owning QualificationVerificationMonitor matures."
+      },
+      "triggerConfig": {
+        "processId": "QUALIFICATIONVERIFICATIONMONITOR",
+        "processName": "Qualification Verification Monitor",
+        "rules": [
+          {
+            "sequenceId": "qualification-failure-escalation",
+            "outputMatches": [
+              1,
+              0,
+              0,
+              0
+            ],
+            "ragStatusCode": "RED",
+            "processStatus": "error",
+            "description": "QUALIFICATION_FAILED: qualification verification failed; benefits suspended at [964:967]"
+          },
+          {
+            "sequenceId": "qualification-reverification",
+            "outputMatches": [
+              0,
+              1,
+              0,
+              0
+            ],
+            "ragStatusCode": "GREEN",
+            "processStatus": "info",
+            "description": "REVERIFICATION_REQUIRED: qualification verification approaching expiry or triggered event detected at [964:967]"
+          },
+          {
+            "sequenceId": "qualification-confirmed",
+            "outputMatches": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "ragStatusCode": "GREEN",
+            "processStatus": "info",
+            "description": "FULLY_QUALIFIED: all verification criteria met; enrollment fully active at [964:967]"
+          }
+        ]
+      },
+      "machineClass": "signal-monitor",
+      "inputSemantics": [
+        "Qualification Verification Monitor input 1",
+        "Qualification Verification Monitor input 2",
+        "Qualification Verification Monitor input 3",
+        "Qualification Verification Monitor input 4"
+      ],
+      "interconnections": [
+        {
+          "id": "community-services.community-services-core.qualification-verification-monitor",
+          "type": "published-domain-bus-producer",
+          "role": "qualification_verification_monitor",
+          "sourceMachine": "Qualification Verification Monitor",
+          "sourceOutputRegion": {
+            "offset": 964,
+            "length": 4
+          },
+          "targetInputElements": [
+            18,
+            19,
+            20
+          ],
+          "normalizedElements": [
+            "Qualification Verification Monitor active output[0] bit",
+            "Qualification Verification Monitor active output[1] bit",
+            "Qualification Verification Monitor active output[2] bit"
+          ],
+          "purpose": "Publish Qualification Verification Monitor active response lanes into community-services.community-services-core.",
+          "busId": "community-services.community-services-core",
+          "busTag": "published-bus-community-services-community-services-core",
+          "targetMachine": "Community Services Core Interconnect",
+          "targetMachineFile": "CommunityServicesCoreInterconnect.json",
+          "targetInputRegion": {
+            "offset": 13758,
+            "length": 36
+          },
+          "busInputRegion": {
+            "offset": 13758,
+            "length": 36
+          },
+          "publishedOutputRegion": {
+            "offset": 13794,
+            "length": 4
+          },
+          "busOutputRegion": {
+            "offset": 13794,
+            "length": 4
+          },
+          "peCompositionRequired": true,
+          "compositionOwner": "perception-engine",
+          "dispatchMode": "asynchronous-no-wait",
+          "privacyBoundary": "PE composes normalized domain status bits only; raw regulated records, operator notes, telemetry payloads, documents, and provider-specific source payloads remain outside the universal Reality Event."
+        }
+      ],
+      "openClawProjection": {
+        "projectionId": "openclaw-qualification-verification-monitor-native-input-projection",
+        "owner": "openclaw-input-analyst",
+        "dispatchMode": "accepted-no-wait",
+        "writeBackRegion": {
+          "offset": 932,
+          "length": 4
+        },
+        "normalization": "machine-native-binary",
+        "semantics": [
+          "identity_verification_norm",
+          "income_verification_norm",
+          "program_qualification_norm",
+          "enrollment_active_norm"
+        ],
+        "peContract": "OpenClaw maps domain observations to this machine's native input lane; PE writes the vector source and does not wait inside a PE cycle."
+      }
+    },
+    "arbiterRule": "PASSTHROUGH",
+    "perceptualMapping": {
+      "input": {
+        "offset": 932,
+        "length": 4
+      },
+      "output": {
+        "offset": 964,
+        "length": 4
+      },
+      "bitsPerElement": 8
+    },
+    "sequences": [
+      {
+        "id": "qualification-failure-escalation",
+        "name": "Qualification Failure: QUALIFIED+ → DISCREPANCY → HOLD → QUALIFICATION_FAILED",
+        "metadata": {
+          "description": "Tracks qualification status collapse from a confirmed state through a discrepancy finding to formal disqualification. Common triggers: annual redetermination reveals income increase over threshold, identity data mismatch discovered during inter-agency verification, household composition change not reported. Requires QUALIFIED+ baseline before failure escalation arms.",
+          "path": "QUALIFIED+ → DISCREPANCY → HOLD → output[1,0,0,0]",
+          "output": "[1,0,0,0] (QUALIFICATION_FAILED)"
+        },
+        "events": [
+          {
+            "id": "qv-qualified",
+            "elements": [
+              {
+                "value": 0.65,
+                "threshold": 0.5
+              },
+              {
+                "value": 0.62,
+                "threshold": 0.5
+              },
+              {
+                "value": 0.65,
+                "threshold": 0.5
+              },
+              {
+                "value": 0.7,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": true,
+            "metadata": {
+              "name": "QUALIFIED",
+              "description": "QUALIFIED+ — identity verified, income verified, program rules met, enrollment active. isInitial A*A = A+.",
+              "enrollment_status": "0.65–0.80 (active enrollment; all verifications current)"
+            },
+            "nextEventIds": [
+              "qv-qualified",
+              "qv-discrepancy"
+            ]
+          },
+          {
+            "id": "qv-discrepancy",
+            "elements": [
+              {
+                "value": 0.38,
+                "threshold": 0.5
+              },
+              {
+                "value": 0.35,
+                "threshold": 0.5
+              },
+              {
+                "value": 0.42,
+                "threshold": 0.5
+              },
+              {
+                "value": 0.45,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": false,
+            "metadata": {
+              "name": "DISCREPANCY",
+              "description": "DISCREPANCY — one or more verification factors showing data mismatch; income figure inconsistent with reported amount; program rule borderline.",
+              "enrollment_status": "0.40–0.48 (provisional; discrepancy notice issued; cure period open)"
+            },
+            "nextEventIds": [
+              "qv-hold"
+            ]
+          },
+          {
+            "id": "qv-hold",
+            "elements": [
+              {
+                "value": 0.15,
+                "threshold": 0.5
+              },
+              {
+                "value": 0.12,
+                "threshold": 0.5
+              },
+              {
+                "value": 0.2,
+                "threshold": 0.5
+              },
+              {
+                "value": 0.2,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": false,
+            "metadata": {
+              "name": "HOLD",
+              "description": "HOLD — verification hold active; benefits suspended or restricted; discrepancy unresolved after cure period. Fires QUALIFICATION_FAILED.",
+              "enrollment_status": "0.0–0.22 (enrollment suspended; hearing rights issued)"
+            },
+            "outputEvents": [
+              {
+                "id": "qv-failed-output",
+                "vector": [
+                  1,
+                  0,
+                  0,
+                  0
+                ],
+                "metadata": {
+                  "description": "QUALIFICATION_FAILED: qualification verification failed; benefits suspended at [964:967]",
+                  "action": "route-review",
+                  "actionNarrative": "Formal adverse action notice; fair hearing rights notification; appeal process initiation; navigator assistance for documentation cure"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "qualification-reverification",
+        "name": "Reverification Needed: LAPSING+ → REVERIFICATION_REQUIRED signal",
+        "metadata": {
+          "description": "Fires REVERIFICATION_REQUIRED when enrollment is approaching the annual redetermination deadline or when a triggered event (new income, change of address, household composition change) requires fresh verification. Proactive signal prevents benefit lapse from missed redetermination.",
+          "pattern": "LAPSING+",
+          "output": "[0,1,0,0] (REVERIFICATION_REQUIRED)"
+        },
+        "events": [
+          {
+            "id": "qv-lapsing",
+            "elements": [
+              {
+                "value": 0.52,
+                "threshold": 0.5
+              },
+              {
+                "value": 0.45,
+                "threshold": 0.5
+              },
+              {
+                "value": 0.55,
+                "threshold": 0.5
+              },
+              {
+                "value": 0.38,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": true,
+            "metadata": {
+              "name": "LAPSING",
+              "description": "LAPSING+ — identity and program qualification current; income verification approaching expiry or triggered event detected; enrollment still active but reverification window open. isInitial A*A = A+: fires REVERIFICATION_REQUIRED each cycle.",
+              "scenario": "Annual redetermination due in 30 days; income verification from last year; new job start date reported"
+            },
+            "outputEvents": [
+              {
+                "id": "qv-reverification-output",
+                "vector": [
+                  0,
+                  1,
+                  0,
+                  0
+                ],
+                "metadata": {
+                  "description": "REVERIFICATION_REQUIRED: qualification verification approaching expiry or triggered event detected at [964:967]",
+                  "action": "route-review",
+                  "actionNarrative": "Redetermination appointment scheduling; document collection checklist; proactive outreach to prevent gap in benefits"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "qualification-confirmed",
+        "name": "Fully Qualified: VERIFIED+ → FULLY_QUALIFIED signal",
+        "metadata": {
+          "description": "Fires FULLY_QUALIFIED when all four verification dimensions are current, confirmed, and enrollment is fully active. Downstream workflow completion monitor uses this alongside document signing completion to confirm the participant is ready for unrestricted service delivery.",
+          "pattern": "VERIFIED+",
+          "output": "[0,0,0,1] (FULLY_QUALIFIED)"
+        },
+        "events": [
+          {
+            "id": "qv-verified",
+            "elements": [
+              {
+                "value": 0.68,
+                "threshold": 0.5
+              },
+              {
+                "value": 0.65,
+                "threshold": 0.5
+              },
+              {
+                "value": 0.68,
+                "threshold": 0.5
+              },
+              {
+                "value": 0.72,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": true,
+            "metadata": {
+              "name": "VERIFIED",
+              "description": "VERIFIED+ — all verification factors confirmed; program rules met; enrollment fully active without restriction. Fires FULLY_QUALIFIED each cycle.",
+              "scenario": "Medicaid enrollee: SSA identity match confirmed, income verified via W-2, household composition confirmed at redetermination, active enrollment with no holds"
+            },
+            "outputEvents": [
+              {
+                "id": "qv-qualified-output",
+                "vector": [
+                  0,
+                  0,
+                  0,
+                  1
+                ],
+                "metadata": {
+                  "description": "FULLY_QUALIFIED: all verification criteria met; enrollment fully active at [964:967]",
+                  "action": "continue-monitoring",
+                  "actionNarrative": "Workflow completion monitor registers qualification confirmed; unrestricted service delivery authorized"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "inputSequences": [
+      {
+        "name": "Annual Redetermination with Income Change",
+        "pattern": "5-step: QUALIFIED→QUALIFIED→LAPSING (redetermination due)→DISCREPANCY (new income flagged)→QUALIFIED (income verified within limits)",
+        "description": "Medicaid enrollee hits annual redetermination; new part-time job income flagged; verified as still within threshold; qualification confirmed.",
+        "events": [
+          [
+            0.66,
+            0.63,
+            0.66,
+            0.71
+          ],
+          [
+            0.64,
+            0.61,
+            0.64,
+            0.69
+          ],
+          [
+            0.53,
+            0.44,
+            0.56,
+            0.37
+          ],
+          [
+            0.37,
+            0.34,
+            0.41,
+            0.44
+          ],
+          [
+            0.69,
+            0.66,
+            0.69,
+            0.73
+          ]
+        ],
+        "metadata": {
+          "scenario": "annual-redetermination-income-change",
+          "expectedOutputs": {
+            "steps_1_2": "FULLY_QUALIFIED fires [0,0,0,1]",
+            "step_3": "REVERIFICATION_REQUIRED fires [0,1,0,0]",
+            "step_4": "no output (DISCREPANCY intermediate)",
+            "step_5": "FULLY_QUALIFIED fires [0,0,0,1] (after income verified)"
+          }
+        }
+      }
+    ],
+    "matchAlgorithm": "gte"
+  }
+}

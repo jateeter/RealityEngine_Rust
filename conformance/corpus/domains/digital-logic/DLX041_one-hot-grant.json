@@ -1,0 +1,321 @@
+{
+  "version": "1.0.0",
+  "machine": {
+    "name": "Logical Infrastructure One Hot Grant",
+    "description": "Reusable digital-logic infrastructure machine for ASIC-style connective tissue. It implements the temporal regular expression `REQ GRANT_ONEHOT`. Detects request followed by one-hot grant. Reads a 4D control/status lane at [4067:4070] and emits a 2D match lane at [1713:1714].",
+    "metadata": {
+      "category": "digital-logic",
+      "domain": "Digital Logic - Infrastructure",
+      "author": "Reality Engine",
+      "regularExpression": "REQ GRANT_ONEHOT",
+      "asicPattern": "One Hot Grant",
+      "reuseRole": "general-purpose logical connective tissue",
+      "inputSpace": "4D binary at [4067:4070]",
+      "outputSpace": "2D binary at [1713:1714]: [1,0]=MATCH, [0,1]=CLEAR_OR_AVAILABLE",
+      "inputSemantics": [
+        "primary",
+        "secondary",
+        "tertiary",
+        "qualifier"
+      ],
+      "tags": [
+        "asic-pattern",
+        "ces-sequences",
+        "ces-sequences-1",
+        "digital-logic",
+        "digital-logic-generated",
+        "digital-logic-infrastructure",
+        "dlx041",
+        "infrastructure",
+        "input-sequences",
+        "input-sequences-2",
+        "logical-infrastructure",
+        "logical-infrastructure-one-hot-grant",
+        "one-hot-grant",
+        "regular-expression",
+        "startup-loadable"
+      ],
+      "sequenceCount": 1,
+      "reuseGuideline": "Use this machine by mapping upstream source or machine output bits into its 4D input lane. Map its 2D output lane into downstream machine input when a reusable temporal guard, latch trigger, handshake detector, CDC detector, bus phase detector, or safety qualifier is needed.",
+      "tagging": {
+        "schemaVersion": "1.0.0",
+        "managedBy": "scripts/manage_machine_tags.mjs",
+        "primaryDomain": "digital-logic",
+        "domainTags": [
+          "digital-logic",
+          "infrastructure"
+        ],
+        "family": "digital-logic-generated",
+        "machineCode": "dlx041",
+        "capabilityTags": [],
+        "workflowTags": [
+          "asic-pattern",
+          "digital-logic-generated",
+          "digital-logic-infrastructure",
+          "dlx041",
+          "logical-infrastructure",
+          "logical-infrastructure-one-hot-grant",
+          "one-hot-grant",
+          "regular-expression"
+        ],
+        "integrationTags": [
+          "digital-logic"
+        ],
+        "validationTags": [
+          "ces-sequences",
+          "ces-sequences-1",
+          "input-sequences",
+          "input-sequences-2",
+          "startup-loadable"
+        ],
+        "allTags": [
+          "asic-pattern",
+          "ces-sequences",
+          "ces-sequences-1",
+          "digital-logic",
+          "digital-logic-generated",
+          "digital-logic-infrastructure",
+          "dlx041",
+          "infrastructure",
+          "input-sequences",
+          "input-sequences-2",
+          "logical-infrastructure",
+          "logical-infrastructure-one-hot-grant",
+          "one-hot-grant",
+          "regular-expression",
+          "startup-loadable"
+        ]
+      },
+      "governance": {
+        "schemaVersion": "1.0.0",
+        "ownerTeam": "reliability-engineering",
+        "runbook": "https://runbooks.example.org/digital-logic/dlx041_one-hot-grant",
+        "escalationPolicy": "slack:#reliability-test",
+        "contact": {
+          "primary": "reliability-engineering-primary@example.org",
+          "secondary": "reliability-engineering-secondary@example.org"
+        },
+        "sla": {
+          "ok": null,
+          "info": null,
+          "warning": null,
+          "error": null
+        },
+        "notes": "Auto-backfilled by scripts/backfill-governance.mjs from primaryDomain=\"digital-logic\".  Review and tune the routing as the team owning DLX041_one-hot-grant matures."
+      },
+      "triggerConfig": {
+        "processId": "DLX041_ONE_HOT_GRANT",
+        "processName": "Logical Infrastructure One Hot Grant",
+        "rules": [
+          {
+            "sequenceId": "dlx-041-match",
+            "outputMatches": [
+              1,
+              0
+            ],
+            "ragStatusCode": "GREEN",
+            "processStatus": "info",
+            "description": "One Hot Grant matched regular expression REQ GRANT_ONEHOT."
+          }
+        ]
+      },
+      "machineClass": "signal-monitor",
+      "interconnections": [
+        {
+          "id": "digital-logic.dlx-041-050.logical-infrastructure-one-hot-grant",
+          "type": "published-domain-bus-producer",
+          "role": "logical_infrastructure_one_hot_grant",
+          "sourceMachine": "Logical Infrastructure One Hot Grant",
+          "sourceOutputRegion": {
+            "offset": 1713,
+            "length": 2
+          },
+          "targetInputElements": [
+            0,
+            1
+          ],
+          "normalizedElements": [
+            "Logical Infrastructure One Hot Grant active output[0] bit",
+            "Logical Infrastructure One Hot Grant active output[1] bit"
+          ],
+          "purpose": "Publish Logical Infrastructure One Hot Grant active response lanes into digital-logic.dlx-041-050.",
+          "busId": "digital-logic.dlx-041-050",
+          "busTag": "published-bus-digital-logic-dlx-041-050",
+          "targetMachine": "Digital Logic DLX-041-050 Interconnect",
+          "targetMachineFile": "DigitalLogicDlx041050Interconnect.json",
+          "targetInputRegion": {
+            "offset": 14412,
+            "length": 20
+          },
+          "busInputRegion": {
+            "offset": 14412,
+            "length": 20
+          },
+          "publishedOutputRegion": {
+            "offset": 14432,
+            "length": 4
+          },
+          "busOutputRegion": {
+            "offset": 14432,
+            "length": 4
+          },
+          "peCompositionRequired": true,
+          "compositionOwner": "perception-engine",
+          "dispatchMode": "asynchronous-no-wait",
+          "privacyBoundary": "PE composes normalized domain status bits only; raw regulated records, operator notes, telemetry payloads, documents, and provider-specific source payloads remain outside the universal Reality Event."
+        }
+      ],
+      "openClawProjection": {
+        "projectionId": "openclaw-logical-infrastructure-one-hot-grant-native-input-projection",
+        "owner": "openclaw-input-analyst",
+        "dispatchMode": "accepted-no-wait",
+        "writeBackRegion": {
+          "offset": 4067,
+          "length": 4
+        },
+        "normalization": "machine-native-binary",
+        "semantics": [
+          "primary",
+          "secondary",
+          "tertiary",
+          "qualifier"
+        ],
+        "peContract": "OpenClaw maps domain observations to this machine's native input lane; PE writes the vector source and does not wait inside a PE cycle."
+      }
+    },
+    "arbiterRule": "PASSTHROUGH",
+    "perceptualMapping": {
+      "input": {
+        "offset": 4067,
+        "length": 4
+      },
+      "output": {
+        "offset": 1713,
+        "length": 2
+      },
+      "bitsPerElement": 1
+    },
+    "sequences": [
+      {
+        "id": "dlx-041-match",
+        "name": "One Hot Grant: REQ GRANT_ONEHOT -> MATCH",
+        "metadata": {
+          "description": "Detects request followed by one-hot grant.",
+          "regularExpression": "REQ GRANT_ONEHOT",
+          "output": "[1,0]"
+        },
+        "events": [
+          {
+            "id": "dlx-041-step-1",
+            "elements": [
+              {
+                "value": 1,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": true,
+            "metadata": {
+              "name": "STEP_1",
+              "description": "One Hot Grant regex step 1: [1, 0, 0, 0]"
+            },
+            "nextEventIds": [
+              "dlx-041-step-2"
+            ]
+          },
+          {
+            "id": "dlx-041-step-2",
+            "elements": [
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 1,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": false,
+            "metadata": {
+              "name": "STEP_2",
+              "description": "One Hot Grant regex step 2: [0, 1, 0, 0]"
+            },
+            "outputEvents": [
+              {
+                "id": "dlx-041-match-output",
+                "vector": [
+                  1,
+                  0
+                ],
+                "metadata": {
+                  "description": "One Hot Grant matched regular expression REQ GRANT_ONEHOT.",
+                  "state": "MATCH"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "inputSequences": [
+      {
+        "name": "One Hot Grant match path",
+        "description": "Validates regular expression REQ GRANT_ONEHOT.",
+        "events": [
+          [
+            1,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            1,
+            0,
+            0
+          ]
+        ],
+        "metadata": {
+          "expectedOutputCount": 1,
+          "expectedOutputVector": "[1,0]",
+          "scenario": "one-hot-grant"
+        }
+      },
+      {
+        "name": "Baseline without output",
+        "description": "Single baseline sample does not complete the expression.",
+        "events": [
+          [
+            1,
+            0,
+            0,
+            0
+          ]
+        ],
+        "metadata": {
+          "expectedOutputCount": 0,
+          "scenario": "baseline-no-output"
+        }
+      }
+    ]
+  }
+}

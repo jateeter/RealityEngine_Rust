@@ -14,6 +14,20 @@ dimension (default `7680`), and `MACHINES_DIR` for the machine corpus directory
 (default `../RealityEngine_Machines/machines`). JSON machine files are loaded
 recursively at startup.
 
+## Validation
+
+```sh
+scripts/validate.sh        # R0 (fmt, clippy, unit tests, release build) + R1 (corpus replay)
+```
+
+R1 replays the regression corpus vendored in `conformance/corpus/` through the
+HTTP router and checks each input sequence against what the corpus declares.
+It needs nothing but this checkout. Agreement with the C++, LSP and Scala
+engines is checked beside a live universe (R2) and by the full
+RealityEngine_CI regression suite (R3), on a slower cadence. The protocol is
+`RealityEngine_CI/docs/RUST_VALIDATION_WORKFLOW.md`; repo guidance is
+`CLAUDE.md`.
+
 ## Implemented surface
 
 The current runtime provides health and configuration reads, machine

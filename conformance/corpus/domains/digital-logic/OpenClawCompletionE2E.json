@@ -1,0 +1,402 @@
+{
+  "version": "1.0.0",
+  "machine": {
+    "name": "OpenClaw Completion E2E",
+    "description": "Deterministic integration fixture for proving an ACP dispatch handoff followed by OpenClaw completion ingestion through the Perception Engine.",
+    "metadata": {
+      "category": "digital-logic",
+      "author": "Reality Engine",
+      "created": "2026-06-22T00:00:00Z",
+      "machineClass": "agent-dispatcher",
+      "sequenceCount": 2,
+      "eventSpace": "4D normalized ACP completion vector at [4210:4213]",
+      "outputSpace": "4D binary at [4214:4217]: [1,0,0,0]=DISPATCH_SEEDED, [0,0,0,1]=COMPLETION_ACCEPTED",
+      "inputSemantics": [
+        "completed",
+        "failed",
+        "confidence",
+        "actionClass"
+      ],
+      "sensorNormalization": {
+        "completed": "0.0=pending, 1.0=completed",
+        "failed": "0.0=not failed, 1.0=failed",
+        "confidence": "0.0=no confidence, 1.0=maximum confidence",
+        "actionClass": "0.0=no action, 1.0=action required"
+      },
+      "dispatchableAgent": "openclaw_e2e_agent",
+      "agentBinding": {
+        "agent": "openclaw_e2e_agent",
+        "mode": "advise",
+        "trigger": "openclaw-e2e-dispatch-seed",
+        "allowedActions": [
+          "Return the deterministic four-value OpenClaw completion vector."
+        ],
+        "writeBack": {
+          "type": "pe-sensor",
+          "provider": "localai",
+          "sensorId": "acp.openclaw.hello-world.completion",
+          "name": "OpenClaw hello-world completion",
+          "region": {
+            "offset": 4210,
+            "length": 4
+          },
+          "semantics": [
+            "completed",
+            "failed",
+            "confidence",
+            "actionclass"
+          ],
+          "ttlMs": 300000,
+          "normalization": "already-normalized-0-1",
+          "ingest": {
+            "endpoint": "/api/integrations/completions",
+            "method": "POST",
+            "triggerPush": false,
+            "compactPush": true
+          },
+          "sourceMapping": {
+            "id": "acp-openclaw-completion",
+            "sensorId": "acp.openclaw.hello-world.completion",
+            "name": "OpenClaw hello-world completion",
+            "region": {
+              "offset": 4210,
+              "length": 4
+            },
+            "ttlMs": 300000
+          }
+        },
+        "riskControls": {
+          "requiresHumanApproval": false,
+          "requiresRunbook": false,
+          "maxAutonomy": "advise",
+          "blockedWhenRag": []
+        },
+        "autonomyPolicy": {
+          "mode": "advise",
+          "stage": 1,
+          "writeBackType": "pe-sensor",
+          "canWriteBack": true,
+          "canStageActions": false,
+          "canExecuteActions": false,
+          "requiresHumanApproval": false,
+          "requiresRunbook": false,
+          "blockedWhenRag": []
+        }
+      },
+      "tags": [
+        "acp",
+        "ces-sequences",
+        "ces-sequences-2",
+        "digital-logic",
+        "dispatchable-agent",
+        "e2e-fixture",
+        "input-sequences",
+        "input-sequences-2",
+        "open-claw-completion-e2e",
+        "openclaw",
+        "openclaw-completion-e2e",
+        "openclaw-e2e-agent",
+        "startup-loadable"
+      ],
+      "tagging": {
+        "schemaVersion": "1.0.0",
+        "managedBy": "scripts/manage_machine_tags.mjs",
+        "primaryDomain": "digital-logic",
+        "domainTags": [
+          "digital-logic"
+        ],
+        "family": "open-claw-completion-e2e",
+        "machineCode": "openclaw-completion-e2e",
+        "capabilityTags": [
+          "e2e-fixture",
+          "open-claw-completion-e2e",
+          "openclaw-completion-e2e",
+          "openclaw-e2e-agent"
+        ],
+        "workflowTags": [
+          "acp",
+          "dispatchable-agent",
+          "openclaw"
+        ],
+        "integrationTags": [
+          "digital-logic",
+          "dispatchable-agent"
+        ],
+        "validationTags": [
+          "ces-sequences",
+          "ces-sequences-2",
+          "input-sequences",
+          "input-sequences-2",
+          "startup-loadable"
+        ],
+        "allTags": [
+          "acp",
+          "ces-sequences",
+          "ces-sequences-2",
+          "digital-logic",
+          "dispatchable-agent",
+          "e2e-fixture",
+          "input-sequences",
+          "input-sequences-2",
+          "open-claw-completion-e2e",
+          "openclaw",
+          "openclaw-completion-e2e",
+          "openclaw-e2e-agent",
+          "startup-loadable"
+        ]
+      },
+      "governance": {
+        "schemaVersion": "1.0.0",
+        "ownerTeam": "reliability-engineering",
+        "runbook": "https://runbooks.example.org/digital-logic/openclaw-completion-e2e",
+        "escalationPolicy": "slack:#reliability-test",
+        "contact": {
+          "primary": "reliability-engineering-primary@example.org",
+          "secondary": "reliability-engineering-secondary@example.org"
+        },
+        "sla": {
+          "ok": null,
+          "info": null,
+          "warning": 1800,
+          "error": 600
+        },
+        "notes": "Integration-only fixture. Values are deterministic and must not be connected to a production decision path."
+      },
+      "triggerConfig": {
+        "processId": "OPENCLAW_COMPLETION_E2E",
+        "processName": "OpenClaw Completion E2E",
+        "endpoint": "http://localhost:4000/graphql",
+        "template": "triggers/graphql_trigger_template.py",
+        "dispatch": {
+          "target": "localAIStack",
+          "transport": "graphql",
+          "mutation": "updateProcessState",
+          "envelopeSchema": "schemas/ai-trigger-envelope.schema.json",
+          "schemaRef": "localAIStack/services/api/routers/graphql_endpoint.py"
+        },
+        "rules": [
+          {
+            "sequenceId": "openclaw-e2e-dispatch-seed",
+            "outputMatches": [
+              1,
+              0,
+              0,
+              0
+            ],
+            "ragStatusCode": "AMBER",
+            "processStatus": "warning",
+            "description": "Creates the real dispatch ledger record used by the ACP handoff test."
+          },
+          {
+            "sequenceId": "openclaw-e2e-completion-accepted",
+            "outputMatches": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "ragStatusCode": "GREEN",
+            "processStatus": "info",
+            "description": "Confirms that a normalized OpenClaw completion reached the Reality Engine."
+          }
+        ]
+      },
+      "interconnections": [
+        {
+          "id": "digital-logic.digital-logic-core.openclaw-completion-e2e",
+          "type": "published-domain-bus-producer",
+          "role": "openclaw_completion_e2e",
+          "sourceMachine": "OpenClaw Completion E2E",
+          "sourceOutputRegion": {
+            "offset": 4214,
+            "length": 4
+          },
+          "targetInputElements": [
+            4,
+            5,
+            6
+          ],
+          "normalizedElements": [
+            "OpenClaw Completion E2E active output[0] bit",
+            "OpenClaw Completion E2E active output[1] bit",
+            "OpenClaw Completion E2E active output[2] bit"
+          ],
+          "purpose": "Publish OpenClaw Completion E2E active response lanes into digital-logic.digital-logic-core.",
+          "busId": "digital-logic.digital-logic-core",
+          "busTag": "published-bus-digital-logic-digital-logic-core",
+          "targetMachine": "Digital Logic Core Interconnect",
+          "targetMachineFile": "DigitalLogicCoreInterconnect.json",
+          "targetInputRegion": {
+            "offset": 14297,
+            "length": 15
+          },
+          "busInputRegion": {
+            "offset": 14297,
+            "length": 15
+          },
+          "publishedOutputRegion": {
+            "offset": 14312,
+            "length": 4
+          },
+          "busOutputRegion": {
+            "offset": 14312,
+            "length": 4
+          },
+          "peCompositionRequired": true,
+          "compositionOwner": "perception-engine",
+          "dispatchMode": "asynchronous-no-wait",
+          "privacyBoundary": "PE composes normalized domain status bits only; raw regulated records, operator notes, telemetry payloads, documents, and provider-specific source payloads remain outside the universal Reality Event."
+        }
+      ],
+      "openClawProjection": {
+        "projectionId": "openclaw-openclaw-completion-e2e-native-input-projection",
+        "owner": "openclaw-input-analyst",
+        "dispatchMode": "accepted-no-wait",
+        "writeBackRegion": {
+          "offset": 4210,
+          "length": 4
+        },
+        "normalization": "machine-native-binary",
+        "semantics": [
+          "completed",
+          "failed",
+          "confidence",
+          "actionclass"
+        ],
+        "peContract": "OpenClaw maps domain observations to this machine's native input lane; PE writes the vector source and does not wait inside a PE cycle."
+      }
+    },
+    "arbiterRule": "PASSTHROUGH",
+    "perceptualMapping": {
+      "input": {
+        "offset": 4210,
+        "length": 4
+      },
+      "output": {
+        "offset": 4214,
+        "length": 4
+      },
+      "bitsPerElement": 8
+    },
+    "sequences": [
+      {
+        "id": "openclaw-e2e-dispatch-seed",
+        "name": "Dispatch seed",
+        "metadata": {
+          "description": "A deterministic pre-completion signal used only to create a real trigger dispatch record."
+        },
+        "events": [
+          {
+            "id": "openclaw-e2e-dispatch-seed-vector",
+            "elements": [
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 1,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 1,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": true,
+            "outputEvents": [
+              {
+                "id": "openclaw-e2e-dispatch-seeded-output",
+                "vector": [
+                  1,
+                  0,
+                  0,
+                  0
+                ],
+                "metadata": {
+                  "state": "DISPATCH_SEEDED"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "openclaw-e2e-completion-accepted",
+        "name": "Completion accepted",
+        "metadata": {
+          "description": "Matches the strict adapter completion [1,0,0.95,0] as the binary high-low-high-low pattern."
+        },
+        "events": [
+          {
+            "id": "openclaw-e2e-completion-accepted-vector",
+            "elements": [
+              {
+                "value": 1,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 1,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": true,
+            "outputEvents": [
+              {
+                "id": "openclaw-e2e-completion-accepted-output",
+                "vector": [
+                  0,
+                  0,
+                  0,
+                  1
+                ],
+                "metadata": {
+                  "state": "COMPLETION_ACCEPTED"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "inputSequences": [
+      {
+        "name": "Create ACP dispatch record",
+        "pattern": "DISPATCH_SEED",
+        "description": "Produces the ledger record that the strict ACP handoff must update.",
+        "events": [
+          [
+            0,
+            1,
+            0,
+            1
+          ]
+        ]
+      },
+      {
+        "name": "Accept OpenClaw completion",
+        "pattern": "COMPLETION_ACCEPTED",
+        "description": "Represents a completed high-confidence OpenClaw response with no failure or action class.",
+        "events": [
+          [
+            1,
+            0,
+            0.95,
+            0
+          ]
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,321 @@
+{
+  "version": "1.0.0",
+  "machine": {
+    "name": "Logical Infrastructure Req Ack Handshake",
+    "description": "Reusable digital-logic infrastructure machine for ASIC-style connective tissue. It implements the temporal regular expression `REQ ACK`. Detects request followed by acknowledge. Reads a 4D control/status lane at [4017:4020] and emits a 2D match lane at [1583:1584].",
+    "metadata": {
+      "category": "digital-logic",
+      "domain": "Digital Logic - Infrastructure",
+      "author": "Reality Engine",
+      "regularExpression": "REQ ACK",
+      "asicPattern": "Req Ack Handshake",
+      "reuseRole": "general-purpose logical connective tissue",
+      "inputSpace": "4D binary at [4017:4020]",
+      "outputSpace": "2D binary at [1583:1584]: [1,0]=MATCH, [0,1]=CLEAR_OR_AVAILABLE",
+      "inputSemantics": [
+        "primary",
+        "secondary",
+        "tertiary",
+        "qualifier"
+      ],
+      "tags": [
+        "asic-pattern",
+        "ces-sequences",
+        "ces-sequences-1",
+        "digital-logic",
+        "digital-logic-generated",
+        "digital-logic-infrastructure",
+        "dlx011",
+        "infrastructure",
+        "input-sequences",
+        "input-sequences-2",
+        "logical-infrastructure",
+        "logical-infrastructure-req-ack-handshake",
+        "regular-expression",
+        "req-ack-handshake",
+        "startup-loadable"
+      ],
+      "sequenceCount": 1,
+      "reuseGuideline": "Use this machine by mapping upstream source or machine output bits into its 4D input lane. Map its 2D output lane into downstream machine input when a reusable temporal guard, latch trigger, handshake detector, CDC detector, bus phase detector, or safety qualifier is needed.",
+      "tagging": {
+        "schemaVersion": "1.0.0",
+        "managedBy": "scripts/manage_machine_tags.mjs",
+        "primaryDomain": "digital-logic",
+        "domainTags": [
+          "digital-logic",
+          "infrastructure"
+        ],
+        "family": "digital-logic-generated",
+        "machineCode": "dlx011",
+        "capabilityTags": [],
+        "workflowTags": [
+          "asic-pattern",
+          "digital-logic-generated",
+          "digital-logic-infrastructure",
+          "dlx011",
+          "logical-infrastructure",
+          "logical-infrastructure-req-ack-handshake",
+          "regular-expression",
+          "req-ack-handshake"
+        ],
+        "integrationTags": [
+          "digital-logic"
+        ],
+        "validationTags": [
+          "ces-sequences",
+          "ces-sequences-1",
+          "input-sequences",
+          "input-sequences-2",
+          "startup-loadable"
+        ],
+        "allTags": [
+          "asic-pattern",
+          "ces-sequences",
+          "ces-sequences-1",
+          "digital-logic",
+          "digital-logic-generated",
+          "digital-logic-infrastructure",
+          "dlx011",
+          "infrastructure",
+          "input-sequences",
+          "input-sequences-2",
+          "logical-infrastructure",
+          "logical-infrastructure-req-ack-handshake",
+          "regular-expression",
+          "req-ack-handshake",
+          "startup-loadable"
+        ]
+      },
+      "governance": {
+        "schemaVersion": "1.0.0",
+        "ownerTeam": "reliability-engineering",
+        "runbook": "https://runbooks.example.org/digital-logic/dlx011_req-ack-handshake",
+        "escalationPolicy": "slack:#reliability-test",
+        "contact": {
+          "primary": "reliability-engineering-primary@example.org",
+          "secondary": "reliability-engineering-secondary@example.org"
+        },
+        "sla": {
+          "ok": null,
+          "info": null,
+          "warning": null,
+          "error": null
+        },
+        "notes": "Auto-backfilled by scripts/backfill-governance.mjs from primaryDomain=\"digital-logic\".  Review and tune the routing as the team owning DLX011_req-ack-handshake matures."
+      },
+      "triggerConfig": {
+        "processId": "DLX011_REQ_ACK_HANDSHAKE",
+        "processName": "Logical Infrastructure Req Ack Handshake",
+        "rules": [
+          {
+            "sequenceId": "dlx-011-match",
+            "outputMatches": [
+              1,
+              0
+            ],
+            "ragStatusCode": "GREEN",
+            "processStatus": "info",
+            "description": "Req Ack Handshake matched regular expression REQ ACK."
+          }
+        ]
+      },
+      "machineClass": "signal-monitor",
+      "interconnections": [
+        {
+          "id": "digital-logic.dlx-011-020.logical-infrastructure-req-ack-handshake",
+          "type": "published-domain-bus-producer",
+          "role": "logical_infrastructure_req_ack_handshake",
+          "sourceMachine": "Logical Infrastructure Req Ack Handshake",
+          "sourceOutputRegion": {
+            "offset": 1583,
+            "length": 2
+          },
+          "targetInputElements": [
+            0,
+            1
+          ],
+          "normalizedElements": [
+            "Logical Infrastructure Req Ack Handshake active output[0] bit",
+            "Logical Infrastructure Req Ack Handshake active output[1] bit"
+          ],
+          "purpose": "Publish Logical Infrastructure Req Ack Handshake active response lanes into digital-logic.dlx-011-020.",
+          "busId": "digital-logic.dlx-011-020",
+          "busTag": "published-bus-digital-logic-dlx-011-020",
+          "targetMachine": "Digital Logic DLX-011-020 Interconnect",
+          "targetMachineFile": "DigitalLogicDlx011020Interconnect.json",
+          "targetInputRegion": {
+            "offset": 14340,
+            "length": 20
+          },
+          "busInputRegion": {
+            "offset": 14340,
+            "length": 20
+          },
+          "publishedOutputRegion": {
+            "offset": 14360,
+            "length": 4
+          },
+          "busOutputRegion": {
+            "offset": 14360,
+            "length": 4
+          },
+          "peCompositionRequired": true,
+          "compositionOwner": "perception-engine",
+          "dispatchMode": "asynchronous-no-wait",
+          "privacyBoundary": "PE composes normalized domain status bits only; raw regulated records, operator notes, telemetry payloads, documents, and provider-specific source payloads remain outside the universal Reality Event."
+        }
+      ],
+      "openClawProjection": {
+        "projectionId": "openclaw-logical-infrastructure-req-ack-handshake-native-input-projection",
+        "owner": "openclaw-input-analyst",
+        "dispatchMode": "accepted-no-wait",
+        "writeBackRegion": {
+          "offset": 4017,
+          "length": 4
+        },
+        "normalization": "machine-native-binary",
+        "semantics": [
+          "primary",
+          "secondary",
+          "tertiary",
+          "qualifier"
+        ],
+        "peContract": "OpenClaw maps domain observations to this machine's native input lane; PE writes the vector source and does not wait inside a PE cycle."
+      }
+    },
+    "arbiterRule": "PASSTHROUGH",
+    "perceptualMapping": {
+      "input": {
+        "offset": 4017,
+        "length": 4
+      },
+      "output": {
+        "offset": 1583,
+        "length": 2
+      },
+      "bitsPerElement": 1
+    },
+    "sequences": [
+      {
+        "id": "dlx-011-match",
+        "name": "Req Ack Handshake: REQ ACK -> MATCH",
+        "metadata": {
+          "description": "Detects request followed by acknowledge.",
+          "regularExpression": "REQ ACK",
+          "output": "[1,0]"
+        },
+        "events": [
+          {
+            "id": "dlx-011-step-1",
+            "elements": [
+              {
+                "value": 1,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": true,
+            "metadata": {
+              "name": "STEP_1",
+              "description": "Req Ack Handshake regex step 1: [1, 0, 0, 0]"
+            },
+            "nextEventIds": [
+              "dlx-011-step-2"
+            ]
+          },
+          {
+            "id": "dlx-011-step-2",
+            "elements": [
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 1,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": false,
+            "metadata": {
+              "name": "STEP_2",
+              "description": "Req Ack Handshake regex step 2: [0, 1, 0, 0]"
+            },
+            "outputEvents": [
+              {
+                "id": "dlx-011-match-output",
+                "vector": [
+                  1,
+                  0
+                ],
+                "metadata": {
+                  "description": "Req Ack Handshake matched regular expression REQ ACK.",
+                  "state": "MATCH"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "inputSequences": [
+      {
+        "name": "Req Ack Handshake match path",
+        "description": "Validates regular expression REQ ACK.",
+        "events": [
+          [
+            1,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            1,
+            0,
+            0
+          ]
+        ],
+        "metadata": {
+          "expectedOutputCount": 1,
+          "expectedOutputVector": "[1,0]",
+          "scenario": "req-ack-handshake"
+        }
+      },
+      {
+        "name": "Baseline without output",
+        "description": "Single baseline sample does not complete the expression.",
+        "events": [
+          [
+            1,
+            0,
+            0,
+            0
+          ]
+        ],
+        "metadata": {
+          "expectedOutputCount": 0,
+          "scenario": "baseline-no-output"
+        }
+      }
+    ]
+  }
+}

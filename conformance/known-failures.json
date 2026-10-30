@@ -1,0 +1,217 @@
+{
+  "entries": {
+    "key:config.eventDimension": {
+      "issue": "jateeter/RealityEngine_Rust#6",
+      "detail": "GET /api/config must report eventDimension"
+    },
+    "load:domains/built-space/BSX118_community-and-hr-emergency-preparedness-wellness.json": {
+      "issue": "jateeter/RealityEngine_Rust#3",
+      "detail": "registered 0 events; the file declares 9"
+    },
+    "load:domains/community-services/CSX022_behavioral-health-and-crisis-mobile-crisis-co-response.json": {
+      "issue": "jateeter/RealityEngine_Rust#3",
+      "detail": "registered 0 events; the file declares 5"
+    },
+    "load:domains/community-services/DocumentSigningWorkflowMonitor.json": {
+      "issue": "jateeter/RealityEngine_Rust#3",
+      "detail": "registered 0 events; the file declares 5"
+    },
+    "load:domains/community-services/QualificationVerificationMonitor.json": {
+      "issue": "jateeter/RealityEngine_Rust#3",
+      "detail": "registered 0 events; the file declares 5"
+    },
+    "load:domains/data-center/DCMemoryAlertFF.json": {
+      "issue": "jateeter/RealityEngine_Rust#3",
+      "detail": "registered 0 events; the file declares 2"
+    },
+    "load:domains/data-center/DCNetworkThrottleFF.json": {
+      "issue": "jateeter/RealityEngine_Rust#3",
+      "detail": "registered 0 events; the file declares 2"
+    },
+    "load:domains/data-center/DataCenterDcx001010Interconnect.json": {
+      "issue": "jateeter/RealityEngine_Rust#3",
+      "detail": "registered 0 events; the file declares 4"
+    },
+    "load:domains/digital-logic/ArbitrationProviderPeer.json": {
+      "issue": "jateeter/RealityEngine_Rust#3",
+      "detail": "registered 0 events; the file declares 1"
+    },
+    "load:domains/digital-logic/ArbitrationProviderTarget.json": {
+      "issue": "jateeter/RealityEngine_Rust#3",
+      "detail": "registered 0 events; the file declares 2"
+    },
+    "load:domains/digital-logic/ArbitrationReader.json": {
+      "issue": "jateeter/RealityEngine_Rust#3",
+      "detail": "registered 0 events; the file declares 2"
+    },
+    "load:domains/digital-logic/ArbitrationWriterA.json": {
+      "issue": "jateeter/RealityEngine_Rust#3",
+      "detail": "registered 0 events; the file declares 1"
+    },
+    "load:domains/digital-logic/ArbitrationWriterB.json": {
+      "issue": "jateeter/RealityEngine_Rust#3",
+      "detail": "registered 0 events; the file declares 1"
+    },
+    "load:domains/digital-logic/DLX011_req-ack-handshake.json": {
+      "issue": "jateeter/RealityEngine_Rust#3",
+      "detail": "registered 0 events; the file declares 2"
+    },
+    "load:domains/digital-logic/DLX017_start-busy-done.json": {
+      "issue": "jateeter/RealityEngine_Rust#3",
+      "detail": "registered 0 events; the file declares 4"
+    },
+    "load:domains/digital-logic/DLX034_watchdog-kick-window.json": {
+      "issue": "jateeter/RealityEngine_Rust#3",
+      "detail": "registered 0 events; the file declares 2"
+    },
+    "load:domains/digital-logic/DLX041_one-hot-grant.json": {
+      "issue": "jateeter/RealityEngine_Rust#3",
+      "detail": "registered 0 events; the file declares 2"
+    },
+    "load:domains/digital-logic/DigitalLogicDlx021030Interconnect.json": {
+      "issue": "jateeter/RealityEngine_Rust#3",
+      "detail": "registered 0 events; the file declares 4"
+    },
+    "load:domains/digital-logic/OpenClawCompletionE2E.json": {
+      "issue": "jateeter/RealityEngine_Rust#3",
+      "detail": "registered 0 events; the file declares 2"
+    },
+    "load:domains/digital-logic/RSRingLatchStageA.json": {
+      "issue": "jateeter/RealityEngine_Rust#3",
+      "detail": "registered 0 events; the file declares 2"
+    },
+    "load:domains/digital-logic/RSRingLatchStageB.json": {
+      "issue": "jateeter/RealityEngine_Rust#3",
+      "detail": "registered 0 events; the file declares 2"
+    },
+    "load:domains/health-personal/FallDetection.json": {
+      "issue": "jateeter/RealityEngine_Rust#3",
+      "detail": "registered 0 events; the file declares 20"
+    },
+    "load:domains/health-personal/HomeTransportationBarrierMonitor.json": {
+      "issue": "jateeter/RealityEngine_Rust#3",
+      "detail": "registered 0 events; the file declares 5"
+    },
+    "load:domains/transportation/TFX047_security-and-safety-emergency-detour-safety.json": {
+      "issue": "jateeter/RealityEngine_Rust#3",
+      "detail": "registered 0 events; the file declares 8"
+    },
+    "seq:domains/built-space/BSX118_community-and-hr-emergency-preparedness-wellness.json#0": {
+      "issue": "jateeter/RealityEngine_Rust#3",
+      "note": "root cause is the zero-event load; #4 (comparator) and #5 (outputs[] shape) are masked behind it",
+      "detail": "Verify WELL conformance: emitted 0 outputs, declared 1; no output, declared [1.0, 0.0, 0.0, 0.0]"
+    },
+    "seq:domains/built-space/BSX118_community-and-hr-emergency-preparedness-wellness.json#1": {
+      "issue": "jateeter/RealityEngine_Rust#3",
+      "note": "root cause is the zero-event load; #4 (comparator) and #5 (outputs[] shape) are masked behind it",
+      "detail": "Predictive optimization: emitted 0 outputs, declared 1; no output, declared [0.0, 1.0, 0.0, 0.0]"
+    },
+    "seq:domains/built-space/BSX118_community-and-hr-emergency-preparedness-wellness.json#2": {
+      "issue": "jateeter/RealityEngine_Rust#3",
+      "note": "root cause is the zero-event load; #4 (comparator) and #5 (outputs[] shape) are masked behind it",
+      "detail": "Operations work order: emitted 0 outputs, declared 1; no output, declared [0.0, 0.0, 1.0, 0.0]"
+    },
+    "seq:domains/built-space/BSX118_community-and-hr-emergency-preparedness-wellness.json#3": {
+      "issue": "jateeter/RealityEngine_Rust#3",
+      "note": "root cause is the zero-event load; #4 (comparator) and #5 (outputs[] shape) are masked behind it",
+      "detail": "Compliant operating window: emitted 0 outputs, declared 1; no output, declared [0.0, 0.0, 0.0, 1.0]"
+    },
+    "seq:domains/built-space/BSX118_community-and-hr-emergency-preparedness-wellness.json#4": {
+      "issue": "jateeter/RealityEngine_Rust#3",
+      "note": "root cause is the zero-event load; #4 (comparator) and #5 (outputs[] shape) are masked behind it",
+      "detail": "24-hour predictive optimization: emitted 0 outputs, declared 1; no output, declared [0.0, 1.0, 0.0, 0.0]"
+    },
+    "seq:domains/community-services/CSX022_behavioral-health-and-crisis-mobile-crisis-co-response.json#0": {
+      "issue": "jateeter/RealityEngine_Rust#3",
+      "note": "root cause is the zero-event load; #4 (comparator) and #5 (outputs[] shape) are masked behind it",
+      "detail": "Urgent response sequence: emitted 0 outputs, declared 1; no output, declared [1.0, 0.0, 0.0, 0.0]"
+    },
+    "seq:domains/community-services/CSX022_behavioral-health-and-crisis-mobile-crisis-co-response.json#1": {
+      "issue": "jateeter/RealityEngine_Rust#3",
+      "note": "root cause is the zero-event load; #4 (comparator) and #5 (outputs[] shape) are masked behind it",
+      "detail": "Coordinate services: emitted 0 outputs, declared 1; no output, declared [0.0, 1.0, 0.0, 0.0]"
+    },
+    "seq:domains/community-services/CSX022_behavioral-health-and-crisis-mobile-crisis-co-response.json#2": {
+      "issue": "jateeter/RealityEngine_Rust#3",
+      "note": "root cause is the zero-event load; #4 (comparator) and #5 (outputs[] shape) are masked behind it",
+      "detail": "Field work order: emitted 0 outputs, declared 1; no output, declared [0.0, 0.0, 1.0, 0.0]"
+    },
+    "seq:domains/community-services/CSX022_behavioral-health-and-crisis-mobile-crisis-co-response.json#3": {
+      "issue": "jateeter/RealityEngine_Rust#3",
+      "note": "root cause is the zero-event load; #4 (comparator) and #5 (outputs[] shape) are masked behind it",
+      "detail": "Stable service path: emitted 0 outputs, declared 1; no output, declared [0.0, 0.0, 0.0, 1.0]"
+    },
+    "seq:domains/data-center/DataCenterDcx001010Interconnect.json#0": {
+      "issue": "jateeter/RealityEngine_Rust#3",
+      "note": "root cause is the zero-event load; #4 (comparator) and #5 (outputs[] shape) are masked behind it",
+      "detail": "Data Center DCX-001-010 review fan-out: no output, declared [1.0, 0.0, 0.0, 0.0]"
+    },
+    "seq:domains/data-center/DataCenterDcx001010Interconnect.json#1": {
+      "issue": "jateeter/RealityEngine_Rust#3",
+      "note": "root cause is the zero-event load; #4 (comparator) and #5 (outputs[] shape) are masked behind it",
+      "detail": "Data Center DCX-001-010 optimization fan-out: no output, declared [0.0, 1.0, 0.0, 0.0]"
+    },
+    "seq:domains/data-center/DataCenterDcx001010Interconnect.json#2": {
+      "issue": "jateeter/RealityEngine_Rust#3",
+      "note": "root cause is the zero-event load; #4 (comparator) and #5 (outputs[] shape) are masked behind it",
+      "detail": "Data Center DCX-001-010 monitoring fan-out: no output, declared [0.0, 0.0, 1.0, 0.0]"
+    },
+    "seq:domains/digital-logic/DLX011_req-ack-handshake.json#0": {
+      "issue": "jateeter/RealityEngine_Rust#3",
+      "note": "root cause is the zero-event load; #4 (comparator) and #5 (outputs[] shape) are masked behind it",
+      "detail": "Req Ack Handshake match path: emitted 0 outputs, declared 1; no output, declared [1.0, 0.0]"
+    },
+    "seq:domains/digital-logic/DLX017_start-busy-done.json#0": {
+      "issue": "jateeter/RealityEngine_Rust#3",
+      "note": "root cause is the zero-event load; #4 (comparator) and #5 (outputs[] shape) are masked behind it",
+      "detail": "Start Busy Done match path: emitted 0 outputs, declared 1; no output, declared [1.0, 0.0]"
+    },
+    "seq:domains/digital-logic/DLX034_watchdog-kick-window.json#0": {
+      "issue": "jateeter/RealityEngine_Rust#3",
+      "note": "root cause is the zero-event load; #4 (comparator) and #5 (outputs[] shape) are masked behind it",
+      "detail": "Watchdog Kick Window match path: emitted 0 outputs, declared 1; no output, declared [1.0, 0.0]"
+    },
+    "seq:domains/digital-logic/DLX041_one-hot-grant.json#0": {
+      "issue": "jateeter/RealityEngine_Rust#3",
+      "note": "root cause is the zero-event load; #4 (comparator) and #5 (outputs[] shape) are masked behind it",
+      "detail": "One Hot Grant match path: emitted 0 outputs, declared 1; no output, declared [1.0, 0.0]"
+    },
+    "seq:domains/digital-logic/DigitalLogicDlx021030Interconnect.json#0": {
+      "issue": "jateeter/RealityEngine_Rust#3",
+      "note": "root cause is the zero-event load; #4 (comparator) and #5 (outputs[] shape) are masked behind it",
+      "detail": "Digital Logic DLX-021-030 review fan-out: no output, declared [1.0, 0.0, 0.0, 0.0]"
+    },
+    "seq:domains/digital-logic/DigitalLogicDlx021030Interconnect.json#1": {
+      "issue": "jateeter/RealityEngine_Rust#3",
+      "note": "root cause is the zero-event load; #4 (comparator) and #5 (outputs[] shape) are masked behind it",
+      "detail": "Digital Logic DLX-021-030 optimization fan-out: no output, declared [0.0, 1.0, 0.0, 0.0]"
+    },
+    "seq:domains/digital-logic/DigitalLogicDlx021030Interconnect.json#2": {
+      "issue": "jateeter/RealityEngine_Rust#3",
+      "note": "root cause is the zero-event load; #4 (comparator) and #5 (outputs[] shape) are masked behind it",
+      "detail": "Digital Logic DLX-021-030 monitoring fan-out: no output, declared [0.0, 0.0, 1.0, 0.0]"
+    },
+    "seq:domains/transportation/TFX047_security-and-safety-emergency-detour-safety.json#0": {
+      "issue": "jateeter/RealityEngine_Rust#3",
+      "note": "root cause is the zero-event load; #4 (comparator) and #5 (outputs[] shape) are masked behind it",
+      "detail": "Critical event sequence: emitted 0 outputs, declared 1; no output, declared [1.0, 0.0, 0.0, 0.0]"
+    },
+    "seq:domains/transportation/TFX047_security-and-safety-emergency-detour-safety.json#1": {
+      "issue": "jateeter/RealityEngine_Rust#3",
+      "note": "root cause is the zero-event load; #4 (comparator) and #5 (outputs[] shape) are masked behind it",
+      "detail": "Predictive flow adjustment: emitted 0 outputs, declared 1; no output, declared [0.0, 1.0, 0.0, 0.0]"
+    },
+    "seq:domains/transportation/TFX047_security-and-safety-emergency-detour-safety.json#2": {
+      "issue": "jateeter/RealityEngine_Rust#3",
+      "note": "root cause is the zero-event load; #4 (comparator) and #5 (outputs[] shape) are masked behind it",
+      "detail": "Operations task: emitted 0 outputs, declared 1; no output, declared [0.0, 0.0, 1.0, 0.0]"
+    },
+    "seq:domains/transportation/TFX047_security-and-safety-emergency-detour-safety.json#3": {
+      "issue": "jateeter/RealityEngine_Rust#3",
+      "note": "root cause is the zero-event load; #4 (comparator) and #5 (outputs[] shape) are masked behind it",
+      "detail": "Nominal service: emitted 0 outputs, declared 1; no output, declared [0.0, 0.0, 0.0, 1.0]"
+    }
+  },
+  "purpose": "R1 ratchet: every entry is a failure with an issue. Rewrite with R1_RECORD_KNOWN=1, then classify each UNCLASSIFIED entry by hand.",
+  "schema": 1
+}

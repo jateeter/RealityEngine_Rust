@@ -1,0 +1,784 @@
+{
+  "version": "1.0.0",
+  "machine": {
+    "name": "Transportation Fleet Security And Safety Emergency Detour Safety",
+    "description": "Public transportation fleet machine for emergency detour safety in the security and safety workstream. It monitors road closure, safe stop availability, operator instruction, and rider messaging for a 100-bus 24/7 operation and emits AI-triggered outputs for rider experience, operations, maintenance, cleaning, security, and predictive fleet-flow management.",
+    "metadata": {
+      "category": "transportation",
+      "domain": "Transportation Fleet - Security And Safety",
+      "author": "Reality Engine",
+      "fleetSize": 100,
+      "operationalFocus": "Emergency Detour Safety",
+      "workstream": "Security And Safety",
+      "focusDescription": "road closure, safe stop availability, operator instruction, and rider messaging",
+      "upstreamMachine": "Transportation Fleet Security And Safety Suspicious Package Workflow",
+      "upstreamOutputRegion": "[3427:3430]",
+      "downstreamMachines": [
+        "Transportation Fleet Security And Safety School Trip Safety Monitor"
+      ],
+      "dispatchableAgent": "transit_dispatch_agent",
+      "aiTrigger": "transportation-fleet-security-and-safety-emergency-detour-safety",
+      "predictiveFlowTrigger": "predictive-flow-security-and-safety-emergency-detour-safety",
+      "agentActions": [
+        "Dispatch transit_dispatch_agent for critical 100-bus fleet intervention on emergency detour safety.",
+        "Trigger predictive flow management for emergency detour safety using rider, vehicle, and route context.",
+        "Create maintenance, cleaning, security, or service task for emergency detour safety.",
+        "Keep 24/7 monitoring active for emergency detour safety."
+      ],
+      "criticalEventSequenceLength": 5,
+      "criticalEventSequenceLengthBasis": "Every TFX machine has one critical inputSequence containing exactly 5 vectors; the generated family average is 5.0.",
+      "inputSpace": "4D binary at [3427:3430]",
+      "outputSpace": "4D binary at [3431:3434]: [1,0,0,0]=CRITICAL_EVENT, [0,1,0,0]=PREDICTIVE_FLOW_ADJUST, [0,0,1,0]=OPS_TASK, [0,0,0,1]=SERVICE_NOMINAL",
+      "inputSemantics": [
+        "service reliability",
+        "rider impact",
+        "asset readiness",
+        "safety/security risk"
+      ],
+      "tags": [
+        "100-bus-fleet",
+        "24x7-operations",
+        "ai-trigger",
+        "ces-sequences",
+        "ces-sequences-4",
+        "cleaning",
+        "dispatchable-agent",
+        "emergency-detour-safety",
+        "input-sequences",
+        "input-sequences-5",
+        "machine-interconnect",
+        "maintenance",
+        "predictive-flow",
+        "predictive-flow-security-and-safety-emergency-detour-safety",
+        "public-transit",
+        "rider-experience",
+        "security",
+        "security-and-safety",
+        "startup-loadable",
+        "tfx047",
+        "transit-dispatch-agent",
+        "transportation",
+        "transportation-fleet",
+        "transportation-fleet-security-and-safety",
+        "transportation-fleet-security-and-safety-emergency-detour-safety",
+        "transportation-generated",
+        "vehicle-monitoring"
+      ],
+      "sequenceCount": 4,
+      "reuseGuideline": "Map AVL, APC, CAD/AVL, fare, work-order, cleaning, security, rider feedback, and depot signals into the 4D input lane. Route outputs to dispatch, service control, maintenance, cleaning, security, customer communications, or executive fleet optimization agents.",
+      "downstreamPattern": "Output region [3431:3434] feeds Transportation Fleet Security And Safety School Trip Safety Monitor for predictive fleet-flow management.",
+      "tagging": {
+        "schemaVersion": "1.0.0",
+        "managedBy": "scripts/manage_machine_tags.mjs",
+        "primaryDomain": "transportation",
+        "domainTags": [
+          "security-and-safety",
+          "transportation",
+          "transportation-fleet"
+        ],
+        "family": "transportation-generated",
+        "machineCode": "tfx047",
+        "capabilityTags": [
+          "maintenance",
+          "predictive-flow",
+          "predictive-flow-security-and-safety-emergency-detour-safety",
+          "vehicle-monitoring"
+        ],
+        "workflowTags": [
+          "100-bus-fleet",
+          "24x7-operations",
+          "ai-trigger",
+          "cleaning",
+          "dispatchable-agent",
+          "emergency-detour-safety",
+          "public-transit",
+          "rider-experience",
+          "security",
+          "tfx047",
+          "transit-dispatch-agent",
+          "transportation-fleet-security-and-safety",
+          "transportation-fleet-security-and-safety-emergency-detour-safety",
+          "transportation-generated"
+        ],
+        "integrationTags": [
+          "ai-trigger",
+          "dispatchable-agent",
+          "machine-interconnect"
+        ],
+        "validationTags": [
+          "ces-sequences",
+          "ces-sequences-4",
+          "input-sequences",
+          "input-sequences-5",
+          "startup-loadable"
+        ],
+        "allTags": [
+          "100-bus-fleet",
+          "24x7-operations",
+          "ai-trigger",
+          "ces-sequences",
+          "ces-sequences-4",
+          "cleaning",
+          "dispatchable-agent",
+          "emergency-detour-safety",
+          "input-sequences",
+          "input-sequences-5",
+          "machine-interconnect",
+          "maintenance",
+          "predictive-flow",
+          "predictive-flow-security-and-safety-emergency-detour-safety",
+          "public-transit",
+          "rider-experience",
+          "security",
+          "security-and-safety",
+          "startup-loadable",
+          "tfx047",
+          "transit-dispatch-agent",
+          "transportation",
+          "transportation-fleet",
+          "transportation-fleet-security-and-safety",
+          "transportation-fleet-security-and-safety-emergency-detour-safety",
+          "transportation-generated",
+          "vehicle-monitoring"
+        ]
+      },
+      "governance": {
+        "schemaVersion": "1.0.0",
+        "ownerTeam": "transit-operations",
+        "runbook": "https://runbooks.example.org/transportation/tfx047_security-and-safety-emergency-detour-safety",
+        "escalationPolicy": "pagerduty:transit-ops",
+        "contact": {
+          "primary": "transit-operations-primary@example.org",
+          "secondary": "transit-operations-secondary@example.org"
+        },
+        "sla": {
+          "ok": null,
+          "info": null,
+          "warning": 300,
+          "error": 120
+        },
+        "notes": "Auto-backfilled by scripts/backfill-governance.mjs from primaryDomain=\"transportation\".  Review and tune the routing as the team owning TFX047_security-and-safety-emergency-detour-safety matures."
+      },
+      "triggerConfig": {
+        "processId": "TFX047_SECURITY_AND_SAFETY_EMERGENCY_DETOUR_SAFETY",
+        "processName": "Transportation Fleet Security And Safety Emergency Detour Safety",
+        "rules": [
+          {
+            "sequenceId": "tfx-047-critical-event",
+            "outputMatches": [
+              1,
+              0,
+              0,
+              0
+            ],
+            "ragStatusCode": "RED",
+            "processStatus": "error",
+            "description": "Emergency Detour Safety: OBSERVE -> WATCH -> DEGRADED -> ESCALATING -> CRITICAL_EVENT"
+          },
+          {
+            "sequenceId": "tfx-047-predictive-flow",
+            "outputMatches": [
+              0,
+              1,
+              0,
+              0
+            ],
+            "ragStatusCode": "RED",
+            "processStatus": "error",
+            "description": "Emergency Detour Safety: FLOW_RISK -> PREDICTIVE_FLOW_ADJUST"
+          },
+          {
+            "sequenceId": "tfx-047-ops-task",
+            "outputMatches": [
+              0,
+              0,
+              1,
+              0
+            ],
+            "ragStatusCode": "RED",
+            "processStatus": "error",
+            "description": "Emergency Detour Safety: TASK_NEEDED -> OPS_TASK"
+          },
+          {
+            "sequenceId": "tfx-047-nominal",
+            "outputMatches": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "ragStatusCode": "RED",
+            "processStatus": "error",
+            "description": "Emergency Detour Safety: NOMINAL -> SERVICE_NOMINAL"
+          }
+        ],
+        "endpoint": "http://localhost:4000/graphql",
+        "template": "triggers/graphql_trigger_template.py",
+        "dispatch": {
+          "target": "localAIStack",
+          "transport": "graphql",
+          "mutation": "updateProcessState",
+          "envelopeSchema": "schemas/ai-trigger-envelope.schema.json",
+          "schemaRef": "localAIStack/services/api/routers/graphql_endpoint.py"
+        }
+      },
+      "machineClass": "agent-dispatcher",
+      "agentBinding": {
+        "agent": "transit_dispatch_agent",
+        "mode": "advise",
+        "trigger": "transportation-fleet-security-and-safety-emergency-detour-safety",
+        "allowedActions": [
+          "Dispatch transit_dispatch_agent for critical 100-bus fleet intervention on emergency detour safety.",
+          "Trigger predictive flow management for emergency detour safety using rider, vehicle, and route context.",
+          "Create maintenance, cleaning, security, or service task for emergency detour safety.",
+          "Keep 24/7 monitoring active for emergency detour safety."
+        ],
+        "writeBack": {
+          "type": "pe-sensor",
+          "provider": "localai",
+          "sensorId": "localai.tfx047.transit.dispatch.agent.completion",
+          "name": "localAIStack tfx047 transit.dispatch.agent completion",
+          "region": {
+            "offset": 3427,
+            "length": 4
+          },
+          "semantics": [
+            "service_reliability",
+            "rider_impact",
+            "asset_readiness",
+            "safety_security_risk"
+          ],
+          "ttlMs": 300000,
+          "normalization": "already-normalized-0-1",
+          "ingest": {
+            "endpoint": "/api/integrations/completions",
+            "method": "POST",
+            "triggerPush": false,
+            "compactPush": true
+          },
+          "sourceMapping": {
+            "id": "localai-tfx047-completion",
+            "sensorId": "localai.tfx047.transit.dispatch.agent.completion",
+            "name": "localAIStack tfx047 transit.dispatch.agent completion",
+            "region": {
+              "offset": 3427,
+              "length": 4
+            },
+            "ttlMs": 300000
+          }
+        },
+        "riskControls": {
+          "requiresHumanApproval": false,
+          "requiresRunbook": false,
+          "maxAutonomy": "advise",
+          "blockedWhenRag": []
+        },
+        "autonomyPolicy": {
+          "mode": "advise",
+          "stage": 1,
+          "writeBackType": "pe-sensor",
+          "canWriteBack": true,
+          "canStageActions": false,
+          "canExecuteActions": false,
+          "requiresHumanApproval": false,
+          "requiresRunbook": false,
+          "blockedWhenRag": []
+        }
+      },
+      "interconnections": [
+        {
+          "id": "transportation.tfx-041-050.fleet-security-and-safety-emergency-detour-safety",
+          "type": "published-domain-bus-producer",
+          "role": "fleet_security_and_safety_emergency_detour_safety",
+          "sourceMachine": "Transportation Fleet Security And Safety Emergency Detour Safety",
+          "sourceOutputRegion": {
+            "offset": 3431,
+            "length": 4
+          },
+          "targetInputElements": [
+            18,
+            19,
+            20
+          ],
+          "normalizedElements": [
+            "Transportation Fleet Security And Safety Emergency Detour Safety active output[0] bit",
+            "Transportation Fleet Security And Safety Emergency Detour Safety active output[1] bit",
+            "Transportation Fleet Security And Safety Emergency Detour Safety active output[2] bit"
+          ],
+          "purpose": "Publish Transportation Fleet Security And Safety Emergency Detour Safety active response lanes into transportation.tfx-041-050.",
+          "busId": "transportation.tfx-041-050",
+          "busTag": "published-bus-transportation-tfx-041-050",
+          "targetMachine": "Transportation TFX-041-050 Interconnect",
+          "targetMachineFile": "TransportationTfx041050Interconnect.json",
+          "targetInputRegion": {
+            "offset": 16136,
+            "length": 30
+          },
+          "busInputRegion": {
+            "offset": 16136,
+            "length": 30
+          },
+          "publishedOutputRegion": {
+            "offset": 16166,
+            "length": 4
+          },
+          "busOutputRegion": {
+            "offset": 16166,
+            "length": 4
+          },
+          "peCompositionRequired": true,
+          "compositionOwner": "perception-engine",
+          "dispatchMode": "asynchronous-no-wait",
+          "privacyBoundary": "PE composes normalized domain status bits only; raw regulated records, operator notes, telemetry payloads, documents, and provider-specific source payloads remain outside the universal Reality Event."
+        }
+      ],
+      "openClawProjection": {
+        "projectionId": "openclaw-transportation-fleet-security-and-safety-emergency-detour-safety-native-input-projection",
+        "owner": "openclaw-input-analyst",
+        "dispatchMode": "accepted-no-wait",
+        "writeBackRegion": {
+          "offset": 3427,
+          "length": 4
+        },
+        "normalization": "machine-native-binary",
+        "semantics": [
+          "service_reliability",
+          "rider_impact",
+          "asset_readiness",
+          "safety_security_risk"
+        ],
+        "peContract": "OpenClaw maps domain observations to this machine's native input lane; PE writes the vector source and does not wait inside a PE cycle."
+      }
+    },
+    "arbiterRule": "PASSTHROUGH",
+    "perceptualMapping": {
+      "input": {
+        "offset": 3427,
+        "length": 4
+      },
+      "output": {
+        "offset": 3431,
+        "length": 4
+      },
+      "bitsPerElement": 1
+    },
+    "sequences": [
+      {
+        "id": "tfx-047-critical-event",
+        "name": "Emergency Detour Safety: OBSERVE -> WATCH -> DEGRADED -> ESCALATING -> CRITICAL_EVENT",
+        "metadata": {
+          "description": "Five-step critical event sequence for 24/7 transportation operations.",
+          "sequenceLength": 5,
+          "output": "[1,0,0,0]"
+        },
+        "events": [
+          {
+            "id": "tfx-047-observe",
+            "elements": [
+              {
+                "value": 1,
+                "threshold": 0.5
+              },
+              {
+                "value": 1,
+                "threshold": 0.5
+              },
+              {
+                "value": 1,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": true,
+            "metadata": {
+              "stage": "observe"
+            },
+            "nextEventIds": [
+              "tfx-047-watch"
+            ]
+          },
+          {
+            "id": "tfx-047-watch",
+            "elements": [
+              {
+                "value": 1,
+                "threshold": 0.5
+              },
+              {
+                "value": 1,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 1,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": false,
+            "metadata": {
+              "stage": "watch"
+            },
+            "nextEventIds": [
+              "tfx-047-degraded"
+            ]
+          },
+          {
+            "id": "tfx-047-degraded",
+            "elements": [
+              {
+                "value": 1,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 1,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": false,
+            "metadata": {
+              "stage": "degraded"
+            },
+            "nextEventIds": [
+              "tfx-047-escalating"
+            ]
+          },
+          {
+            "id": "tfx-047-escalating",
+            "elements": [
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 1,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": false,
+            "metadata": {
+              "stage": "escalating"
+            },
+            "nextEventIds": [
+              "tfx-047-critical"
+            ]
+          },
+          {
+            "id": "tfx-047-critical",
+            "elements": [
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": false,
+            "metadata": {
+              "stage": "critical"
+            },
+            "outputEvents": [
+              {
+                "id": "tfx-047-critical-output",
+                "vector": [
+                  1,
+                  0,
+                  0,
+                  0
+                ],
+                "metadata": {
+                  "action": "dispatch-agent",
+                  "actionNarrative": "Dispatch transit_dispatch_agent for critical 100-bus fleet intervention on emergency detour safety."
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "tfx-047-predictive-flow",
+        "name": "Emergency Detour Safety: FLOW_RISK -> PREDICTIVE_FLOW_ADJUST",
+        "metadata": {
+          "description": "Triggers predictive flow management before rider impact becomes critical.",
+          "output": "[0,1,0,0]"
+        },
+        "events": [
+          {
+            "id": "tfx-047-flow-risk",
+            "elements": [
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 1,
+                "threshold": 0.5
+              },
+              {
+                "value": 1,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": true,
+            "outputEvents": [
+              {
+                "id": "tfx-047-flow-output",
+                "vector": [
+                  0,
+                  1,
+                  0,
+                  0
+                ],
+                "metadata": {
+                  "action": "trigger-agent-workflow",
+                  "actionNarrative": "Trigger predictive flow management for emergency detour safety using rider, vehicle, and route context."
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "tfx-047-ops-task",
+        "name": "Emergency Detour Safety: TASK_NEEDED -> OPS_TASK",
+        "metadata": {
+          "description": "Creates maintenance, cleaning, security, or operations tasking.",
+          "output": "[0,0,1,0]"
+        },
+        "events": [
+          {
+            "id": "tfx-047-task-needed",
+            "elements": [
+              {
+                "value": 1,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 1,
+                "threshold": 0.5
+              },
+              {
+                "value": 1,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": true,
+            "outputEvents": [
+              {
+                "id": "tfx-047-task-output",
+                "vector": [
+                  0,
+                  0,
+                  1,
+                  0
+                ],
+                "metadata": {
+                  "action": "create-work-order",
+                  "actionNarrative": "Create maintenance, cleaning, security, or service task for emergency detour safety."
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "tfx-047-nominal",
+        "name": "Emergency Detour Safety: NOMINAL -> SERVICE_NOMINAL",
+        "metadata": {
+          "description": "Confirms service is in an acceptable 24/7 operating band.",
+          "output": "[0,0,0,1]"
+        },
+        "events": [
+          {
+            "id": "tfx-047-nominal-state",
+            "elements": [
+              {
+                "value": 1,
+                "threshold": 0.5
+              },
+              {
+                "value": 1,
+                "threshold": 0.5
+              },
+              {
+                "value": 1,
+                "threshold": 0.5
+              },
+              {
+                "value": 1,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": true,
+            "outputEvents": [
+              {
+                "id": "tfx-047-nominal-output",
+                "vector": [
+                  0,
+                  0,
+                  0,
+                  1
+                ],
+                "metadata": {
+                  "action": "urgent-intervention",
+                  "actionNarrative": "Keep 24/7 monitoring active for emergency detour safety.",
+                  "ragStatusCode": "RED"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "inputSequences": [
+      {
+        "name": "Critical event sequence",
+        "description": "Five-step degradation path ending in a critical event output.",
+        "events": [
+          [
+            1,
+            1,
+            1,
+            0
+          ],
+          [
+            1,
+            1,
+            0,
+            1
+          ],
+          [
+            1,
+            0,
+            0,
+            1
+          ],
+          [
+            0,
+            0,
+            0,
+            1
+          ],
+          [
+            0,
+            0,
+            0,
+            0
+          ]
+        ],
+        "metadata": {
+          "expectedOutputCount": 1,
+          "expectedOutputVector": "[1,0,0,0]",
+          "scenario": "critical-event",
+          "sequenceLength": 5
+        }
+      },
+      {
+        "name": "Predictive flow adjustment",
+        "description": "Predicts service-flow pressure before a critical event.",
+        "events": [
+          [
+            0,
+            1,
+            1,
+            0
+          ]
+        ],
+        "metadata": {
+          "expectedOutputCount": 1,
+          "expectedOutputVector": "[0,1,0,0]",
+          "scenario": "predictive-flow-adjust"
+        }
+      },
+      {
+        "name": "Operations task",
+        "description": "Creates maintenance, cleaning, security, or operational tasking.",
+        "events": [
+          [
+            1,
+            0,
+            1,
+            1
+          ]
+        ],
+        "metadata": {
+          "expectedOutputCount": 1,
+          "expectedOutputVector": "[0,0,1,0]",
+          "scenario": "ops-task"
+        }
+      },
+      {
+        "name": "Nominal service",
+        "description": "Confirms stable transportation service.",
+        "events": [
+          [
+            1,
+            1,
+            1,
+            1
+          ]
+        ],
+        "metadata": {
+          "expectedOutputCount": 1,
+          "expectedOutputVector": "[0,0,0,1]",
+          "scenario": "service-nominal"
+        }
+      },
+      {
+        "name": "Baseline without output",
+        "description": "Initial critical-event observation arms the sequence without firing.",
+        "events": [
+          [
+            1,
+            1,
+            1,
+            0
+          ]
+        ],
+        "metadata": {
+          "expectedOutputCount": 0,
+          "scenario": "baseline-no-output"
+        }
+      }
+    ]
+  }
+}

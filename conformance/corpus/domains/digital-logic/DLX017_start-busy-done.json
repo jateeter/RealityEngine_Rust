@@ -1,0 +1,391 @@
+{
+  "version": "1.0.0",
+  "machine": {
+    "name": "Logical Infrastructure Start Busy Done",
+    "description": "Reusable digital-logic infrastructure machine for ASIC-style connective tissue. It implements the temporal regular expression `START BUSY+ DONE`. Detects start, one or more busy cycles, then done. Reads a 4D control/status lane at [1589:1592] and emits a 2D match lane at [7426:7427].",
+    "metadata": {
+      "category": "digital-logic",
+      "domain": "Digital Logic - Infrastructure",
+      "author": "Reality Engine",
+      "regularExpression": "START BUSY+ DONE",
+      "asicPattern": "Start Busy Done",
+      "reuseRole": "general-purpose logical connective tissue",
+      "inputSpace": "4D binary at [1589:1592]",
+      "outputSpace": "2D binary at [7426:7427]: [1,0]=MATCH, [0,1]=CLEAR_OR_AVAILABLE",
+      "inputSemantics": [
+        "primary",
+        "secondary",
+        "tertiary",
+        "qualifier"
+      ],
+      "tags": [
+        "asic-pattern",
+        "ces-sequences",
+        "ces-sequences-1",
+        "digital-logic",
+        "digital-logic-generated",
+        "digital-logic-infrastructure",
+        "dlx017",
+        "infrastructure",
+        "input-sequences",
+        "input-sequences-2",
+        "logical-infrastructure",
+        "logical-infrastructure-start-busy-done",
+        "regular-expression",
+        "start-busy-done",
+        "startup-loadable"
+      ],
+      "sequenceCount": 1,
+      "reuseGuideline": "Use this machine by mapping upstream source or machine output bits into its 4D input lane. Map its 2D output lane into downstream machine input when a reusable temporal guard, latch trigger, handshake detector, CDC detector, bus phase detector, or safety qualifier is needed.",
+      "tagging": {
+        "schemaVersion": "1.0.0",
+        "managedBy": "scripts/manage_machine_tags.mjs",
+        "primaryDomain": "digital-logic",
+        "domainTags": [
+          "digital-logic",
+          "infrastructure"
+        ],
+        "family": "digital-logic-generated",
+        "machineCode": "dlx017",
+        "capabilityTags": [],
+        "workflowTags": [
+          "asic-pattern",
+          "digital-logic-generated",
+          "digital-logic-infrastructure",
+          "dlx017",
+          "logical-infrastructure",
+          "logical-infrastructure-start-busy-done",
+          "regular-expression",
+          "start-busy-done"
+        ],
+        "integrationTags": [
+          "digital-logic"
+        ],
+        "validationTags": [
+          "ces-sequences",
+          "ces-sequences-1",
+          "input-sequences",
+          "input-sequences-2",
+          "startup-loadable"
+        ],
+        "allTags": [
+          "asic-pattern",
+          "ces-sequences",
+          "ces-sequences-1",
+          "digital-logic",
+          "digital-logic-generated",
+          "digital-logic-infrastructure",
+          "dlx017",
+          "infrastructure",
+          "input-sequences",
+          "input-sequences-2",
+          "logical-infrastructure",
+          "logical-infrastructure-start-busy-done",
+          "regular-expression",
+          "start-busy-done",
+          "startup-loadable"
+        ]
+      },
+      "governance": {
+        "schemaVersion": "1.0.0",
+        "ownerTeam": "reliability-engineering",
+        "runbook": "https://runbooks.example.org/digital-logic/dlx017_start-busy-done",
+        "escalationPolicy": "slack:#reliability-test",
+        "contact": {
+          "primary": "reliability-engineering-primary@example.org",
+          "secondary": "reliability-engineering-secondary@example.org"
+        },
+        "sla": {
+          "ok": null,
+          "info": null,
+          "warning": null,
+          "error": null
+        },
+        "notes": "Auto-backfilled by scripts/backfill-governance.mjs from primaryDomain=\"digital-logic\".  Review and tune the routing as the team owning DLX017_start-busy-done matures."
+      },
+      "triggerConfig": {
+        "processId": "DLX017_START_BUSY_DONE",
+        "processName": "Logical Infrastructure Start Busy Done",
+        "rules": [
+          {
+            "sequenceId": "dlx-017-match",
+            "outputMatches": [
+              1,
+              0
+            ],
+            "ragStatusCode": "GREEN",
+            "processStatus": "info",
+            "description": "Start Busy Done matched regular expression START BUSY+ DONE."
+          }
+        ]
+      },
+      "machineClass": "signal-monitor",
+      "interconnections": [
+        {
+          "id": "digital-logic.dlx-011-020.logical-infrastructure-start-busy-done",
+          "type": "published-domain-bus-producer",
+          "role": "logical_infrastructure_start_busy_done",
+          "sourceMachine": "Logical Infrastructure Start Busy Done",
+          "sourceOutputRegion": {
+            "offset": 7426,
+            "length": 2
+          },
+          "targetInputElements": [
+            12,
+            13
+          ],
+          "normalizedElements": [
+            "Logical Infrastructure Start Busy Done active output[0] bit",
+            "Logical Infrastructure Start Busy Done active output[1] bit"
+          ],
+          "purpose": "Publish Logical Infrastructure Start Busy Done active response lanes into digital-logic.dlx-011-020.",
+          "busId": "digital-logic.dlx-011-020",
+          "busTag": "published-bus-digital-logic-dlx-011-020",
+          "targetMachine": "Digital Logic DLX-011-020 Interconnect",
+          "targetMachineFile": "DigitalLogicDlx011020Interconnect.json",
+          "targetInputRegion": {
+            "offset": 14340,
+            "length": 20
+          },
+          "busInputRegion": {
+            "offset": 14340,
+            "length": 20
+          },
+          "publishedOutputRegion": {
+            "offset": 14360,
+            "length": 4
+          },
+          "busOutputRegion": {
+            "offset": 14360,
+            "length": 4
+          },
+          "peCompositionRequired": true,
+          "compositionOwner": "perception-engine",
+          "dispatchMode": "asynchronous-no-wait",
+          "privacyBoundary": "PE composes normalized domain status bits only; raw regulated records, operator notes, telemetry payloads, documents, and provider-specific source payloads remain outside the universal Reality Event."
+        }
+      ],
+      "openClawProjection": {
+        "projectionId": "openclaw-logical-infrastructure-start-busy-done-native-input-projection",
+        "owner": "openclaw-input-analyst",
+        "dispatchMode": "accepted-no-wait",
+        "writeBackRegion": {
+          "offset": 1589,
+          "length": 4
+        },
+        "normalization": "machine-native-binary",
+        "semantics": [
+          "primary",
+          "secondary",
+          "tertiary",
+          "qualifier"
+        ],
+        "peContract": "OpenClaw maps domain observations to this machine's native input lane; PE writes the vector source and does not wait inside a PE cycle."
+      }
+    },
+    "arbiterRule": "PASSTHROUGH",
+    "perceptualMapping": {
+      "input": {
+        "offset": 1589,
+        "length": 4
+      },
+      "output": {
+        "offset": 7426,
+        "length": 2
+      },
+      "bitsPerElement": 1
+    },
+    "sequences": [
+      {
+        "id": "dlx-017-match",
+        "name": "Start Busy Done: START BUSY+ DONE -> MATCH",
+        "metadata": {
+          "description": "Detects start, one or more busy cycles, then done.",
+          "regularExpression": "START BUSY+ DONE",
+          "output": "[1,0]"
+        },
+        "events": [
+          {
+            "id": "dlx-017-step-1",
+            "elements": [
+              {
+                "value": 1,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": true,
+            "metadata": {
+              "name": "STEP_1",
+              "description": "Start Busy Done regex step 1: [1, 0, 0, 0]"
+            },
+            "nextEventIds": [
+              "dlx-017-step-2"
+            ]
+          },
+          {
+            "id": "dlx-017-step-2",
+            "elements": [
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 1,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": false,
+            "metadata": {
+              "name": "STEP_2",
+              "description": "Start Busy Done regex step 2: [0, 1, 0, 0]"
+            },
+            "nextEventIds": [
+              "dlx-017-step-3"
+            ]
+          },
+          {
+            "id": "dlx-017-step-3",
+            "elements": [
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 1,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": false,
+            "metadata": {
+              "name": "STEP_3",
+              "description": "Start Busy Done regex step 3: [0, 1, 0, 0]"
+            },
+            "nextEventIds": [
+              "dlx-017-step-4"
+            ]
+          },
+          {
+            "id": "dlx-017-step-4",
+            "elements": [
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 1,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": false,
+            "metadata": {
+              "name": "STEP_4",
+              "description": "Start Busy Done regex step 4: [0, 0, 1, 0]"
+            },
+            "outputEvents": [
+              {
+                "id": "dlx-017-match-output",
+                "vector": [
+                  1,
+                  0
+                ],
+                "metadata": {
+                  "description": "Start Busy Done matched regular expression START BUSY+ DONE.",
+                  "state": "MATCH"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "inputSequences": [
+      {
+        "name": "Start Busy Done match path",
+        "description": "Validates regular expression START BUSY+ DONE.",
+        "events": [
+          [
+            1,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            1,
+            0,
+            0
+          ],
+          [
+            0,
+            1,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            1,
+            0
+          ]
+        ],
+        "metadata": {
+          "expectedOutputCount": 1,
+          "expectedOutputVector": "[1,0]",
+          "scenario": "start-busy-done"
+        }
+      },
+      {
+        "name": "Baseline without output",
+        "description": "Single baseline sample does not complete the expression.",
+        "events": [
+          [
+            1,
+            0,
+            0,
+            0
+          ]
+        ],
+        "metadata": {
+          "expectedOutputCount": 0,
+          "scenario": "baseline-no-output"
+        }
+      }
+    ]
+  }
+}

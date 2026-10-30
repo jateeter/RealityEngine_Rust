@@ -1,0 +1,122 @@
+{
+  "schema": 1,
+  "purpose": "R1 corpus snapshot; regenerate with scripts/refresh-corpus.sh, never by hand",
+  "source": {
+    "repository": "jateeter/RealityEngine_Machines",
+    "commit": "1baddcbaa1a52c6abca884ac4cdbf26dfe85f90a"
+  },
+  "manifest": {
+    "repository": "jateeter/RealityEngine_CI",
+    "path": "config/regression-corpus.txt",
+    "commit": "fdfc4d27fed2a7ded8ec11479c265ab06fa2149d",
+    "sha256": "aa5ec2ffda64dc256b3ed33f63e2f8f52344da75c3fb679356e194c75714393b"
+  },
+  "files": [
+    {
+      "relFile": "domains/digital-logic/DLX011_req-ack-handshake.json",
+      "sha256": "edea0c1105a92169a7696cbf671389bff8deb4e2581632125a4132231348203f"
+    },
+    {
+      "relFile": "domains/digital-logic/DLX017_start-busy-done.json",
+      "sha256": "baa5a6a26aee0014c892120a6c805c1882d8456dadcd4cb390ac7b2da687ba61"
+    },
+    {
+      "relFile": "domains/digital-logic/DLX034_watchdog-kick-window.json",
+      "sha256": "7f23145810cf0b2351d9c70a6096962cd55947e449425cae1aa5b794a562e4a8"
+    },
+    {
+      "relFile": "domains/digital-logic/DLX041_one-hot-grant.json",
+      "sha256": "ead6dd1b3436f90b7fab0b20838706425d8e67c0cb926abf01a0807e58c5232f"
+    },
+    {
+      "relFile": "domains/data-center/DCMemoryAlertFF.json",
+      "sha256": "381ad65d9ea2eb5344a70cfccac9e0bc8ce81562a2e918c4b92c42e677dc0287"
+    },
+    {
+      "relFile": "domains/data-center/DCNetworkThrottleFF.json",
+      "sha256": "da908f18084899b97e2267abbe22f3cd67fbb6f42b13cebb5b7e930d051eb425"
+    },
+    {
+      "relFile": "domains/digital-logic/OpenClawCompletionE2E.json",
+      "sha256": "3f8015dc63a70b74a8f9fcea884d01266822d906cd4e304c87096cecbf537197"
+    },
+    {
+      "relFile": "domains/community-services/DocumentSigningWorkflowMonitor.json",
+      "sha256": "e67e067cdcc20f8977be260831b61a39df60f65bcfaf92727979ae1858116f4a"
+    },
+    {
+      "relFile": "domains/community-services/QualificationVerificationMonitor.json",
+      "sha256": "af56113d78c24852ab5700ed82d7103d2e957b7f446d3a706305c542d00f8900"
+    },
+    {
+      "relFile": "domains/health-personal/HomeTransportationBarrierMonitor.json",
+      "sha256": "cba40e2ae14f4229390079a3f32ce941a1f9766327c83e0663eef863d5d7fff8"
+    },
+    {
+      "relFile": "domains/data-center/DataCenterDcx001010Interconnect.json",
+      "sha256": "8c55b19c354f07947c258b7c4b8d028d6043b5e6d5743250bc7120901ac1d3b1"
+    },
+    {
+      "relFile": "domains/digital-logic/DigitalLogicDlx021030Interconnect.json",
+      "sha256": "4c287d196a618e755629dee4ac9bd6866fbc2f05d072a65e3b7f4aa4e89f2d62"
+    },
+    {
+      "relFile": "domains/digital-logic/RSRingLatchStageA.json",
+      "sha256": "56339508c5b28f3f87567f461e135f8ec71adc7ead4695b43fe1583e4ed90361"
+    },
+    {
+      "relFile": "domains/digital-logic/RSRingLatchStageB.json",
+      "sha256": "e34096fba65cab332b25594a7cf9ee8c5da3ed0032706d8f668540a4bab51f3e"
+    },
+    {
+      "relFile": "domains/digital-logic/ArbitrationWriterA.json",
+      "sha256": "fa7e996bbae42b912b44c6897a5455241f793bf23e94be0a7f55447ba2fd53ab"
+    },
+    {
+      "relFile": "domains/digital-logic/ArbitrationWriterB.json",
+      "sha256": "7676a5dd4d4a6ceffcca196531cc2fb889021d84da9095a760b686b1276b87ef"
+    },
+    {
+      "relFile": "domains/digital-logic/ArbitrationReader.json",
+      "sha256": "3b65219421a7890d84b3d0b2128246b813f6f5b621371a8c1728726c0d305c8d"
+    },
+    {
+      "relFile": "domains/digital-logic/ArbitrationProviderPeer.json",
+      "sha256": "e24e7eda87dee0382e431d636a6b5aed40269f4824482ca74c7b5938df0586a0"
+    },
+    {
+      "relFile": "domains/digital-logic/ArbitrationProviderTarget.json",
+      "sha256": "d233678997ddbeba757ba0b4003d97504ef9a197261c71c7ea525169ad7eeda3"
+    },
+    {
+      "relFile": "domains/health-personal/FallDetection.json",
+      "sha256": "421e9512c0985fe929026c688322e26b489952cc9066a3388ffc19a20ffacbbe"
+    },
+    {
+      "relFile": "domains/built-space/BSX118_community-and-hr-emergency-preparedness-wellness.json",
+      "sha256": "430a544c2a639ceda09743fc7a35fbf58fc4dad6b8c2a3091ec0b35509a3889f"
+    },
+    {
+      "relFile": "domains/community-services/CSX022_behavioral-health-and-crisis-mobile-crisis-co-response.json",
+      "sha256": "89f1882503426185696751a7d28809360af6382751f17c7d2a1e54d11d93d2a0"
+    },
+    {
+      "relFile": "domains/transportation/TFX047_security-and-safety-emergency-detour-safety.json",
+      "sha256": "3bceb20b7ea30b976d310ae25ab072e5442d404bc6662cf0103e4a30f5b0824d"
+    }
+  ],
+  "excluded": [
+    {
+      "entry": "rag_corrective_cycle.json",
+      "reason": "not in RealityEngine_Machines/machines (a localAIStack machine)"
+    },
+    {
+      "entry": "session_rag_context.json",
+      "reason": "not in RealityEngine_Machines/machines (a localAIStack machine)"
+    },
+    {
+      "entry": "session_agent_context.json",
+      "reason": "not in RealityEngine_Machines/machines (a localAIStack machine)"
+    }
+  ]
+}

@@ -1,0 +1,359 @@
+{
+  "version": "1.0.0",
+  "machine": {
+    "name": "DC Network Throttle Flip-Flop",
+    "description": "RS flip-flop that latches the network burst alarm state. SET by DCNetworkBurstDetector [1,0], RESET by normal-flow signal [0,1].",
+    "metadata": {
+      "category": "data-center",
+      "domain": "Data Center — Network / Throttle Control",
+      "author": "Reality Engine",
+      "created": "2026-02-27T00:00:00Z",
+      "eventSpace": "2D binary control signal at [1365:1366]: [1,0]=ALARM, [0,1]=SAFE",
+      "outputSpace": "2D binary at [1373:1374]: [1,0]=THROTTLE_ACTIVE, [0,1]=THROTTLE_OFF",
+      "tags": [
+        "ces-sequences",
+        "ces-sequences-2",
+        "data-center",
+        "data-center-network-throttle-control",
+        "dc-network-throttle-flip-flop",
+        "dcnetwork-throttle-ff",
+        "digital-logic",
+        "flip-flop",
+        "input-sequences",
+        "input-sequences-3",
+        "machine-interconnect",
+        "network",
+        "startup-loadable",
+        "throttle-control"
+      ],
+      "sequenceCount": 2,
+      "role": "Latches network burst alarm; downstream input to DCCriticalSynthesizer",
+      "upstreamMachine": "DCNetworkBurstDetector (writes [1365:1366])",
+      "downstreamMachine": "DCCriticalSynthesizer (reads [1373:1374])",
+      "singleTransitionAssumption": {
+        "required": false,
+        "scope": "not applicable — all event vectors are isInitial (combinatorial)",
+        "compliant": true,
+        "notes": "Both SET and RESET events are isInitial. The FF responds combinatorially on every cycle. The 'state' persists through the perceptual space value retention: once SET writes [1,0] to [1373:1374], that value remains until RESET overwrites it with [0,1]."
+      },
+      "tagging": {
+        "schemaVersion": "1.0.0",
+        "managedBy": "scripts/manage_machine_tags.mjs",
+        "primaryDomain": "data-center",
+        "domainTags": [
+          "data-center",
+          "network",
+          "throttle-control"
+        ],
+        "family": "dc-network-throttle-flip-flop",
+        "machineCode": "dcnetwork-throttle-ff",
+        "capabilityTags": [],
+        "workflowTags": [
+          "data-center-network-throttle-control",
+          "dc-network-throttle-flip-flop",
+          "dcnetwork-throttle-ff",
+          "flip-flop"
+        ],
+        "integrationTags": [
+          "digital-logic",
+          "machine-interconnect"
+        ],
+        "validationTags": [
+          "ces-sequences",
+          "ces-sequences-2",
+          "input-sequences",
+          "input-sequences-3",
+          "startup-loadable"
+        ],
+        "allTags": [
+          "ces-sequences",
+          "ces-sequences-2",
+          "data-center",
+          "data-center-network-throttle-control",
+          "dc-network-throttle-flip-flop",
+          "dcnetwork-throttle-ff",
+          "digital-logic",
+          "flip-flop",
+          "input-sequences",
+          "input-sequences-3",
+          "machine-interconnect",
+          "network",
+          "startup-loadable",
+          "throttle-control"
+        ]
+      },
+      "governance": {
+        "schemaVersion": "1.0.0",
+        "ownerTeam": "datacenter-noc",
+        "runbook": "https://runbooks.example.org/data-center/dcnetworkthrottleff",
+        "escalationPolicy": "pagerduty:datacenter-noc",
+        "contact": {
+          "primary": "datacenter-noc-primary@example.org",
+          "secondary": "datacenter-noc-secondary@example.org"
+        },
+        "sla": {
+          "ok": null,
+          "info": null,
+          "warning": 300,
+          "error": 120
+        },
+        "notes": "Auto-backfilled by scripts/backfill-governance.mjs from primaryDomain=\"data-center\".  Review and tune the routing as the team owning DCNetworkThrottleFF matures."
+      },
+      "triggerConfig": {
+        "processId": "DCNETWORKTHROTTLEFF",
+        "processName": "DC Network Throttle Flip-Flop",
+        "rules": [
+          {
+            "sequenceId": "dc-net-throttle-set-sequence",
+            "outputMatches": [
+              1,
+              0
+            ],
+            "ragStatusCode": "GREEN",
+            "processStatus": "info",
+            "description": "NETWORK THROTTLE ACTIVE: Traffic shaping engaged"
+          },
+          {
+            "sequenceId": "dc-net-throttle-reset-sequence",
+            "outputMatches": [
+              0,
+              1
+            ],
+            "ragStatusCode": "GREEN",
+            "processStatus": "info",
+            "description": "NETWORK THROTTLE INACTIVE: Normal traffic flow"
+          }
+        ]
+      },
+      "machineClass": "signal-monitor",
+      "inputSemantics": [
+        "DC Network Throttle Flip-Flop input 1",
+        "DC Network Throttle Flip-Flop input 2"
+      ],
+      "interconnections": [
+        {
+          "id": "data-center.data-center-core.dc-network-throttle-flip-flop",
+          "type": "published-domain-bus-producer",
+          "role": "dc_network_throttle_flip_flop",
+          "sourceMachine": "DC Network Throttle Flip-Flop",
+          "sourceOutputRegion": {
+            "offset": 1373,
+            "length": 2
+          },
+          "targetInputElements": [
+            12,
+            13
+          ],
+          "normalizedElements": [
+            "DC Network Throttle Flip-Flop active output[0] bit",
+            "DC Network Throttle Flip-Flop active output[1] bit"
+          ],
+          "purpose": "Publish DC Network Throttle Flip-Flop active response lanes into data-center.data-center-core.",
+          "busId": "data-center.data-center-core",
+          "busTag": "published-bus-data-center-data-center-core",
+          "targetMachine": "Data Center Core Interconnect",
+          "targetMachineFile": "DataCenterCoreInterconnect.json",
+          "targetInputRegion": {
+            "offset": 14104,
+            "length": 19
+          },
+          "busInputRegion": {
+            "offset": 14104,
+            "length": 19
+          },
+          "publishedOutputRegion": {
+            "offset": 14123,
+            "length": 4
+          },
+          "busOutputRegion": {
+            "offset": 14123,
+            "length": 4
+          },
+          "peCompositionRequired": true,
+          "compositionOwner": "perception-engine",
+          "dispatchMode": "asynchronous-no-wait",
+          "privacyBoundary": "PE composes normalized domain status bits only; raw regulated records, operator notes, telemetry payloads, documents, and provider-specific source payloads remain outside the universal Reality Event."
+        }
+      ],
+      "openClawProjection": {
+        "projectionId": "openclaw-dc-network-throttle-flip-flop-native-input-projection",
+        "owner": "openclaw-input-analyst",
+        "dispatchMode": "accepted-no-wait",
+        "writeBackRegion": {
+          "offset": 1365,
+          "length": 2
+        },
+        "normalization": "machine-native-binary",
+        "semantics": [
+          "dc_network_throttle_flip_flop_input_1",
+          "dc_network_throttle_flip_flop_input_2"
+        ],
+        "peContract": "OpenClaw maps domain observations to this machine's native input lane; PE writes the vector source and does not wait inside a PE cycle."
+      }
+    },
+    "arbiterRule": "PASSTHROUGH",
+    "perceptualMapping": {
+      "input": {
+        "offset": 1365,
+        "length": 2
+      },
+      "output": {
+        "offset": 1373,
+        "length": 2
+      },
+      "bitsPerElement": 1
+    },
+    "sequences": [
+      {
+        "id": "dc-net-throttle-set-sequence",
+        "name": "NETWORK THROTTLE SET: [1,0] → [1,0]",
+        "metadata": {
+          "description": "Activates network throttle when burst detector fires [1,0] control signal",
+          "path": "[1,0] → [1,0]",
+          "output": "[1,0]",
+          "trigger": "DCNetworkBurstDetector OVERFLOW state fires [1,0] to bytes [1365:1366]"
+        },
+        "events": [
+          {
+            "id": "dc-net-throttle-set-event",
+            "elements": [
+              {
+                "value": 1,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": true,
+            "metadata": {
+              "name": "ALARM",
+              "description": "Control signal [1,0]: network burst alarm active — enable throttling",
+              "state": "SET"
+            },
+            "outputEvents": [
+              {
+                "id": "dc-net-throttle-set-output",
+                "vector": [
+                  1,
+                  0
+                ],
+                "metadata": {
+                  "description": "NETWORK THROTTLE ACTIVE: Traffic shaping engaged",
+                  "state": "SET",
+                  "logicValue": "HIGH"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dc-net-throttle-reset-sequence",
+        "name": "NETWORK THROTTLE RESET: [0,1] → [0,1]",
+        "metadata": {
+          "description": "Deactivates network throttle when normal-flow signal [0,1] is received",
+          "path": "[0,1] → [0,1]",
+          "output": "[0,1]",
+          "trigger": "DCNetworkBurstDetector NORMAL_FLOW state fires [0,1] to bytes [1365:1366]"
+        },
+        "events": [
+          {
+            "id": "dc-net-throttle-reset-event",
+            "elements": [
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 1,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": true,
+            "metadata": {
+              "name": "SAFE",
+              "description": "Control signal [0,1]: network flow normal — disable throttle",
+              "state": "RESET"
+            },
+            "outputEvents": [
+              {
+                "id": "dc-net-throttle-reset-output",
+                "vector": [
+                  0,
+                  1
+                ],
+                "metadata": {
+                  "description": "NETWORK THROTTLE INACTIVE: Normal traffic flow",
+                  "state": "RESET",
+                  "logicValue": "LOW"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "inputSequences": [
+      {
+        "name": "Network Alarm Activation",
+        "pattern": "[0,1] → [1,0]",
+        "description": "Simulate DCNetworkBurstDetector firing: normal → alarm",
+        "events": [
+          [
+            0,
+            1
+          ],
+          [
+            1,
+            0
+          ]
+        ]
+      },
+      {
+        "name": "Network Alarm Recovery",
+        "pattern": "[1,0] → [0,1]",
+        "description": "Simulate recovery: alarm → normal",
+        "events": [
+          [
+            1,
+            0
+          ],
+          [
+            0,
+            1
+          ]
+        ]
+      },
+      {
+        "name": "Network Throttle Cycle",
+        "pattern": "[0,1] → [1,0] → [1,0] → [0,1]",
+        "description": "Full cycle: normal, alarm triggers, persists, recovers",
+        "events": [
+          [
+            0,
+            1
+          ],
+          [
+            1,
+            0
+          ],
+          [
+            1,
+            0
+          ],
+          [
+            0,
+            1
+          ]
+        ],
+        "metadata": {
+          "expectedOutputSequence": "[0,1], [1,0], [1,0], [0,1]",
+          "note": "State retained in perceptual space between writes"
+        }
+      }
+    ],
+    "matchAlgorithm": "gte"
+  }
+}

@@ -1,0 +1,176 @@
+{
+  "version": "1.0.0",
+  "machine": {
+    "name": "Arbitration Writer B",
+    "description": "Contention fixture 9a: writes the same shared lane [16930:16931] at RED severity asserting 0.",
+    "metadata": {
+      "category": "digital-logic",
+      "author": "Reality Engine",
+      "created": "2026-08-13T00:00:00Z",
+      "eventSpace": "2D binary vectors",
+      "outputSpace": "2D binary",
+      "tags": [
+        "arbitration-fixture",
+        "arbitration-writer-b",
+        "ces-sequences",
+        "ces-sequences-1",
+        "digital-logic",
+        "input-sequences",
+        "input-sequences-1",
+        "startup-loadable"
+      ],
+      "sequenceCount": 1,
+      "description": "Contention fixture 9a: writes the same shared lane [16930:16931] at RED severity asserting 0.",
+      "tagging": {
+        "schemaVersion": "1.0.0",
+        "managedBy": "scripts/manage_machine_tags.mjs",
+        "primaryDomain": "digital-logic",
+        "domainTags": [
+          "digital-logic"
+        ],
+        "family": "arbitration-writer-b",
+        "machineCode": "arbitration-writer-b",
+        "capabilityTags": [],
+        "workflowTags": [
+          "arbitration-fixture",
+          "arbitration-writer-b"
+        ],
+        "integrationTags": [
+          "digital-logic"
+        ],
+        "validationTags": [
+          "ces-sequences",
+          "ces-sequences-1",
+          "input-sequences",
+          "input-sequences-1",
+          "startup-loadable"
+        ],
+        "allTags": [
+          "arbitration-fixture",
+          "arbitration-writer-b",
+          "ces-sequences",
+          "ces-sequences-1",
+          "digital-logic",
+          "input-sequences",
+          "input-sequences-1",
+          "startup-loadable"
+        ]
+      },
+      "governance": {
+        "schemaVersion": "1.0.0",
+        "ownerTeam": "reliability-engineering",
+        "runbook": "https://runbooks.example.org/digital-logic/arbitrationwriterb",
+        "escalationPolicy": "slack:#reliability-test",
+        "contact": {
+          "primary": "reliability-engineering-primary@example.org",
+          "secondary": "reliability-engineering-secondary@example.org"
+        },
+        "sla": {
+          "ok": null,
+          "info": null,
+          "warning": null,
+          "error": 60
+        },
+        "notes": "Arbitration conformance fixture (ARBITER_CONTRACT.md 9). SLA set because the trigger rules use paging tiers: an envelope that can page must carry a response contract."
+      },
+      "triggerConfig": {
+        "processId": "ARBWRITERB",
+        "processName": "Arbitration Writer B",
+        "rules": [
+          {
+            "sequenceId": "arb-b-assert",
+            "outputMatches": [
+              0,
+              0
+            ],
+            "ragStatusCode": "RED",
+            "processStatus": "error",
+            "description": "Writer B asserts at RED"
+          }
+        ]
+      },
+      "machineClass": "signal-monitor",
+      "inputSemantics": [
+        "Arbitration Writer B input 1",
+        "Arbitration Writer B input 2"
+      ],
+      "outputSemantics": [
+        "Arbitration Writer B output 1",
+        "Arbitration Writer B output 2"
+      ]
+    },
+    "arbiterRule": "PASSTHROUGH",
+    "perceptualMapping": {
+      "input": {
+        "offset": 16926,
+        "length": 2
+      },
+      "output": {
+        "offset": 16930,
+        "length": 2
+      },
+      "bitsPerElement": 1
+    },
+    "sequences": [
+      {
+        "id": "arb-b-assert",
+        "name": "B asserts at RED",
+        "metadata": {
+          "description": "Writer B asserts 0 on the shared lane at RED"
+        },
+        "events": [
+          {
+            "id": "arb-b-event",
+            "elements": [
+              {
+                "value": 1,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": true,
+            "metadata": {
+              "name": "assert",
+              "description": "Writer B asserts 0 on the shared lane at RED"
+            },
+            "outputEvents": [
+              {
+                "id": "arb-b-event-out",
+                "vector": [
+                  0,
+                  0
+                ],
+                "metadata": {
+                  "description": "Writer B asserts 0 on the shared lane at RED",
+                  "action": "log-activity",
+                  "actionNarrative": "Writer B asserts 0 on the shared lane at RED"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "inputSequences": [
+      {
+        "name": "Assert",
+        "pattern": "00 -> 10",
+        "description": "drive the fixture",
+        "events": [
+          [
+            0,
+            0
+          ],
+          [
+            1,
+            0
+          ]
+        ]
+      }
+    ],
+    "matchAlgorithm": "gte"
+  }
+}

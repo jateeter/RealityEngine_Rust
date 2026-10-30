@@ -1,0 +1,844 @@
+{
+  "version": "1.0.0",
+  "machine": {
+    "name": "Built Space WELL Community And HR Emergency Preparedness Wellness",
+    "description": "Built-Space domain machine for WELL-oriented emergency preparedness wellness in the community and hr workstream. It monitors emergency plans, vulnerable occupants, air/water contingencies, and communications and emits AI-triggered outputs for verification, predictive optimization, operations work, and sustained compliant operation.",
+    "metadata": {
+      "category": "built-space",
+      "domain": "Built Space - WELL Community And HR",
+      "author": "Reality Engine",
+      "standardFocus": "WELL Building Standard operations",
+      "workstream": "Community And HR",
+      "operationalFocus": "Emergency Preparedness Wellness",
+      "focusDescription": "emergency plans, vulnerable occupants, air/water contingencies, and communications",
+      "sourceGuidance": [
+        "Integrative design: stakeholder charrette, values assessment, health mission, WELL concept alignment, and O&M planning",
+        "Implementation verification: letters of assurance from designers, engineers, and contractors",
+        "Performance testing: on-site water, acoustic, thermal, and environmental verification",
+        "Water O&M: daily dispenser cleaning, quarterly aerator/filter work, quarterly metals testing, annual reporting, and three-year records",
+        "Legionella control: dedicated team, flow diagrams, hazard analysis, and critical control points",
+        "Nourishment operations: cold storage ranges, allergen labeling, fryer oil controls, safe food-contact materials, and portion/sugar controls",
+        "Occupant feedback: annual IEQ surveys to at least 30% of occupants and report results within 30 days",
+        "Organizational wellness: health benefits, family support, sleep/travel policies, EAP/stress support, altruism, and fitness opportunities"
+      ],
+      "upstreamMachine": "Built Space WELL Community And HR Community Engagement Calendar",
+      "upstreamOutputRegion": "[784:787]",
+      "downstreamMachines": [
+        "Built Space WELL Community And HR Community Evidence Archive"
+      ],
+      "dispatchableAgent": "well_verification_agent",
+      "aiTrigger": "built-space-well-community-and-hr-emergency-preparedness-wellness",
+      "predictiveOptimizationTrigger": "well-predictive-optimization-community-and-hr-emergency-preparedness-wellness",
+      "agentActions": [
+        "Dispatch well_verification_agent to verify WELL operational conformance for emergency preparedness wellness.",
+        "Run predictive optimization for emergency preparedness wellness using occupant, system, and evidence trends.",
+        "Create an operations, maintenance, policy, or evidence work order for emergency preparedness wellness.",
+        "Mark emergency preparedness wellness in the current compliant operating window."
+      ],
+      "inputSpace": "4D binary at [784:787]",
+      "outputSpace": "4D binary at [788:791]: [1,0,0,0]=VERIFY_WELL_CONFORMANCE, [0,1,0,0]=PREDICTIVE_OPTIMIZE, [0,0,1,0]=OPS_WORK_ORDER, [0,0,0,1]=COMPLIANT_WINDOW",
+      "inputSemantics": [
+        "health-performance signal stable",
+        "evidence or policy current",
+        "maintenance or operational drift pressure",
+        "occupant impact or wellness risk"
+      ],
+      "tags": [
+        "ai-trigger",
+        "bsx118",
+        "built-space",
+        "built-space-well-community-and-hr",
+        "built-space-well-community-and-hr-emergency-preparedness-wellness",
+        "built-space-well-generated",
+        "ces-sequences",
+        "ces-sequences-5",
+        "community-and-hr",
+        "dispatchable-agent",
+        "emergency-preparedness-wellness",
+        "input-sequences",
+        "input-sequences-6",
+        "machine-interconnect",
+        "occupant-health",
+        "predictive-optimization",
+        "startup-loadable",
+        "verification",
+        "well-building-standard",
+        "well-building-standard-operations",
+        "well-community-and-hr",
+        "well-operations",
+        "well-predictive-optimization-community-and-hr-emergency-preparedness-wellness",
+        "well-verification-agent"
+      ],
+      "sequenceCount": 5,
+      "reuseGuideline": "Map BAS, IAQ, water, food-service, cleaning, HR policy, survey, maintenance, and verification evidence signals into the 4D input lane. Route outputs to verification queues, predictive optimizers, work-order systems, occupant communications, and WELL evidence dashboards.",
+      "downstreamPattern": "Output region [788:791] feeds Built Space WELL Community And HR Community Evidence Archive for WELL operations optimization.",
+      "tagging": {
+        "schemaVersion": "1.0.0",
+        "managedBy": "scripts/manage_machine_tags.mjs",
+        "primaryDomain": "built-space",
+        "domainTags": [
+          "built-space",
+          "well-community-and-hr"
+        ],
+        "family": "built-space-well-generated",
+        "machineCode": "bsx118",
+        "capabilityTags": [
+          "predictive-optimization",
+          "well-predictive-optimization-community-and-hr-emergency-preparedness-wellness"
+        ],
+        "workflowTags": [
+          "ai-trigger",
+          "bsx118",
+          "built-space-well-community-and-hr",
+          "built-space-well-community-and-hr-emergency-preparedness-wellness",
+          "built-space-well-generated",
+          "community-and-hr",
+          "dispatchable-agent",
+          "emergency-preparedness-wellness",
+          "occupant-health",
+          "verification",
+          "well-building-standard",
+          "well-building-standard-operations",
+          "well-operations",
+          "well-verification-agent"
+        ],
+        "integrationTags": [
+          "ai-trigger",
+          "dispatchable-agent",
+          "machine-interconnect"
+        ],
+        "validationTags": [
+          "ces-sequences",
+          "ces-sequences-5",
+          "input-sequences",
+          "input-sequences-6",
+          "startup-loadable"
+        ],
+        "allTags": [
+          "ai-trigger",
+          "bsx118",
+          "built-space",
+          "built-space-well-community-and-hr",
+          "built-space-well-community-and-hr-emergency-preparedness-wellness",
+          "built-space-well-generated",
+          "ces-sequences",
+          "ces-sequences-5",
+          "community-and-hr",
+          "dispatchable-agent",
+          "emergency-preparedness-wellness",
+          "input-sequences",
+          "input-sequences-6",
+          "machine-interconnect",
+          "occupant-health",
+          "predictive-optimization",
+          "startup-loadable",
+          "verification",
+          "well-building-standard",
+          "well-building-standard-operations",
+          "well-community-and-hr",
+          "well-operations",
+          "well-predictive-optimization-community-and-hr-emergency-preparedness-wellness",
+          "well-verification-agent"
+        ]
+      },
+      "governance": {
+        "schemaVersion": "1.0.0",
+        "ownerTeam": "facilities-operations",
+        "runbook": "https://runbooks.example.org/built-space/bsx118_community-and-hr-emergency-preparedness-wellness",
+        "escalationPolicy": "pagerduty:facilities",
+        "contact": {
+          "primary": "facilities-operations-primary@example.org",
+          "secondary": "facilities-operations-secondary@example.org"
+        },
+        "sla": {
+          "ok": null,
+          "info": null,
+          "warning": 3600,
+          "error": 600
+        },
+        "notes": "Auto-backfilled by scripts/backfill-governance.mjs from primaryDomain=\"built-space\".  Review and tune the routing as the team owning BSX118_community-and-hr-emergency-preparedness-wellness matures."
+      },
+      "triggerConfig": {
+        "processId": "BSX118_COMMUNITY_AND_HR_EMERGENCY_PREPAREDNESS_WELLNESS",
+        "processName": "Built Space WELL Community And HR Emergency Preparedness Wellness",
+        "rules": [
+          {
+            "sequenceId": "bsx-118-verify",
+            "outputMatches": [
+              1,
+              0,
+              0,
+              0
+            ],
+            "ragStatusCode": "RED",
+            "processStatus": "error",
+            "description": "Emergency Preparedness Wellness: WATCH -> EVIDENCE_GAP -> VERIFY_WELL_CONFORMANCE"
+          },
+          {
+            "sequenceId": "bsx-118-optimize",
+            "outputMatches": [
+              0,
+              1,
+              0,
+              0
+            ],
+            "ragStatusCode": "RED",
+            "processStatus": "error",
+            "description": "Emergency Preparedness Wellness: FORECAST_DRIFT -> PREDICTIVE_OPTIMIZE"
+          },
+          {
+            "sequenceId": "bsx-118-work-order",
+            "outputMatches": [
+              0,
+              0,
+              1,
+              0
+            ],
+            "ragStatusCode": "RED",
+            "processStatus": "error",
+            "description": "Emergency Preparedness Wellness: ACTION_NEEDED -> OPS_WORK_ORDER"
+          },
+          {
+            "sequenceId": "bsx-118-compliant",
+            "outputMatches": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "ragStatusCode": "RED",
+            "processStatus": "error",
+            "description": "Emergency Preparedness Wellness: CURRENT -> COMPLIANT_WINDOW"
+          },
+          {
+            "sequenceId": "bsx-118-predictive-24h",
+            "outputMatches": [
+              0,
+              1,
+              0,
+              0
+            ],
+            "ragStatusCode": "RED",
+            "processStatus": "error",
+            "description": "Emergency Preparedness Wellness: 0-6H -> 6-12H -> 12-18H -> 18-24H -> PREDICTIVE_OPTIMIZE"
+          }
+        ],
+        "endpoint": "http://localhost:4000/graphql",
+        "template": "triggers/graphql_trigger_template.py",
+        "dispatch": {
+          "target": "localAIStack",
+          "transport": "graphql",
+          "mutation": "updateProcessState",
+          "envelopeSchema": "schemas/ai-trigger-envelope.schema.json",
+          "schemaRef": "localAIStack/services/api/routers/graphql_endpoint.py"
+        }
+      },
+      "machineClass": "agent-dispatcher",
+      "agentBinding": {
+        "agent": "well_verification_agent",
+        "mode": "advise",
+        "trigger": "built-space-well-community-and-hr-emergency-preparedness-wellness",
+        "allowedActions": [
+          "Dispatch well_verification_agent to verify WELL operational conformance for emergency preparedness wellness.",
+          "Run predictive optimization for emergency preparedness wellness using occupant, system, and evidence trends.",
+          "Create an operations, maintenance, policy, or evidence work order for emergency preparedness wellness.",
+          "Mark emergency preparedness wellness in the current compliant operating window."
+        ],
+        "writeBack": {
+          "type": "pe-sensor",
+          "provider": "localai",
+          "sensorId": "localai.bsx118.well.verification.agent.completion",
+          "name": "localAIStack bsx118 well.verification.agent completion",
+          "region": {
+            "offset": 784,
+            "length": 4
+          },
+          "semantics": [
+            "health_performance_signal_stable",
+            "evidence_or_policy_current",
+            "maintenance_or_operational_drift_pressure",
+            "occupant_impact_or_wellness_risk"
+          ],
+          "ttlMs": 300000,
+          "normalization": "already-normalized-0-1",
+          "ingest": {
+            "endpoint": "/api/integrations/completions",
+            "method": "POST",
+            "triggerPush": false,
+            "compactPush": true
+          },
+          "sourceMapping": {
+            "id": "localai-bsx118-completion",
+            "sensorId": "localai.bsx118.well.verification.agent.completion",
+            "name": "localAIStack bsx118 well.verification.agent completion",
+            "region": {
+              "offset": 784,
+              "length": 4
+            },
+            "ttlMs": 300000
+          }
+        },
+        "riskControls": {
+          "requiresHumanApproval": false,
+          "requiresRunbook": false,
+          "maxAutonomy": "advise",
+          "blockedWhenRag": []
+        },
+        "autonomyPolicy": {
+          "mode": "advise",
+          "stage": 1,
+          "writeBackType": "pe-sensor",
+          "canWriteBack": true,
+          "canStageActions": false,
+          "canExecuteActions": false,
+          "requiresHumanApproval": false,
+          "requiresRunbook": false,
+          "blockedWhenRag": []
+        }
+      },
+      "interconnections": [
+        {
+          "id": "built-space.bsx-111-120.well-community-and-hr-emergency-preparedness-wellness",
+          "type": "published-domain-bus-producer",
+          "role": "well_community_and_hr_emergency_preparedness_wellness",
+          "sourceMachine": "Built Space WELL Community And HR Emergency Preparedness Wellness",
+          "sourceOutputRegion": {
+            "offset": 788,
+            "length": 4
+          },
+          "targetInputElements": [
+            21,
+            22,
+            23
+          ],
+          "normalizedElements": [
+            "Built Space WELL Community And HR Emergency Preparedness Wellness active output[0] bit",
+            "Built Space WELL Community And HR Emergency Preparedness Wellness active output[1] bit",
+            "Built Space WELL Community And HR Emergency Preparedness Wellness active output[2] bit"
+          ],
+          "purpose": "Publish Built Space WELL Community And HR Emergency Preparedness Wellness active response lanes into built-space.bsx-111-120.",
+          "busId": "built-space.bsx-111-120",
+          "busTag": "published-bus-built-space-bsx-111-120",
+          "targetMachine": "Built Space BSX-111-120 Interconnect",
+          "targetMachineFile": "BuiltSpaceBsx111120Interconnect.json",
+          "targetInputRegion": {
+            "offset": 13622,
+            "length": 30
+          },
+          "busInputRegion": {
+            "offset": 13622,
+            "length": 30
+          },
+          "publishedOutputRegion": {
+            "offset": 13652,
+            "length": 4
+          },
+          "busOutputRegion": {
+            "offset": 13652,
+            "length": 4
+          },
+          "peCompositionRequired": true,
+          "compositionOwner": "perception-engine",
+          "dispatchMode": "asynchronous-no-wait",
+          "privacyBoundary": "PE composes normalized domain status bits only; raw regulated records, operator notes, telemetry payloads, documents, and provider-specific source payloads remain outside the universal Reality Event."
+        }
+      ],
+      "openClawProjection": {
+        "projectionId": "openclaw-built-space-well-community-and-hr-emergency-preparedness-wellness-native-input-projection",
+        "owner": "openclaw-input-analyst",
+        "dispatchMode": "accepted-no-wait",
+        "writeBackRegion": {
+          "offset": 784,
+          "length": 4
+        },
+        "normalization": "machine-native-binary",
+        "semantics": [
+          "health_performance_signal_stable",
+          "evidence_or_policy_current",
+          "maintenance_or_operational_drift_pressure",
+          "occupant_impact_or_wellness_risk"
+        ],
+        "peContract": "OpenClaw maps domain observations to this machine's native input lane; PE writes the vector source and does not wait inside a PE cycle."
+      }
+    },
+    "arbiterRule": "PASSTHROUGH",
+    "perceptualMapping": {
+      "input": {
+        "offset": 784,
+        "length": 4
+      },
+      "output": {
+        "offset": 788,
+        "length": 4
+      },
+      "bitsPerElement": 1
+    },
+    "sequences": [
+      {
+        "id": "bsx-118-verify",
+        "name": "Emergency Preparedness Wellness: WATCH -> EVIDENCE_GAP -> VERIFY_WELL_CONFORMANCE",
+        "metadata": {
+          "description": "Escalates when operational or evidence drift requires WELL conformance verification.",
+          "output": "[1,0,0,0]"
+        },
+        "events": [
+          {
+            "id": "bsx-118-watch",
+            "elements": [
+              {
+                "value": 1,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 1,
+                "threshold": 0.5
+              },
+              {
+                "value": 1,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": true,
+            "nextEventIds": [
+              "bsx-118-evidence-gap"
+            ]
+          },
+          {
+            "id": "bsx-118-evidence-gap",
+            "elements": [
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 1,
+                "threshold": 0.5
+              },
+              {
+                "value": 1,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": false,
+            "outputEvents": [
+              {
+                "id": "bsx-118-verify-output",
+                "vector": [
+                  1,
+                  0,
+                  0,
+                  0
+                ],
+                "metadata": {
+                  "action": "dispatch-agent",
+                  "actionNarrative": "Dispatch well_verification_agent to verify WELL operational conformance for emergency preparedness wellness."
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "bsx-118-optimize",
+        "name": "Emergency Preparedness Wellness: FORECAST_DRIFT -> PREDICTIVE_OPTIMIZE",
+        "metadata": {
+          "description": "Triggers predictive building optimization before occupant wellness degrades.",
+          "output": "[0,1,0,0]"
+        },
+        "events": [
+          {
+            "id": "bsx-118-forecast-drift",
+            "elements": [
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 1,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 1,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": true,
+            "outputEvents": [
+              {
+                "id": "bsx-118-optimize-output",
+                "vector": [
+                  0,
+                  1,
+                  0,
+                  0
+                ],
+                "metadata": {
+                  "action": "trigger-agent-workflow",
+                  "actionNarrative": "Run predictive optimization for emergency preparedness wellness using occupant, system, and evidence trends."
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "bsx-118-work-order",
+        "name": "Emergency Preparedness Wellness: ACTION_NEEDED -> OPS_WORK_ORDER",
+        "metadata": {
+          "description": "Creates an operations, maintenance, policy, or evidence task.",
+          "output": "[0,0,1,0]"
+        },
+        "events": [
+          {
+            "id": "bsx-118-action-needed",
+            "elements": [
+              {
+                "value": 1,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 1,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": true,
+            "outputEvents": [
+              {
+                "id": "bsx-118-work-order-output",
+                "vector": [
+                  0,
+                  0,
+                  1,
+                  0
+                ],
+                "metadata": {
+                  "action": "create-work-order",
+                  "actionNarrative": "Create an operations, maintenance, policy, or evidence work order for emergency preparedness wellness."
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "bsx-118-compliant",
+        "name": "Emergency Preparedness Wellness: CURRENT -> COMPLIANT_WINDOW",
+        "metadata": {
+          "description": "Confirms current WELL-aligned operational posture.",
+          "output": "[0,0,0,1]"
+        },
+        "events": [
+          {
+            "id": "bsx-118-current",
+            "elements": [
+              {
+                "value": 1,
+                "threshold": 0.5
+              },
+              {
+                "value": 1,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": true,
+            "outputEvents": [
+              {
+                "id": "bsx-118-compliant-output",
+                "vector": [
+                  0,
+                  0,
+                  0,
+                  1
+                ],
+                "metadata": {
+                  "action": "urgent-intervention",
+                  "actionNarrative": "Mark emergency preparedness wellness in the current compliant operating window.",
+                  "ragStatusCode": "RED"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "bsx-118-predictive-24h",
+        "name": "Emergency Preparedness Wellness: 0-6H -> 6-12H -> 12-18H -> 18-24H -> PREDICTIVE_OPTIMIZE",
+        "metadata": {
+          "description": "Projects WELL operations forward over 24 hours and optimizes before health-performance drift.",
+          "projectionHorizon": "24h",
+          "output": "[0,1,0,0]"
+        },
+        "events": [
+          {
+            "id": "bsx-118-0-6h",
+            "elements": [
+              {
+                "value": 1,
+                "threshold": 0.5
+              },
+              {
+                "value": 1,
+                "threshold": 0.5
+              },
+              {
+                "value": 1,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": true,
+            "nextEventIds": [
+              "bsx-118-6-12h"
+            ]
+          },
+          {
+            "id": "bsx-118-6-12h",
+            "elements": [
+              {
+                "value": 1,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 1,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": false,
+            "nextEventIds": [
+              "bsx-118-12-18h"
+            ]
+          },
+          {
+            "id": "bsx-118-12-18h",
+            "elements": [
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 1,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": false,
+            "nextEventIds": [
+              "bsx-118-18-24h"
+            ]
+          },
+          {
+            "id": "bsx-118-18-24h",
+            "elements": [
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 1,
+                "threshold": 0.5
+              },
+              {
+                "value": 1,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": false,
+            "outputEvents": [
+              {
+                "id": "bsx-118-projection-output",
+                "vector": [
+                  0,
+                  1,
+                  0,
+                  0
+                ],
+                "metadata": {
+                  "action": "trigger-agent-workflow",
+                  "projectionHorizon": "24h",
+                  "actionNarrative": "Run predictive optimization for emergency preparedness wellness using occupant, system, and evidence trends."
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "inputSequences": [
+      {
+        "name": "Verify WELL conformance",
+        "description": "Evidence or operational drift requires verification.",
+        "events": [
+          [
+            1,
+            0,
+            1,
+            1
+          ],
+          [
+            0,
+            0,
+            1,
+            1
+          ]
+        ],
+        "metadata": {
+          "expectedOutputCount": 1,
+          "expectedOutputVector": "[1,0,0,0]",
+          "scenario": "verify-well-conformance"
+        }
+      },
+      {
+        "name": "Predictive optimization",
+        "description": "Forecasted drift should be optimized before occupant impact.",
+        "events": [
+          [
+            0,
+            1,
+            0,
+            1
+          ]
+        ],
+        "metadata": {
+          "expectedOutputCount": 1,
+          "expectedOutputVector": "[0,1,0,0]",
+          "scenario": "predictive-optimize"
+        }
+      },
+      {
+        "name": "Operations work order",
+        "description": "Operations, maintenance, policy, or evidence action is needed.",
+        "events": [
+          [
+            1,
+            0,
+            0,
+            1
+          ]
+        ],
+        "metadata": {
+          "expectedOutputCount": 1,
+          "expectedOutputVector": "[0,0,1,0]",
+          "scenario": "ops-work-order"
+        }
+      },
+      {
+        "name": "Compliant operating window",
+        "description": "Current operating posture is compliant.",
+        "events": [
+          [
+            1,
+            1,
+            0,
+            0
+          ]
+        ],
+        "metadata": {
+          "expectedOutputCount": 1,
+          "expectedOutputVector": "[0,0,0,1]",
+          "scenario": "compliant-window"
+        }
+      },
+      {
+        "name": "24-hour predictive optimization",
+        "description": "Forecasts 24-hour WELL performance drift and emits optimization.",
+        "events": [
+          [
+            1,
+            1,
+            1,
+            0
+          ],
+          [
+            1,
+            0,
+            1,
+            0
+          ],
+          [
+            0,
+            0,
+            1,
+            0
+          ],
+          [
+            0,
+            1,
+            1,
+            0
+          ]
+        ],
+        "metadata": {
+          "expectedOutputCount": 1,
+          "expectedOutputVector": "[0,1,0,0]",
+          "scenario": "24h-predictive-optimize"
+        }
+      },
+      {
+        "name": "Baseline without output",
+        "description": "Initial watch state arms verification without firing.",
+        "events": [
+          [
+            1,
+            0,
+            1,
+            1
+          ]
+        ],
+        "metadata": {
+          "expectedOutputCount": 0,
+          "scenario": "baseline-no-output"
+        }
+      }
+    ]
+  }
+}

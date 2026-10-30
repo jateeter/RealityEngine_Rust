@@ -1,0 +1,358 @@
+{
+  "version": "1.0.0",
+  "machine": {
+    "name": "DC Memory Alert Flip-Flop",
+    "description": "RS flip-flop that latches the memory pressure alarm state. SET by DCMemoryPressure [1,0], RESET by healthy-memory signal [0,1].",
+    "metadata": {
+      "category": "data-center",
+      "domain": "Data Center — Memory / Alert Latch",
+      "author": "Reality Engine",
+      "created": "2026-02-27T00:00:00Z",
+      "eventSpace": "2D binary control signal at [1367:1368]: [1,0]=ALARM, [0,1]=SAFE",
+      "outputSpace": "2D binary at [1377:1378]: [1,0]=MEMORY_ALERT_ACTIVE, [0,1]=MEMORY_ALERT_OFF",
+      "tags": [
+        "alert-latch",
+        "ces-sequences",
+        "ces-sequences-2",
+        "data-center",
+        "data-center-memory-alert-latch",
+        "dc-memory-alert-flip-flop",
+        "dcmemory-alert-ff",
+        "digital-logic",
+        "flip-flop",
+        "input-sequences",
+        "input-sequences-3",
+        "machine-interconnect",
+        "memory",
+        "startup-loadable"
+      ],
+      "sequenceCount": 2,
+      "role": "Latches memory pressure alarm; available for future synthesis machines",
+      "upstreamMachine": "DCMemoryPressure (writes [1367:1368])",
+      "downstreamMachine": "Future DCCriticalSynthesizer extensions (reads [1377:1378])",
+      "singleTransitionAssumption": {
+        "required": false,
+        "scope": "not applicable — all event vectors are isInitial (combinatorial)",
+        "compliant": true,
+        "notes": "Both SET and RESET events are isInitial. Combinatorial RS flip-flop; state persists via perceptual space value retention."
+      },
+      "tagging": {
+        "schemaVersion": "1.0.0",
+        "managedBy": "scripts/manage_machine_tags.mjs",
+        "primaryDomain": "data-center",
+        "domainTags": [
+          "alert-latch",
+          "data-center",
+          "memory"
+        ],
+        "family": "dc-memory-alert-flip-flop",
+        "machineCode": "dcmemory-alert-ff",
+        "capabilityTags": [],
+        "workflowTags": [
+          "data-center-memory-alert-latch",
+          "dc-memory-alert-flip-flop",
+          "dcmemory-alert-ff",
+          "flip-flop"
+        ],
+        "integrationTags": [
+          "digital-logic",
+          "machine-interconnect"
+        ],
+        "validationTags": [
+          "ces-sequences",
+          "ces-sequences-2",
+          "input-sequences",
+          "input-sequences-3",
+          "startup-loadable"
+        ],
+        "allTags": [
+          "alert-latch",
+          "ces-sequences",
+          "ces-sequences-2",
+          "data-center",
+          "data-center-memory-alert-latch",
+          "dc-memory-alert-flip-flop",
+          "dcmemory-alert-ff",
+          "digital-logic",
+          "flip-flop",
+          "input-sequences",
+          "input-sequences-3",
+          "machine-interconnect",
+          "memory",
+          "startup-loadable"
+        ]
+      },
+      "governance": {
+        "schemaVersion": "1.0.0",
+        "ownerTeam": "datacenter-noc",
+        "runbook": "https://runbooks.example.org/data-center/dcmemoryalertff",
+        "escalationPolicy": "pagerduty:datacenter-noc",
+        "contact": {
+          "primary": "datacenter-noc-primary@example.org",
+          "secondary": "datacenter-noc-secondary@example.org"
+        },
+        "sla": {
+          "ok": null,
+          "info": null,
+          "warning": 300,
+          "error": 120
+        },
+        "notes": "Auto-backfilled by scripts/backfill-governance.mjs from primaryDomain=\"data-center\".  Review and tune the routing as the team owning DCMemoryAlertFF matures."
+      },
+      "triggerConfig": {
+        "processId": "DCMEMORYALERTFF",
+        "processName": "DC Memory Alert Flip-Flop",
+        "rules": [
+          {
+            "sequenceId": "dc-mem-alert-set-sequence",
+            "outputMatches": [
+              1,
+              0
+            ],
+            "ragStatusCode": "AMBER",
+            "processStatus": "warning",
+            "description": "MEMORY ALERT ACTIVE: Severe memory pressure detected"
+          },
+          {
+            "sequenceId": "dc-mem-alert-reset-sequence",
+            "outputMatches": [
+              0,
+              1
+            ],
+            "ragStatusCode": "AMBER",
+            "processStatus": "warning",
+            "description": "MEMORY ALERT INACTIVE: Memory utilization normal"
+          }
+        ]
+      },
+      "machineClass": "signal-monitor",
+      "inputSemantics": [
+        "DC Memory Alert Flip-Flop input 1",
+        "DC Memory Alert Flip-Flop input 2"
+      ],
+      "interconnections": [
+        {
+          "id": "data-center.data-center-core.dc-memory-alert-flip-flop",
+          "type": "published-domain-bus-producer",
+          "role": "dc_memory_alert_flip_flop",
+          "sourceMachine": "DC Memory Alert Flip-Flop",
+          "sourceOutputRegion": {
+            "offset": 1377,
+            "length": 2
+          },
+          "targetInputElements": [
+            6,
+            7
+          ],
+          "normalizedElements": [
+            "DC Memory Alert Flip-Flop active output[0] bit",
+            "DC Memory Alert Flip-Flop active output[1] bit"
+          ],
+          "purpose": "Publish DC Memory Alert Flip-Flop active response lanes into data-center.data-center-core.",
+          "busId": "data-center.data-center-core",
+          "busTag": "published-bus-data-center-data-center-core",
+          "targetMachine": "Data Center Core Interconnect",
+          "targetMachineFile": "DataCenterCoreInterconnect.json",
+          "targetInputRegion": {
+            "offset": 14104,
+            "length": 19
+          },
+          "busInputRegion": {
+            "offset": 14104,
+            "length": 19
+          },
+          "publishedOutputRegion": {
+            "offset": 14123,
+            "length": 4
+          },
+          "busOutputRegion": {
+            "offset": 14123,
+            "length": 4
+          },
+          "peCompositionRequired": true,
+          "compositionOwner": "perception-engine",
+          "dispatchMode": "asynchronous-no-wait",
+          "privacyBoundary": "PE composes normalized domain status bits only; raw regulated records, operator notes, telemetry payloads, documents, and provider-specific source payloads remain outside the universal Reality Event."
+        }
+      ],
+      "openClawProjection": {
+        "projectionId": "openclaw-dc-memory-alert-flip-flop-native-input-projection",
+        "owner": "openclaw-input-analyst",
+        "dispatchMode": "accepted-no-wait",
+        "writeBackRegion": {
+          "offset": 1367,
+          "length": 2
+        },
+        "normalization": "machine-native-binary",
+        "semantics": [
+          "dc_memory_alert_flip_flop_input_1",
+          "dc_memory_alert_flip_flop_input_2"
+        ],
+        "peContract": "OpenClaw maps domain observations to this machine's native input lane; PE writes the vector source and does not wait inside a PE cycle."
+      }
+    },
+    "arbiterRule": "PASSTHROUGH",
+    "perceptualMapping": {
+      "input": {
+        "offset": 1367,
+        "length": 2
+      },
+      "output": {
+        "offset": 1377,
+        "length": 2
+      },
+      "bitsPerElement": 1
+    },
+    "sequences": [
+      {
+        "id": "dc-mem-alert-set-sequence",
+        "name": "MEMORY ALERT SET: [1,0] → [1,0]",
+        "metadata": {
+          "description": "Activates memory alert when pressure detector fires [1,0] control signal",
+          "path": "[1,0] → [1,0]",
+          "output": "[1,0]",
+          "trigger": "DCMemoryPressure FAILURE state fires [1,0] to bytes [1367:1368]"
+        },
+        "events": [
+          {
+            "id": "dc-mem-alert-set-event",
+            "elements": [
+              {
+                "value": 1,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": true,
+            "metadata": {
+              "name": "ALARM",
+              "description": "Control signal [1,0]: memory pressure alarm active",
+              "state": "SET"
+            },
+            "outputEvents": [
+              {
+                "id": "dc-mem-alert-set-output",
+                "vector": [
+                  1,
+                  0
+                ],
+                "metadata": {
+                  "description": "MEMORY ALERT ACTIVE: Severe memory pressure detected",
+                  "state": "SET",
+                  "logicValue": "HIGH"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dc-mem-alert-reset-sequence",
+        "name": "MEMORY ALERT RESET: [0,1] → [0,1]",
+        "metadata": {
+          "description": "Deactivates memory alert when healthy-memory signal [0,1] is received",
+          "path": "[0,1] → [0,1]",
+          "output": "[0,1]",
+          "trigger": "DCMemoryPressure HEALTHY state fires [0,1] to bytes [1367:1368]"
+        },
+        "events": [
+          {
+            "id": "dc-mem-alert-reset-event",
+            "elements": [
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 1,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": true,
+            "metadata": {
+              "name": "SAFE",
+              "description": "Control signal [0,1]: memory healthy — deactivate alert",
+              "state": "RESET"
+            },
+            "outputEvents": [
+              {
+                "id": "dc-mem-alert-reset-output",
+                "vector": [
+                  0,
+                  1
+                ],
+                "metadata": {
+                  "description": "MEMORY ALERT INACTIVE: Memory utilization normal",
+                  "state": "RESET",
+                  "logicValue": "LOW"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "inputSequences": [
+      {
+        "name": "Memory Alarm Activation",
+        "pattern": "[0,1] → [1,0]",
+        "description": "Simulate DCMemoryPressure firing: healthy → alarm",
+        "events": [
+          [
+            0,
+            1
+          ],
+          [
+            1,
+            0
+          ]
+        ]
+      },
+      {
+        "name": "Memory Alarm Recovery",
+        "pattern": "[1,0] → [0,1]",
+        "description": "Simulate recovery: alarm → healthy",
+        "events": [
+          [
+            1,
+            0
+          ],
+          [
+            0,
+            1
+          ]
+        ]
+      },
+      {
+        "name": "Memory Alert Latch Cycle",
+        "pattern": "[0,1] → [1,0] → [1,0] → [0,1]",
+        "description": "Full cycle: healthy, alarm, persists, recovers",
+        "events": [
+          [
+            0,
+            1
+          ],
+          [
+            1,
+            0
+          ],
+          [
+            1,
+            0
+          ],
+          [
+            0,
+            1
+          ]
+        ],
+        "metadata": {
+          "expectedOutputSequence": "[0,1], [1,0], [1,0], [0,1]"
+        }
+      }
+    ],
+    "matchAlgorithm": "gte"
+  }
+}

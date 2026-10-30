@@ -1,0 +1,227 @@
+{
+  "version": "1.0.0",
+  "machine": {
+    "name": "Arbitration Reader",
+    "description": "Contention fixture 9a: reads the shared lane [16930:16931] and reports what arbitration resolved.",
+    "metadata": {
+      "category": "digital-logic",
+      "author": "Reality Engine",
+      "created": "2026-08-13T00:00:00Z",
+      "eventSpace": "2D binary vectors",
+      "outputSpace": "2D binary",
+      "tags": [
+        "arbitration-fixture",
+        "arbitration-reader",
+        "ces-sequences",
+        "ces-sequences-2",
+        "digital-logic",
+        "input-sequences",
+        "input-sequences-1",
+        "startup-loadable"
+      ],
+      "sequenceCount": 2,
+      "description": "Contention fixture 9a: reads the shared lane [16930:16931] and reports what arbitration resolved.",
+      "tagging": {
+        "schemaVersion": "1.0.0",
+        "managedBy": "scripts/manage_machine_tags.mjs",
+        "primaryDomain": "digital-logic",
+        "domainTags": [
+          "digital-logic"
+        ],
+        "family": "arbitration-reader",
+        "machineCode": "arbitration-reader",
+        "capabilityTags": [],
+        "workflowTags": [
+          "arbitration-fixture",
+          "arbitration-reader"
+        ],
+        "integrationTags": [
+          "digital-logic"
+        ],
+        "validationTags": [
+          "ces-sequences",
+          "ces-sequences-2",
+          "input-sequences",
+          "input-sequences-1",
+          "startup-loadable"
+        ],
+        "allTags": [
+          "arbitration-fixture",
+          "arbitration-reader",
+          "ces-sequences",
+          "ces-sequences-2",
+          "digital-logic",
+          "input-sequences",
+          "input-sequences-1",
+          "startup-loadable"
+        ]
+      },
+      "governance": {
+        "schemaVersion": "1.0.0",
+        "ownerTeam": "reliability-engineering",
+        "runbook": "https://runbooks.example.org/digital-logic/arbitrationreader",
+        "escalationPolicy": "slack:#reliability-test",
+        "contact": {
+          "primary": "reliability-engineering-primary@example.org",
+          "secondary": "reliability-engineering-secondary@example.org"
+        },
+        "sla": {
+          "ok": null,
+          "info": null,
+          "warning": null,
+          "error": null
+        },
+        "notes": "Arbitration conformance fixture (ARBITER_CONTRACT.md 9)."
+      },
+      "triggerConfig": {
+        "processId": "ARBREADER",
+        "processName": "Arbitration Reader",
+        "rules": [
+          {
+            "sequenceId": "arb-c-observe",
+            "outputMatches": [
+              1,
+              0
+            ],
+            "ragStatusCode": "GREEN",
+            "processStatus": "info",
+            "description": "Shared lane resolved to 1"
+          },
+          {
+            "sequenceId": "arb-c-observe-zero",
+            "outputMatches": [
+              0,
+              1
+            ],
+            "ragStatusCode": "GREEN",
+            "processStatus": "info",
+            "description": "Shared lane resolved to 0"
+          }
+        ]
+      },
+      "machineClass": "signal-monitor",
+      "inputSemantics": [
+        "Arbitration Reader input 1",
+        "Arbitration Reader input 2"
+      ],
+      "outputSemantics": [
+        "Arbitration Reader output 1",
+        "Arbitration Reader output 2"
+      ]
+    },
+    "arbiterRule": "PASSTHROUGH",
+    "perceptualMapping": {
+      "input": {
+        "offset": 16930,
+        "length": 2
+      },
+      "output": {
+        "offset": 16932,
+        "length": 2
+      },
+      "bitsPerElement": 1
+    },
+    "sequences": [
+      {
+        "id": "arb-c-observe",
+        "name": "Reader observes resolved 1",
+        "metadata": {
+          "description": "Reader saw the shared lane resolve to 1 (MAX/OR outcome)"
+        },
+        "events": [
+          {
+            "id": "arb-c-event",
+            "elements": [
+              {
+                "value": 1,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": true,
+            "metadata": {
+              "name": "assert",
+              "description": "Reader saw the shared lane resolve to 1 (MAX/OR outcome)"
+            },
+            "outputEvents": [
+              {
+                "id": "arb-c-event-out",
+                "vector": [
+                  1,
+                  0
+                ],
+                "metadata": {
+                  "description": "Reader saw the shared lane resolve to 1 (MAX/OR outcome)",
+                  "action": "log-activity",
+                  "actionNarrative": "Reader saw the shared lane resolve to 1 (MAX/OR outcome)"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "arb-c-observe-zero",
+        "name": "Reader observes resolved 0",
+        "metadata": {
+          "description": "Reader saw the shared lane resolve to 0 (SEVERITY outcome)"
+        },
+        "events": [
+          {
+            "id": "arb-c-event-zero",
+            "elements": [
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": true,
+            "metadata": {
+              "name": "assert",
+              "description": "Reader saw the shared lane resolve to 0 (SEVERITY outcome)"
+            },
+            "outputEvents": [
+              {
+                "id": "arb-c-event-zero-out",
+                "vector": [
+                  0,
+                  1
+                ],
+                "metadata": {
+                  "description": "Reader saw the shared lane resolve to 0 (SEVERITY outcome)",
+                  "action": "log-activity",
+                  "actionNarrative": "Reader saw the shared lane resolve to 0 (SEVERITY outcome)"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "inputSequences": [
+      {
+        "name": "Assert",
+        "pattern": "00 -> 10",
+        "description": "drive the fixture",
+        "events": [
+          [
+            0,
+            0
+          ],
+          [
+            1,
+            0
+          ]
+        ]
+      }
+    ],
+    "matchAlgorithm": "gte"
+  }
+}

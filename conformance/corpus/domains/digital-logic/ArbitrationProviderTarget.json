@@ -1,0 +1,242 @@
+{
+  "version": "1.0.0",
+  "machine": {
+    "name": "Arbitration Provider Target",
+    "description": "Contention fixture 9b: reads [16940:16941], which its own agent projection also writes. Under PRECEDENCE the deterministic machine contribution outranks the generated assessment.",
+    "metadata": {
+      "category": "digital-logic",
+      "author": "Reality Engine",
+      "created": "2026-08-13T00:00:00Z",
+      "eventSpace": "2D binary vectors",
+      "outputSpace": "2D binary",
+      "tags": [
+        "arbitration-fixture",
+        "arbitration-provider-target",
+        "ces-sequences",
+        "ces-sequences-2",
+        "digital-logic",
+        "input-sequences",
+        "input-sequences-1",
+        "startup-loadable"
+      ],
+      "sequenceCount": 2,
+      "description": "Contention fixture 9b: reads [16940:16941], which its own agent projection also writes. Under PRECEDENCE the deterministic machine contribution outranks the generated assessment.",
+      "tagging": {
+        "schemaVersion": "1.0.0",
+        "managedBy": "scripts/manage_machine_tags.mjs",
+        "primaryDomain": "digital-logic",
+        "domainTags": [
+          "digital-logic"
+        ],
+        "family": "arbitration-provider-target",
+        "machineCode": "arbitration-provider-target",
+        "capabilityTags": [],
+        "workflowTags": [
+          "arbitration-fixture",
+          "arbitration-provider-target"
+        ],
+        "integrationTags": [
+          "digital-logic"
+        ],
+        "validationTags": [
+          "ces-sequences",
+          "ces-sequences-2",
+          "input-sequences",
+          "input-sequences-1",
+          "startup-loadable"
+        ],
+        "allTags": [
+          "arbitration-fixture",
+          "arbitration-provider-target",
+          "ces-sequences",
+          "ces-sequences-2",
+          "digital-logic",
+          "input-sequences",
+          "input-sequences-1",
+          "startup-loadable"
+        ]
+      },
+      "governance": {
+        "schemaVersion": "1.0.0",
+        "ownerTeam": "reliability-engineering",
+        "runbook": "https://runbooks.example.org/digital-logic/arbitrationprovidertarget",
+        "escalationPolicy": "slack:#reliability-test",
+        "contact": {
+          "primary": "reliability-engineering-primary@example.org",
+          "secondary": "reliability-engineering-secondary@example.org"
+        },
+        "sla": {
+          "ok": null,
+          "info": null,
+          "warning": null,
+          "error": 60
+        },
+        "notes": "Arbitration conformance fixture (ARBITER_CONTRACT.md 9). SLA set because the trigger rules use paging tiers: an envelope that can page must carry a response contract."
+      },
+      "triggerConfig": {
+        "processId": "ARBPROVTGT",
+        "processName": "Arbitration Provider Target",
+        "rules": [
+          {
+            "sequenceId": "arb-e-observe",
+            "outputMatches": [
+              1,
+              0
+            ],
+            "ragStatusCode": "GREEN",
+            "processStatus": "info",
+            "description": "Machine determination won the lane"
+          },
+          {
+            "sequenceId": "arb-e-observe-zero",
+            "outputMatches": [
+              0,
+              1
+            ],
+            "ragStatusCode": "RED",
+            "processStatus": "error",
+            "description": "Generated assessment overrode a determination"
+          }
+        ]
+      },
+      "machineClass": "signal-monitor",
+      "inputSemantics": [
+        "Arbitration Provider Target input 1",
+        "Arbitration Provider Target input 2"
+      ],
+      "outputSemantics": [
+        "Arbitration Provider Target output 1",
+        "Arbitration Provider Target output 2"
+      ],
+      "openClawProjection": {
+        "projectionId": "openclaw-arbitration-provider-target-native-input-projection",
+        "owner": "openclaw-input-analyst",
+        "dispatchMode": "accepted-no-wait",
+        "writeBackRegion": {
+          "offset": 16940,
+          "length": 2
+        },
+        "normalization": "machine-native-binary",
+        "semantics": [
+          "arbitration_probe_bit_1",
+          "arbitration_probe_bit_2"
+        ],
+        "peContract": "Generated assessment onto a lane a machine determination also writes; PRECEDENCE must keep it below the determination."
+      }
+    },
+    "arbiterRule": "PASSTHROUGH",
+    "perceptualMapping": {
+      "input": {
+        "offset": 16940,
+        "length": 2
+      },
+      "output": {
+        "offset": 16942,
+        "length": 2
+      },
+      "bitsPerElement": 1
+    },
+    "sequences": [
+      {
+        "id": "arb-e-observe",
+        "name": "Target observes resolved 1",
+        "metadata": {
+          "description": "Target saw the contended lane resolve to 1 (machine determination won)"
+        },
+        "events": [
+          {
+            "id": "arb-e-event",
+            "elements": [
+              {
+                "value": 1,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": true,
+            "metadata": {
+              "name": "assert",
+              "description": "Target saw the contended lane resolve to 1 (machine determination won)"
+            },
+            "outputEvents": [
+              {
+                "id": "arb-e-event-out",
+                "vector": [
+                  1,
+                  0
+                ],
+                "metadata": {
+                  "description": "Target saw the contended lane resolve to 1 (machine determination won)",
+                  "action": "log-activity",
+                  "actionNarrative": "Target saw the contended lane resolve to 1 (machine determination won)"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "arb-e-observe-zero",
+        "name": "Target observes resolved 0",
+        "metadata": {
+          "description": "Target saw the contended lane resolve to 0 (generated assessment won — contract violation)"
+        },
+        "events": [
+          {
+            "id": "arb-e-event-zero",
+            "elements": [
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": true,
+            "metadata": {
+              "name": "assert",
+              "description": "Target saw the contended lane resolve to 0 (generated assessment won — contract violation)"
+            },
+            "outputEvents": [
+              {
+                "id": "arb-e-event-zero-out",
+                "vector": [
+                  0,
+                  1
+                ],
+                "metadata": {
+                  "description": "Target saw the contended lane resolve to 0 (generated assessment won — contract violation)",
+                  "action": "log-activity",
+                  "actionNarrative": "Target saw the contended lane resolve to 0 (generated assessment won — contract violation)"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "inputSequences": [
+      {
+        "name": "Assert",
+        "pattern": "00 -> 10",
+        "description": "drive the fixture",
+        "events": [
+          [
+            0,
+            0
+          ],
+          [
+            1,
+            0
+          ]
+        ]
+      }
+    ],
+    "matchAlgorithm": "gte"
+  }
+}
