@@ -66,6 +66,11 @@ Rules that bite:
   `SURFACE_RECORD=1 cargo test --test surface`, then name the issue for any new
   non-implemented entry. Re-vendor the spec with `scripts/refresh-surface.sh`
   when it changes. Status says a route exists, not that it behaves.
+- **Numbers leave in ECMAScript form (#33).** A response layer re-serializes
+  every JSON body so its numbers read as `JSON.stringify` writes them, as the
+  three engines do: `1`, not serde_json's `1.0`. Don't format numbers by hand in
+  a handler, and compare wire bytes, not parsed `Value`s, when a test is about
+  encoding (`json!(1) != json!(1.0)` in serde_json).
 - **An unimplemented RE route declares itself (#15).** The router's fallbacks
   answer any specified RE route it does not serve with `501` and
   `{error, participation: "unsupported", surface}` (SURFACE_SPEC.md, "An
