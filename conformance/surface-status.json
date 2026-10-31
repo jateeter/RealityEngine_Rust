@@ -261,19 +261,16 @@
       "status": "implemented"
     },
     "RE GET /api/engine/isre-history": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#11"
+      "status": "implemented"
     },
     "RE GET /api/engine/osre-history": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#11"
+      "status": "implemented"
     },
     "RE GET /api/engine/stats": {
       "status": "implemented"
     },
     "RE GET /api/engine/steps/:n/pair": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#11"
+      "status": "implemented"
     },
     "RE GET /api/governance/route": {
       "status": "declared-unsupported",
@@ -401,8 +398,8 @@
       "tracking": "jateeter/RealityEngine_Rust#13"
     },
     "RE POST /api/perceive": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#11"
+      "notes": "slice 1 of #11: 40 full-corpus steps identical to C++ on machineResults and activeRegions; mergeBatch lacks governance/deprecation, eventBus is [], so the 2 SEVERITY cells resolve by value (slice 2); only and matchAlgorithmOverride are refused (slice 4)",
+      "status": "implemented"
     },
     "RE POST /api/perception/diagnostic": {
       "status": "declared-unsupported",

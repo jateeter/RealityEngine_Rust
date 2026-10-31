@@ -19,6 +19,7 @@ use std::{
 };
 
 pub mod instance_clock;
+mod step;
 
 use instance_clock::InstanceClock;
 
@@ -181,6 +182,10 @@ pub struct Engine {
     mapping_version: u64,
     /// The instance's Lamport clock (RealityEngine_CI#296). Never reset.
     clock: InstanceClock,
+    /// The step path: the perceptual space, the trajectories, step completion (#11).
+    steps: step::StepState,
+    /// The declared rule for each contended output cell.
+    arbitration: step::ArbitrationRegistry,
 }
 
 /// The id a corpus file's machine gets, on every engine: `machine-` and the
@@ -677,6 +682,16 @@ impl Machine {
     /// no state change, nothing recorded (SURFACE_SPEC.md,
     /// "`transitionsInhibited`"; the arbiter metadata zeroed as C++ and LSP do).
     fn present(&mut self, input: &[f64], coverage: &mut Coverage) -> Value {
+        let result = self.respond(input);
+        if !self.transitions_inhibited {
+            coverage.record(&self.id, &self.name, &result);
+        }
+        result
+    }
+
+    /// The transition result for `input`, without recording coverage: the step
+    /// composes machines in parallel and records their coverage after the join.
+    fn respond(&mut self, input: &[f64]) -> Value {
         if self.transitions_inhibited {
             let empty: serde_json::Map<String, Value> = self
                 .sequences
@@ -703,9 +718,7 @@ impl Machine {
                 },
             });
         }
-        let result = self.transition(input);
-        coverage.record(&self.id, &self.name, &result);
-        result
+        self.transition(input)
     }
 }
 
@@ -1333,14 +1346,13 @@ impl Engine {
     }
 
     /// SURFACE_SPEC.md, "The instance clock": `{instance, lamport, step}` for
-    /// the newest committed step. Only the space-runtime step path commits a
-    /// step (C++ `onStepCommitted`; the process routes do not), and this engine
-    /// has none yet (#11), so `step` is always -1 and the clock does not tick.
+    /// the newest committed step. Only the step path (`POST /api/perceive`)
+    /// commits a step, as in C++ (`onStepCommitted`); the process routes do not.
     fn clock(&self) -> Value {
         json!({
             "instance": self.clock.instance(),
             "lamport": self.clock.lamport(),
-            "step": -1,
+            "step": self.steps.completed(),
         })
     }
 
@@ -1411,6 +1423,7 @@ impl Engine {
             machine.reset();
         }
         self.step = 0;
+        self.steps.reset();
         if clear_audit {
             self.history.clear();
         }
@@ -1758,6 +1771,10 @@ pub fn app(engine: Engine) -> Router {
         .route("/api/metrics", get(metrics))
         .route("/api/engine/history", get(engine_history))
         .route("/api/engine/clock", get(engine_clock))
+        .route("/api/perceive", post(step::perceive))
+        .route("/api/engine/isre-history", get(step::isre_history))
+        .route("/api/engine/osre-history", get(step::osre_history))
+        .route("/api/engine/steps/{n}/pair", get(step::step_pair))
         .route("/api/engine/reset", post(reset))
         .fallback(|method: Method, uri: Uri| async move {
             unsupported_or(&method, &uri, StatusCode::NOT_FOUND)
@@ -1971,6 +1988,7 @@ pub fn engine_from_environment() -> Result<Engine, EngineError> {
     let machine_directory = std::env::var("MACHINES_DIR")
         .unwrap_or_else(|_| "../RealityEngine_Machines/machines".to_owned());
     let loaded = engine.load_directory(FsPath::new(&machine_directory))?;
+    engine.arbitration = step::ArbitrationRegistry::load(FsPath::new(&machine_directory));
     // The corpus-load count is the check that catches a misread key
     // (SURFACE_SPEC.md, "Reality Event key names"); report it at every start.
     let events: usize = engine
@@ -2388,8 +2406,8 @@ mod tests {
             ("GET", "/api/arbitration", "GET /api/arbitration"),
             (
                 "GET",
-                "/api/engine/steps/7/pair",
-                "GET /api/engine/steps/:n/pair",
+                "/api/machines/m/export",
+                "GET /api/machines/:id/export",
             ),
             (
                 "POST",
@@ -2425,6 +2443,227 @@ mod tests {
         // The engine answers for its own routes only, not the PE's.
         let (status, _) = send(&app, "GET", "/api/sources", None).await;
         assert_eq!(status, StatusCode::NOT_FOUND);
+    }
+
+    /// The test machine, renamed and writing `value` to the same output cell.
+    fn rival(name: &str, value: f64) -> Value {
+        let mut definition = machine_definition();
+        definition["machine"]["name"] = json!(name);
+        // `join` keeps the magnitude; the default `or` folds to presence.
+        definition["machine"]["outputMergeTransformation"] = json!("join");
+        definition["machine"]["sequences"][0]["events"][1]["outputEvents"][0]["vector"] =
+            json!([value]);
+        definition
+    }
+
+    #[tokio::test]
+    async fn a_step_commits_its_isre_and_osre_and_publishes_the_pair() {
+        let (app, id) = loaded_app();
+        // Step 0 arms `finish`; nothing is output.
+        let (status, step0) = send(
+            &app,
+            "POST",
+            "/api/perceive",
+            Some(json!({ "vector": [1] })),
+        )
+        .await;
+        assert_eq!(status, StatusCode::OK, "{step0}");
+        assert_eq!(step0["stepNumber"], 0);
+        assert_eq!(step0["mergeBatch"], json!([]));
+        assert_eq!(step0["eventBus"], json!([]));
+        assert_eq!(step0["machineResults"][&id]["machineName"], "two-step");
+        assert_eq!(step0["machineResults"][&id]["outputRegion"], Value::Null);
+        assert!(
+            step0["machineResults"][&id]["transitionResult"]
+                .get("machineId")
+                .is_none()
+        );
+        assert_eq!(
+            step0["activeRegions"],
+            json!([{ "offset": 0, "length": 1, "machineId": id, "type": "input" }])
+        );
+        // Step 1 fires it: cell 1 is written.
+        let (_, step1) = send(
+            &app,
+            "POST",
+            "/api/perceive",
+            Some(json!({ "vector": [0] })),
+        )
+        .await;
+        assert_eq!(step1["stepNumber"], 1);
+        assert_eq!(
+            step1["mergeBatch"][0]["region"],
+            json!({ "offset": 1, "length": 1 })
+        );
+        assert_eq!(step1["mergeBatch"][0]["values"], json!([1]));
+        assert_eq!(step1["mergeBatch"][0]["sequenceIds"], json!(["sequence"]));
+        assert_eq!(step1["perceptualSpace"][1], 1);
+        assert_eq!(step1["perceptualSpaceIsDebugProjection"], true);
+
+        let (status, pair) = send(&app, "GET", "/api/engine/steps/0/pair", None).await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(
+            pair,
+            json!({ "stepNumber": 0,
+            "isre": { "stepNumber": 0, "length": 8, "nonZero": [{ "index": 0, "value": 1 }] },
+            "osre": { "stepNumber": 0, "length": 8, "nonZero": [] } })
+        );
+        let (_, pair) = send(&app, "GET", "/api/engine/steps/1/pair", None).await;
+        assert_eq!(pair["isre"]["nonZero"], json!([]));
+        assert_eq!(pair["osre"]["nonZero"], json!([{ "index": 1, "value": 1 }]));
+
+        let (_, history) = send(&app, "GET", "/api/engine/osre-history?from=1", None).await;
+        assert_eq!(history["history"].as_array().unwrap().len(), 1);
+        let (_, history) = send(&app, "GET", "/api/engine/isre-history?limit=1", None).await;
+        assert_eq!(history["history"][0]["stepNumber"], 0);
+        assert_eq!(history["history"].as_array().unwrap().len(), 1);
+
+        // The clock ticked once per committed step.
+        let (_, clock) = send(&app, "GET", "/api/engine/clock", None).await;
+        assert_eq!(
+            (clock["lamport"].clone(), clock["step"].clone()),
+            (json!(2), json!(1))
+        );
+        // A reset restarts the numbering and the histories; the clock keeps its value.
+        send(&app, "POST", "/api/engine/reset", None).await;
+        let (_, clock) = send(&app, "GET", "/api/engine/clock", None).await;
+        assert_eq!(
+            (clock["lamport"].clone(), clock["step"].clone()),
+            (json!(2), json!(-1))
+        );
+        let (status, _) = send(&app, "GET", "/api/engine/steps/0/pair?timeoutMs=0", None).await;
+        assert_eq!(status, StatusCode::REQUEST_TIMEOUT);
+        let (_, step) = send(
+            &app,
+            "POST",
+            "/api/perceive",
+            Some(json!({ "sparseVector": [{ "index": 0, "value": 1 }] })),
+        )
+        .await;
+        assert_eq!(step["stepNumber"], 0);
+    }
+
+    #[tokio::test]
+    async fn a_pair_waiter_wakes_at_the_completion_point() {
+        let (app, _) = loaded_app();
+        let waiter = tokio::spawn({
+            let app = app.clone();
+            async move { send(&app, "GET", "/api/engine/steps/0/pair?timeoutMs=5000", None).await }
+        });
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        assert!(
+            !waiter.is_finished(),
+            "the waiter answered before step 0 existed"
+        );
+        send(
+            &app,
+            "POST",
+            "/api/perceive",
+            Some(json!({ "vector": [1] })),
+        )
+        .await;
+        let (status, pair) = waiter.await.unwrap();
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(pair["stepNumber"], 0);
+    }
+
+    #[tokio::test]
+    async fn the_pair_route_answers_every_status() {
+        let (app, _) = loaded_app();
+        for (uri, status) in [
+            ("/api/engine/steps/x/pair", StatusCode::BAD_REQUEST),
+            ("/api/engine/steps/-1/pair", StatusCode::BAD_REQUEST),
+            (
+                "/api/engine/steps/0/pair?timeoutMs=60001",
+                StatusCode::BAD_REQUEST,
+            ),
+            (
+                "/api/engine/steps/0/pair?timeoutMs=abc",
+                StatusCode::BAD_REQUEST,
+            ),
+            (
+                "/api/engine/steps/0/pair?timeoutMs=0",
+                StatusCode::REQUEST_TIMEOUT,
+            ),
+        ] {
+            let (got, body) = send(&app, "GET", uri, None).await;
+            assert_eq!(got, status, "{uri}: {body}");
+            assert!(body["error"].is_string(), "{uri}: {body}");
+        }
+        // Past the 1024-entry capacity, step 0 is resolved and gone.
+        for _ in 0..1025 {
+            send(&app, "POST", "/api/perceive", Some(json!({ "vector": [0], "includeMachineResults": false, "includePerceptualSpace": false }))).await;
+        }
+        let (status, body) = send(&app, "GET", "/api/engine/steps/0/pair?timeoutMs=0", None).await;
+        assert_eq!(
+            (status, body["error"].clone()),
+            (StatusCode::GONE, json!("step 0 is no longer retained"))
+        );
+        let (status, _) = send(&app, "GET", "/api/engine/steps/1/pair?timeoutMs=0", None).await;
+        assert_eq!(status, StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn perceive_takes_one_input_and_honours_the_include_flags() {
+        let (app, _) = loaded_app();
+        let (status, body) = send(&app, "POST", "/api/perceive", Some(json!({}))).await;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(
+            body["error"],
+            "Provide exactly one of: vector, sparseVector, domainVectors"
+        );
+        let (status, _) = send(
+            &app,
+            "POST",
+            "/api/perceive",
+            Some(json!({ "vector": [1], "only": { "machineNames": ["x"] } })),
+        )
+        .await;
+        assert_eq!(
+            status,
+            StatusCode::BAD_REQUEST,
+            "an unimplemented selector is refused, not ignored"
+        );
+        let (_, step) = send(&app, "POST", "/api/perceive", Some(json!({ "domainVectors": [{ "offset": 0, "values": [1] }], "compact": true, "includePerceptualSpace": false, "includeActiveRegions": false }))).await;
+        let keys: Vec<&str> = step
+            .as_object()
+            .unwrap()
+            .keys()
+            .map(String::as_str)
+            .collect();
+        assert_eq!(keys, ["eventBus", "mergeBatch", "stepNumber", "timestamp"]);
+    }
+
+    #[tokio::test]
+    async fn a_contended_cell_resolves_and_the_batch_is_in_canonical_order() {
+        let mut engine = Engine::new(8);
+        engine.load_machine(rival("zulu", 1.0)).unwrap();
+        engine.load_machine(rival("alpha", 3.0)).unwrap();
+        let app = app(engine);
+        send(
+            &app,
+            "POST",
+            "/api/perceive",
+            Some(json!({ "vector": [1] })),
+        )
+        .await;
+        let (_, step) = send(
+            &app,
+            "POST",
+            "/api/perceive",
+            Some(json!({ "vector": [0] })),
+        )
+        .await;
+        let names: Vec<&str> = step["mergeBatch"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|m| m["machineName"].as_str().unwrap())
+            .collect();
+        assert_eq!(names, ["alpha", "zulu"]);
+        // Both write cell 1; PRECEDENCE between equal-rank machines keeps the larger.
+        let (_, pair) = send(&app, "GET", "/api/engine/steps/1/pair", None).await;
+        assert_eq!(pair["osre"]["nonZero"], json!([{ "index": 1, "value": 3 }]));
     }
 
     #[tokio::test]
