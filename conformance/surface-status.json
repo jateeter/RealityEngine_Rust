@@ -190,8 +190,8 @@
       "tracking": "jateeter/RealityEngine_Rust#17"
     },
     "RE DELETE /api/engine/config/:control": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#10"
+      "notes": "carries transitionsInhibited only; the other seven universal controls join with the behaviour they govern (historyLimit, include*, phaseDetail: jateeter/RealityEngine_Rust#11; arbitrationRetention, arbitrationWindow: #12)",
+      "status": "implemented"
     },
     "RE DELETE /api/machines/:id": {
       "status": "implemented"
@@ -250,12 +250,12 @@
       "tracking": "jateeter/RealityEngine_Rust#12"
     },
     "RE GET /api/engine/config": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#10"
+      "notes": "carries transitionsInhibited only; the other seven universal controls join with the behaviour they govern (historyLimit, include*, phaseDetail: jateeter/RealityEngine_Rust#11; arbitrationRetention, arbitrationWindow: #12)",
+      "status": "implemented"
     },
     "RE GET /api/engine/config/:control": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#10"
+      "notes": "carries transitionsInhibited only; the other seven universal controls join with the behaviour they govern (historyLimit, include*, phaseDetail: jateeter/RealityEngine_Rust#11; arbitrationRetention, arbitrationWindow: #12)",
+      "status": "implemented"
     },
     "RE GET /api/engine/history": {
       "status": "implemented"
@@ -309,8 +309,8 @@
       "status": "implemented"
     },
     "RE GET /api/metrics": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#10"
+      "notes": "CES coverage and runtime gauges, structurally identical to C++; step-phase, paging and deprecated-fire series absent until measured (#11)",
+      "status": "implemented"
     },
     "RE GET /api/perceptual-simulation/history": {
       "status": "missing",
@@ -479,8 +479,8 @@
       "status": "implemented"
     },
     "RE PUT /api/engine/config/:control": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#10"
+      "notes": "carries transitionsInhibited only; the other seven universal controls join with the behaviour they govern (historyLimit, include*, phaseDetail: jateeter/RealityEngine_Rust#11; arbitrationRetention, arbitrationWindow: #12)",
+      "status": "implemented"
     },
     "RE PUT /api/machines/:id": {
       "status": "missing",

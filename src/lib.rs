@@ -91,6 +91,72 @@ struct Machine {
     output_alphabet_top: Option<usize>,
     raw: Value,
     sequences: BTreeMap<String, Sequence>,
+    /// SURFACE_SPEC.md, "`transitionsInhibited`": `true` accepts a Reality
+    /// Event and does not pass it forward. Default `false`.
+    transitions_inhibited: bool,
+}
+
+/// CES coverage, as C++'s `CesCoverageRegistry` keeps it: counters since the
+/// registry was created, recorded at every transition. An engine reset does not
+/// clear it (SURFACE_SPEC.md, "CES coverage"): coverage is a record of what the
+/// corpus has been shown to do, and a reset does not un-show it.
+struct Coverage {
+    /// (machine id, machine name) -> transitions observed
+    steps: BTreeMap<(String, String), u64>,
+    /// (machine id, machine name, sequence, event) -> times matched / activated
+    matched: BTreeMap<(String, String, String, String), u64>,
+    activated: BTreeMap<(String, String, String, String), u64>,
+    /// (machine id, machine name, sequence) -> asserted outputs emitted
+    outputs: BTreeMap<(String, String, String), u64>,
+    started_at_ms: u128,
+}
+
+impl Default for Coverage {
+    fn default() -> Self {
+        Self {
+            steps: BTreeMap::new(),
+            matched: BTreeMap::new(),
+            activated: BTreeMap::new(),
+            outputs: BTreeMap::new(),
+            started_at_ms: now_ms(),
+        }
+    }
+}
+
+impl Coverage {
+    fn record(&mut self, id: &str, name: &str, result: &Value) {
+        let machine = (id.to_owned(), name.to_owned());
+        *self.steps.entry(machine.clone()).or_default() += 1;
+        let should_output = result["arbiterMetadata"]["shouldOutput"]
+            .as_bool()
+            .unwrap_or(false);
+        let Some(sequences) = result["sequenceResults"].as_object() else {
+            return;
+        };
+        for (sequence, sr) in sequences {
+            let key = |event: &Value| {
+                (
+                    machine.0.clone(),
+                    machine.1.clone(),
+                    sequence.clone(),
+                    event.as_str().unwrap_or_default().to_owned(),
+                )
+            };
+            for event in sr["matchedEvents"].as_array().into_iter().flatten() {
+                *self.matched.entry(key(event)).or_default() += 1;
+            }
+            for event in sr["activatedEvents"].as_array().into_iter().flatten() {
+                *self.activated.entry(key(event)).or_default() += 1;
+            }
+            let asserted = sr["assertedOutputs"].as_array().map_or(0, Vec::len) as u64;
+            if should_output && asserted > 0 {
+                *self
+                    .outputs
+                    .entry((machine.0.clone(), machine.1.clone(), sequence.clone()))
+                    .or_default() += asserted;
+            }
+        }
+    }
 }
 
 #[derive(Default)]
@@ -105,6 +171,9 @@ pub struct Engine {
     /// The corpus directory machines are loaded from; the on-disk catalog
     /// (`GET /api/machines/json/list`) and load-by-name read it.
     machines_dir: Option<std::path::PathBuf>,
+    coverage: Coverage,
+    /// Bumped on every machine added or removed (`re_runtime_mapping_version`).
+    mapping_version: u64,
 }
 
 /// The id a corpus file's machine gets, on every engine: `machine-` and the
@@ -414,6 +483,7 @@ impl Machine {
                 .and_then(|top| usize::try_from(top).ok()),
             raw: machine_value.clone(),
             sequences,
+            transitions_inhibited: false,
         })
     }
 
@@ -594,6 +664,42 @@ impl Machine {
             },
         })
     }
+
+    /// A Reality Event presented to this machine. Inhibited, it is accepted
+    /// and not passed forward: the shape of a machine that matched nothing,
+    /// no state change, nothing recorded (SURFACE_SPEC.md,
+    /// "`transitionsInhibited`"; the arbiter metadata zeroed as C++ and LSP do).
+    fn present(&mut self, input: &[f64], coverage: &mut Coverage) -> Value {
+        if self.transitions_inhibited {
+            let empty: serde_json::Map<String, Value> = self
+                .sequences
+                .keys()
+                .map(|id| {
+                    (
+                        id.clone(),
+                        json!({ "matchedEvents": [], "activatedEvents": [], "assertedOutputs": [] }),
+                    )
+                })
+                .collect();
+            return json!({
+                "machineId": self.id,
+                "inputEvent": input,
+                "timestamp": now_ms(),
+                "sequenceResults": empty,
+                "machineOutput": null,
+                "mergedOutput": null,
+                "arbiterMetadata": {
+                    "rule": self.arbiter_rule,
+                    "totalInputs": 0,
+                    "sequencesWithOutput": 0,
+                    "shouldOutput": false,
+                },
+            });
+        }
+        let result = self.transition(input);
+        coverage.record(&self.id, &self.name, &result);
+        result
+    }
 }
 
 impl Event {
@@ -735,6 +841,7 @@ impl Engine {
         }
         let summary = machine.summary();
         self.machines.insert(machine.id.clone(), machine);
+        self.mapping_version += 1;
         Ok(summary)
     }
 
@@ -890,7 +997,11 @@ impl Engine {
     }
 
     pub fn remove_machine(&mut self, id: &str) -> bool {
-        self.machines.remove(id).is_some()
+        let removed = self.machines.remove(id).is_some();
+        if removed {
+            self.mapping_version += 1;
+        }
+        removed
     }
 
     /// `max(offset + length)` over the input and output regions of every
@@ -937,6 +1048,271 @@ impl Engine {
         }))
     }
 
+    /// SURFACE_SPEC.md, "`/api/engine/config`": every control this engine
+    /// carries, sorted by name, each in the five-field shape.
+    ///
+    /// Only controls this engine acts on are carried. The rest of the universal
+    /// set governs behaviour Rust does not have yet: `historyLimit`, the three
+    /// `include*` step-response filters and `phaseDetail` need the step path
+    /// (RealityEngine_Rust#11), and `arbitrationRetention`/`arbitrationWindow`
+    /// need `/api/arbitration` (#12). The spec's rule is that "a control that
+    /// reports a value it does not act on is worse than an absent one", so each
+    /// joins this list with the behaviour it governs.
+    fn controls(&self) -> Vec<Value> {
+        let inhibited: serde_json::Map<String, Value> = self
+            .machines
+            .values()
+            .map(|machine| (machine.id.clone(), json!(machine.transitions_inhibited)))
+            .collect();
+        vec![json!({
+            "name": "transitionsInhibited",
+            "scope": "machine",
+            "value": inhibited,
+            "default": false,
+            "mutable": true,
+        })]
+    }
+
+    fn control(&self, name: &str) -> Result<Value, EngineError> {
+        self.controls()
+            .into_iter()
+            .find(|c| c["name"] == name)
+            .ok_or_else(|| EngineError::not_found(format!("Unknown control: {name}")))
+    }
+
+    /// `PUT /api/engine/config/:control`. For the machine-scoped control a body
+    /// naming a machine sets that machine (404 if absent); one omitting it sets
+    /// every machine, as C++ does.
+    fn set_control(&mut self, name: &str, body: &Value) -> Result<Value, EngineError> {
+        self.control(name)?;
+        let value = body["value"].as_bool().ok_or_else(|| {
+            EngineError::bad_request(format!("{name} requires a boolean `value`"))
+        })?;
+        match body["machine"].as_str() {
+            Some(id) => {
+                self.machines
+                    .get_mut(id)
+                    .ok_or_else(|| EngineError::not_found(format!("Machine not found: {id}")))?
+                    .transitions_inhibited = value;
+            }
+            None => self
+                .machines
+                .values_mut()
+                .for_each(|m| m.transitions_inhibited = value),
+        }
+        self.control(name)
+    }
+
+    /// `DELETE /api/engine/config/:control`: restore the declared default.
+    fn reset_control(&mut self, name: &str) -> Result<Value, EngineError> {
+        self.control(name)?;
+        self.machines
+            .values_mut()
+            .for_each(|m| m.transitions_inhibited = false);
+        self.control(name)
+    }
+
+    /// `GET /api/metrics`: the CES coverage exposition the three engines share
+    /// (names, HELP and TYPE text, label order and series order as C++'s
+    /// `CesCoverageRegistry::to_prometheus_text`), then the runtime gauges.
+    ///
+    /// Not emitted, because nothing here measures them yet:
+    /// `ces_paging_decisions_total` (governance), `ces_deprecated_fires_total`
+    /// (sequence deprecation) and the `re_step_phase_*` lines (the step path and
+    /// `phaseDetail`, #11). Absent rather than zero: zero would claim a
+    /// measurement.
+    fn metrics_text(&self) -> String {
+        use std::fmt::Write;
+        let esc = |v: &str| {
+            v.replace('\\', "\\\\")
+                .replace('"', "\\\"")
+                .replace('\n', "\\n")
+        };
+        let labels = |pairs: &[(&str, &str)]| {
+            let mut out = String::from("{runtime=\"rust\"");
+            for (k, v) in pairs {
+                let _ = write!(out, ",{k}=\"{}\"", esc(v));
+            }
+            out.push('}');
+            out
+        };
+        let base = "{runtime=\"rust\"}";
+        let mut out = String::new();
+        let total_sequences: usize = self.machines.values().map(|m| m.sequences.len()).sum();
+        let total_events: usize = self
+            .machines
+            .values()
+            .flat_map(|m| m.sequences.values())
+            .map(|s| s.events.len())
+            .sum();
+        let gauge = |out: &mut String, name: &str, help: &str, value: String| {
+            let _ = write!(
+                out,
+                "# HELP {name} {help}\n# TYPE {name} gauge\n{name}{base} {value}\n"
+            );
+        };
+        gauge(
+            &mut out,
+            "ces_machines_total",
+            "Number of machines loaded into the reality engine.",
+            self.machines.len().to_string(),
+        );
+        gauge(
+            &mut out,
+            "ces_sequences_total",
+            "Number of sequences across all registered machines.",
+            total_sequences.to_string(),
+        );
+        gauge(
+            &mut out,
+            "ces_vectors_total",
+            "Number of event vectors across all registered machines.",
+            total_events.to_string(),
+        );
+
+        let c = &self.coverage;
+        out.push_str("# HELP ces_vector_matched_total Number of times a vector matched its input during a transition phase.\n# TYPE ces_vector_matched_total counter\n");
+        for ((id, name, seq, ev), n) in &c.matched {
+            let _ = writeln!(
+                out,
+                "ces_vector_matched_total{} {n}",
+                labels(&[
+                    ("machine", name),
+                    ("machine_id", id),
+                    ("sequence", seq),
+                    ("vector", ev)
+                ])
+            );
+        }
+        out.push_str("# HELP ces_vector_activated_total Number of times a vector was activated as a successor in a transition.\n# TYPE ces_vector_activated_total counter\n");
+        for ((id, name, seq, ev), n) in &c.activated {
+            let _ = writeln!(
+                out,
+                "ces_vector_activated_total{} {n}",
+                labels(&[
+                    ("machine", name),
+                    ("machine_id", id),
+                    ("sequence", seq),
+                    ("vector", ev)
+                ])
+            );
+        }
+        out.push_str("# HELP ces_sequence_outputs_total Number of asserted outputs emitted by a sequence.\n# TYPE ces_sequence_outputs_total counter\n");
+        for ((id, name, seq), n) in &c.outputs {
+            let _ = writeln!(
+                out,
+                "ces_sequence_outputs_total{} {n}",
+                labels(&[("machine", name), ("machine_id", id), ("sequence", seq)])
+            );
+        }
+        out.push_str("# HELP ces_machine_steps_total Number of process_input calls observed for this machine.\n# TYPE ces_machine_steps_total counter\n");
+        for ((id, name), n) in &c.steps {
+            let _ = writeln!(
+                out,
+                "ces_machine_steps_total{} {n}",
+                labels(&[("machine", name), ("machine_id", id)])
+            );
+        }
+        // Zero baselines, so a dashboard can plot every machine before it fires.
+        for m in self.machines.values() {
+            let l = labels(&[("machine", &m.name), ("machine_id", &m.id)]);
+            let _ = writeln!(out, "ces_vector_matched_total{l} 0");
+            let _ = writeln!(out, "ces_vector_activated_total{l} 0");
+            let _ = writeln!(out, "ces_sequence_outputs_total{l} 0");
+            if !c.steps.keys().any(|(id, _)| id == &m.id) {
+                let _ = writeln!(out, "ces_machine_steps_total{l} 0");
+            }
+        }
+
+        let per_machine = |out: &mut String,
+                           name: &str,
+                           help: &str,
+                           kind: &str,
+                           value: &dyn Fn(&Machine) -> usize| {
+            let _ = write!(out, "# HELP {name} {help}\n# TYPE {name} {kind}\n");
+            for m in self.machines.values() {
+                let _ = writeln!(
+                    out,
+                    "{name}{} {}",
+                    labels(&[("machine", &m.name), ("machine_id", &m.id)]),
+                    value(m)
+                );
+            }
+        };
+        per_machine(
+            &mut out,
+            "ces_unfired_sequences",
+            "Number of sequences in this machine that have never emitted output.",
+            "gauge",
+            &|m| {
+                m.sequences
+                    .keys()
+                    .filter(|s| {
+                        !c.outputs
+                            .contains_key(&(m.id.clone(), m.name.clone(), (*s).clone()))
+                    })
+                    .count()
+            },
+        );
+        per_machine(
+            &mut out,
+            "ces_unfired_vectors",
+            "Number of vectors in this machine that have never matched or activated.",
+            "gauge",
+            &|m| {
+                m.sequences
+                    .values()
+                    .flat_map(|s| s.events.keys().map(move |e| (s.id.clone(), e.clone())))
+                    .filter(|(s, e)| {
+                        let key = (m.id.clone(), m.name.clone(), s.clone(), e.clone());
+                        !c.matched.contains_key(&key) && !c.activated.contains_key(&key)
+                    })
+                    .count()
+            },
+        );
+        per_machine(
+            &mut out,
+            "ces_machine_sequence_count",
+            "Total sequences declared by this machine.",
+            "gauge",
+            &|m| m.sequences.len(),
+        );
+        per_machine(
+            &mut out,
+            "ces_machine_vector_count",
+            "Total vectors declared by this machine.",
+            "gauge",
+            &|m| m.sequences.values().map(|s| s.events.len()).sum(),
+        );
+        let uptime = now_ms().saturating_sub(c.started_at_ms) as f64 / 1000.0;
+        gauge(
+            &mut out,
+            "ces_registry_uptime_seconds",
+            "Seconds since the coverage registry was instantiated.",
+            uptime.to_string(),
+        );
+
+        gauge(
+            &mut out,
+            "re_runtime_dimension",
+            "Current dimension of the shared perceptual space.",
+            self.dimension.to_string(),
+        );
+        gauge(
+            &mut out,
+            "re_runtime_required_dimension",
+            "Max(offset+length) across all registered machine mappings.",
+            self.required_dimension().to_string(),
+        );
+        gauge(
+            &mut out,
+            "re_runtime_mapping_version",
+            "Monotonic version bumped on every add/remove_machine.",
+            self.mapping_version.to_string(),
+        );
+        out
+    }
+
     fn stats(&self) -> Value {
         json!({
             "machineCount": self.machines.len(),
@@ -970,7 +1346,7 @@ impl Engine {
             )));
         }
         self.step += 1;
-        let result = machine.transition(input);
+        let result = machine.present(input, &mut self.coverage);
         self.record_history(result.clone());
         Ok(result)
     }
@@ -979,6 +1355,7 @@ impl Engine {
         self.step += 1;
         let timestamp = now_ms();
         let universal = self.dimension > 0 && input.len() == self.dimension;
+        let coverage = &mut self.coverage;
         let outputs: Vec<Value> = self
             .machines
             .values_mut()
@@ -997,7 +1374,7 @@ impl Engine {
                 // [r.machineOutput for r in results if r.machineOutput]. One
                 // arbitrated output per machine that fired, the output itself;
                 // the per-machine detail stays on POST /api/machines/:id/process.
-                let mut result = machine.transition(machine_input);
+                let mut result = machine.present(machine_input, coverage);
                 Some(result.get_mut("machineOutput")?.take()).filter(|output| !output.is_null())
             })
             .collect();
@@ -1120,6 +1497,55 @@ async fn put_threshold(
     }
     Ok(Json(
         json!({ "success": true, "threshold": state.threshold }),
+    ))
+}
+
+async fn engine_config(
+    State(engine): State<SharedEngine>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let state = engine.read().map_err(|_| error_response(lock_error()))?;
+    Ok(Json(json!({ "controls": state.controls() })))
+}
+
+async fn engine_control(
+    State(engine): State<SharedEngine>,
+    Path(name): Path<String>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let state = engine.read().map_err(|_| error_response(lock_error()))?;
+    state.control(&name).map(Json).map_err(error_response)
+}
+
+async fn put_engine_control(
+    State(engine): State<SharedEngine>,
+    Path(name): Path<String>,
+    body: Result<Json<Value>, JsonRejection>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let Json(body) = body.map_err(json_rejection)?;
+    let mut state = engine.write().map_err(|_| error_response(lock_error()))?;
+    state
+        .set_control(&name, &body)
+        .map(Json)
+        .map_err(error_response)
+}
+
+async fn delete_engine_control(
+    State(engine): State<SharedEngine>,
+    Path(name): Path<String>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let mut state = engine.write().map_err(|_| error_response(lock_error()))?;
+    state.reset_control(&name).map(Json).map_err(error_response)
+}
+
+async fn metrics(
+    State(engine): State<SharedEngine>,
+) -> Result<([(axum::http::HeaderName, &'static str); 1], String), (StatusCode, Json<Value>)> {
+    let state = engine.read().map_err(|_| error_response(lock_error()))?;
+    Ok((
+        [(
+            axum::http::header::CONTENT_TYPE,
+            "text/plain; version=0.0.4; charset=utf-8",
+        )],
+        state.metrics_text(),
     ))
 }
 
@@ -1296,6 +1722,14 @@ pub fn app(engine: Engine) -> Router {
         .route("/api/machines/{id}/process", post(process_machine))
         .route("/api/engine/process", post(process_all))
         .route("/api/engine/stats", get(engine_stats))
+        .route("/api/engine/config", get(engine_config))
+        .route(
+            "/api/engine/config/{control}",
+            get(engine_control)
+                .put(put_engine_control)
+                .delete(delete_engine_control),
+        )
+        .route("/api/metrics", get(metrics))
         .route("/api/engine/history", get(engine_history))
         .route("/api/engine/reset", post(reset))
         .with_state(state)
@@ -1531,6 +1965,206 @@ mod tests {
             status,
             serde_json::from_slice(&bytes).unwrap_or(Value::Null),
         )
+    }
+
+    fn loaded_app() -> (Router, String) {
+        let mut engine = Engine::new(8);
+        let id = engine.load_machine(machine_definition()).unwrap()["id"]
+            .as_str()
+            .unwrap()
+            .to_owned();
+        (app(engine), id)
+    }
+
+    /// SURFACE_SPEC.md, "`/api/engine/config`": the five-field shape, sorted by
+    /// name, with only the controls this engine acts on.
+    #[tokio::test]
+    async fn engine_config_carries_transitions_inhibited() {
+        let (app, id) = loaded_app();
+        let (status, body) = send(&app, "GET", "/api/engine/config", None).await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(
+            body,
+            json!({ "controls": [{
+                "name": "transitionsInhibited",
+                "scope": "machine",
+                "value": { id.clone(): false },
+                "default": false,
+                "mutable": true,
+            }] })
+        );
+        // Byte order matches C++ (std::map keys): default, mutable, name, scope, value.
+        let request = Request::builder()
+            .uri("/api/engine/config/transitionsInhibited")
+            .body(Body::empty())
+            .unwrap();
+        let bytes = to_bytes(
+            app.clone().oneshot(request).await.unwrap().into_body(),
+            usize::MAX,
+        )
+        .await
+        .unwrap();
+        assert!(
+            String::from_utf8(bytes.to_vec()).unwrap().starts_with(
+                "{\"default\":false,\"mutable\":true,\"name\":\"transitionsInhibited\""
+            ),
+            "field order"
+        );
+        // A universal control this engine does not act on yet is absent, not faked.
+        let (status, _) = send(&app, "GET", "/api/engine/config/historyLimit", None).await;
+        assert_eq!(status, StatusCode::NOT_FOUND);
+    }
+
+    #[tokio::test]
+    async fn transitions_inhibited_writes_and_resets() {
+        let (app, id) = loaded_app();
+        let uri = "/api/engine/config/transitionsInhibited";
+        let (status, body) = send(
+            &app,
+            "PUT",
+            uri,
+            Some(json!({ "machine": id, "value": true })),
+        )
+        .await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(body["value"][&id], true);
+        let (status, _) = send(
+            &app,
+            "PUT",
+            uri,
+            Some(json!({ "machine": "machine-absent", "value": true })),
+        )
+        .await;
+        assert_eq!(status, StatusCode::NOT_FOUND);
+        let (status, _) = send(&app, "PUT", uri, Some(json!({ "value": "yes" }))).await;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        let (_, body) = send(&app, "PUT", uri, Some(json!({ "value": false }))).await;
+        assert_eq!(body["value"][&id], false, "no machine named: every machine");
+        send(&app, "PUT", uri, Some(json!({ "value": true }))).await;
+        let (status, body) = send(&app, "DELETE", uri, None).await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(
+            body["value"][&id], false,
+            "DELETE restores the declared default"
+        );
+    }
+
+    /// SURFACE_SPEC.md, "`transitionsInhibited`": accepted, not passed forward.
+    #[tokio::test]
+    async fn an_inhibited_machine_accepts_and_does_not_flow() {
+        let (app, id) = loaded_app();
+        let process = |v: f64| json!({ "inputEvent": [v] });
+        send(
+            &app,
+            "PUT",
+            "/api/engine/config/transitionsInhibited",
+            Some(json!({ "machine": id, "value": true })),
+        )
+        .await;
+        let (status, r) = send(
+            &app,
+            "POST",
+            &format!("/api/machines/{id}/process"),
+            Some(process(1.0)),
+        )
+        .await;
+        assert_eq!(status, StatusCode::OK, "accepted, not refused");
+        assert!(r["machineOutput"].is_null());
+        assert_eq!(r["sequenceResults"]["sequence"]["matchedEvents"], json!([]));
+        assert_eq!(r["arbiterMetadata"]["shouldOutput"], false);
+        let mut universal = vec![0.0; 8];
+        universal[0] = 1.0;
+        let (_, r) = send(
+            &app,
+            "POST",
+            "/api/engine/process",
+            Some(json!({ "vector": universal })),
+        )
+        .await;
+        assert_eq!(r["result"]["outputs"], json!([]));
+
+        // No state changed while inhibited: once it flows, start then finish fires.
+        send(
+            &app,
+            "DELETE",
+            "/api/engine/config/transitionsInhibited",
+            None,
+        )
+        .await;
+        send(
+            &app,
+            "POST",
+            &format!("/api/machines/{id}/process"),
+            Some(process(1.0)),
+        )
+        .await;
+        let (_, r) = send(
+            &app,
+            "POST",
+            &format!("/api/machines/{id}/process"),
+            Some(process(0.0)),
+        )
+        .await;
+        assert_eq!(r["machineOutput"]["vector"], json!([1.0]));
+    }
+
+    #[tokio::test]
+    async fn metrics_report_ces_coverage_and_survive_reset() {
+        let (app, id) = loaded_app();
+        for v in [1.0, 0.0] {
+            send(
+                &app,
+                "POST",
+                &format!("/api/machines/{id}/process"),
+                Some(json!({ "inputEvent": [v] })),
+            )
+            .await;
+        }
+        send(&app, "POST", "/api/engine/reset", None).await;
+        let request = Request::builder()
+            .uri("/api/metrics")
+            .body(Body::empty())
+            .unwrap();
+        let response = app.clone().oneshot(request).await.unwrap();
+        assert_eq!(
+            response.headers()[axum::http::header::CONTENT_TYPE],
+            "text/plain; version=0.0.4; charset=utf-8"
+        );
+        let text = String::from_utf8(
+            to_bytes(response.into_body(), usize::MAX)
+                .await
+                .unwrap()
+                .to_vec(),
+        )
+        .unwrap();
+        let labels = format!("machine=\"two-step\",machine_id=\"{id}\"");
+        for line in [
+            "ces_machines_total{runtime=\"rust\"} 1".to_owned(),
+            "ces_vectors_total{runtime=\"rust\"} 2".to_owned(),
+            format!("ces_machine_steps_total{{runtime=\"rust\",{labels}}} 2"),
+            format!(
+                "ces_vector_matched_total{{runtime=\"rust\",{labels},sequence=\"sequence\",vector=\"start\"}} 1"
+            ),
+            format!(
+                "ces_sequence_outputs_total{{runtime=\"rust\",{labels},sequence=\"sequence\"}} 1"
+            ),
+            format!("ces_unfired_sequences{{runtime=\"rust\",{labels}}} 0"),
+            format!("ces_unfired_vectors{{runtime=\"rust\",{labels}}} 0"),
+            "re_runtime_required_dimension{runtime=\"rust\"} 2".to_owned(),
+        ] {
+            assert!(
+                text.lines().any(|l| l == line),
+                "missing `{line}` in\n{text}"
+            );
+        }
+        // Not measured here, so absent rather than zero.
+        for absent in [
+            "re_step_phase",
+            "ces_paging_decisions_total",
+            "ces_deprecated_fires_total",
+        ] {
+            assert!(!text.contains(absent), "{absent} present");
+        }
     }
 
     #[tokio::test]
