@@ -148,6 +148,25 @@ fn new_machine_id() -> String {
     )
 }
 
+/// Refuses a retired Reality Event key. SURFACE_SPEC.md ("Reality Event key
+/// names — migration complete") accepts only the canonical spelling, and the
+/// machine schema rejects these with `not: { required: [...] }`. Reading the
+/// canonical key alone is not enough: a legacy file would load as valid but
+/// empty, the silent failure the migration section describes.
+fn reject_retired_key(
+    object: &Value,
+    retired: &str,
+    canonical: &str,
+    at: &str,
+) -> Result<(), EngineError> {
+    if object.get(retired).is_some() {
+        return Err(EngineError::bad_request(format!(
+            "{at} uses the retired key `{retired}`; the canonical key is `{canonical}`"
+        )));
+    }
+    Ok(())
+}
+
 fn version_base(name: &str) -> &str {
     if let Some((base, suffix)) = name.rsplit_once(" v")
         && suffix.parse::<u64>().is_ok()
@@ -194,6 +213,21 @@ impl Machine {
         let mut sequences = BTreeMap::new();
         let mut first_event_width = 0;
 
+        for (index, input_sequence) in machine
+            .get("inputSequences")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .enumerate()
+        {
+            reject_retired_key(
+                input_sequence,
+                "vectors",
+                "events",
+                &format!("inputSequences[{index}]"),
+            )?;
+        }
+
         for sequence_json in sequences_json {
             let sequence_id = string(sequence_json.get("id"), "");
             if sequence_id.is_empty() {
@@ -201,19 +235,26 @@ impl Machine {
                     "every sequence must have a non-empty id",
                 ));
             }
-            let mut events = BTreeMap::new();
-            for event_json in sequence_json
-                .get("vectors")
+            let at = format!("sequence {sequence_id}");
+            reject_retired_key(&sequence_json, "vectors", "events", &at)?;
+            // The schema requires at least one event. A sequence without any
+            // can never fire, and is how a misread key used to load "successfully".
+            let events_json = sequence_json
+                .get("events")
                 .and_then(Value::as_array)
-                .into_iter()
-                .flatten()
-            {
+                .filter(|events| !events.is_empty())
+                .ok_or_else(|| EngineError::bad_request(format!("{at} has no events")))?;
+            let mut events = BTreeMap::new();
+            for event_json in events_json {
                 let event_id = string(event_json.get("id"), "");
                 if event_id.is_empty() {
                     return Err(EngineError::bad_request(format!(
-                        "every vector in sequence {sequence_id} must have a non-empty id"
+                        "every event in {at} must have a non-empty id"
                     )));
                 }
+                let event_at = format!("event {event_id} in {at}");
+                reject_retired_key(event_json, "outputVectors", "outputEvents", &event_at)?;
+                reject_retired_key(event_json, "nextVectorIds", "nextEventIds", &event_at)?;
                 let elements: Vec<Element> = event_json
                     .get("elements")
                     .and_then(Value::as_array)
@@ -229,7 +270,7 @@ impl Machine {
                     first_event_width = elements.len();
                 }
                 let outputs = event_json
-                    .get("outputVectors")
+                    .get("outputEvents")
                     .and_then(Value::as_array)
                     .into_iter()
                     .flatten()
@@ -251,7 +292,7 @@ impl Machine {
                     elements,
                     outputs,
                     next_ids: event_json
-                        .get("nextVectorIds")
+                        .get("nextEventIds")
                         .and_then(Value::as_array)
                         .into_iter()
                         .flatten()
@@ -264,7 +305,7 @@ impl Machine {
                 };
                 if events.insert(event_id.clone(), event).is_some() {
                     return Err(EngineError::bad_request(format!(
-                        "duplicate vector id {event_id} in sequence {sequence_id}"
+                        "duplicate event id {event_id} in {at}"
                     )));
                 }
             }
@@ -677,7 +718,10 @@ impl Engine {
             if let Some(object) = definition.as_object_mut() {
                 object.insert("id".to_owned(), json!(format!("machine-{file_id}")));
             }
-            self.load_machine(definition)?;
+            self.load_machine(definition).map_err(|error| EngineError {
+                status: error.status,
+                message: format!("{}: {}", path.display(), error.message),
+            })?;
             loaded += 1;
         }
         Ok(loaded)
@@ -997,7 +1041,19 @@ pub fn engine_from_environment() -> Result<Engine, EngineError> {
     let mut engine = Engine::new(dimension);
     let machine_directory = std::env::var("MACHINES_DIR")
         .unwrap_or_else(|_| "../RealityEngine_Machines/machines".to_owned());
-    engine.load_directory(FsPath::new(&machine_directory))?;
+    let loaded = engine.load_directory(FsPath::new(&machine_directory))?;
+    // The corpus-load count is the check that catches a misread key
+    // (SURFACE_SPEC.md, "Reality Event key names"); report it at every start.
+    let events: usize = engine
+        .machines
+        .values()
+        .flat_map(|machine| machine.sequences.values())
+        .map(|sequence| sequence.events.len())
+        .sum();
+    eprintln!(
+        "reality-engine: loaded {loaded} machines, {events} events from {machine_directory}; eventDimension {}",
+        engine.dimension
+    );
     Ok(engine)
 }
 
@@ -1029,17 +1085,17 @@ mod tests {
                 },
                 "sequences": [{
                     "id": "sequence",
-                    "vectors": [
+                    "events": [
                         {
                             "id": "start",
                             "isInitial": true,
                             "elements": [{ "value": 1, "comparatorType": "equals" }],
-                            "nextVectorIds": ["finish"]
+                            "nextEventIds": ["finish"]
                         },
                         {
                             "id": "finish",
                             "elements": [{ "value": 0, "comparatorType": "equals" }],
-                            "outputVectors": [{ "id": "out", "vector": [1] }]
+                            "outputEvents": [{ "id": "out", "vector": [1] }]
                         }
                     ]
                 }]
@@ -1214,6 +1270,78 @@ mod tests {
         assert_ne!(first["id"], second["id"]);
         assert_eq!(second["perceptualMapping"]["input"]["offset"], 8);
         assert_eq!(second["perceptualMapping"]["output"]["offset"], 9);
+    }
+
+    #[test]
+    fn canonical_keys_load_every_event() {
+        let loaded = Engine::new(8).load_machine(machine_definition()).unwrap();
+        assert_eq!(loaded["totalEvents"], 2);
+    }
+
+    #[test]
+    fn retired_event_keys_are_rejected_by_name() {
+        // (the retired key, a mutation that writes the fixture with it)
+        type Case = (&'static str, fn(&mut Value));
+        let cases: [Case; 4] = [
+            ("vectors", |m| {
+                let sequence = &mut m["machine"]["sequences"][0];
+                let events = sequence.as_object_mut().unwrap().remove("events").unwrap();
+                sequence["vectors"] = events;
+            }),
+            ("outputVectors", |m| {
+                let event = &mut m["machine"]["sequences"][0]["events"][1];
+                let outputs = event
+                    .as_object_mut()
+                    .unwrap()
+                    .remove("outputEvents")
+                    .unwrap();
+                event["outputVectors"] = outputs;
+            }),
+            ("nextVectorIds", |m| {
+                let event = &mut m["machine"]["sequences"][0]["events"][0];
+                let next = event
+                    .as_object_mut()
+                    .unwrap()
+                    .remove("nextEventIds")
+                    .unwrap();
+                event["nextVectorIds"] = next;
+            }),
+            ("vectors", |m| {
+                m["machine"]["inputSequences"] = json!([{ "name": "legacy", "vectors": [[1]] }]);
+            }),
+        ];
+        for (retired, make_legacy) in cases {
+            let mut definition = machine_definition();
+            make_legacy(&mut definition);
+            let error = Engine::new(8).load_machine(definition).err().unwrap();
+            assert_eq!(error.status, StatusCode::BAD_REQUEST);
+            assert!(
+                error.message.contains(&format!("`{retired}`")),
+                "{retired}: {}",
+                error.message
+            );
+        }
+    }
+
+    #[test]
+    fn a_sequence_without_events_is_a_load_error() {
+        let mut definition = machine_definition();
+        definition["machine"]["sequences"][0]["events"] = json!([]);
+        let error = Engine::new(8).load_machine(definition).err().unwrap();
+        assert!(error.message.contains("has no events"), "{}", error.message);
+    }
+
+    #[test]
+    fn a_failing_machine_file_is_named() {
+        let directory = std::env::temp_dir().join(new_machine_id());
+        fs::create_dir_all(&directory).unwrap();
+        let mut legacy = machine_definition();
+        legacy["machine"]["sequences"][0]["events"] = json!([]);
+        fs::write(directory.join("broken.json"), legacy.to_string()).unwrap();
+
+        let error = Engine::new(8).load_directory(&directory).err().unwrap();
+        fs::remove_dir_all(&directory).unwrap();
+        assert!(error.message.contains("broken.json"), "{}", error.message);
     }
 
     #[test]
