@@ -6,7 +6,7 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `9a32bc5ce874`.
 
 | layer | implemented | routes |
 |---|---|---|
-| RE | 14 | 79 |
+| RE | 16 | 79 |
 | PE | 0 | 47 |
 | RE-phase2 | 0 | 5 |
 
@@ -25,9 +25,9 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `9a32bc5ce874`.
 
 | method | path | status | tracking | notes |
 |---|---|---|---|---|
-| GET | `/api/config` | implemented |  | reports dimension/threshold, not eventDimension/matchThreshold: jateeter/RealityEngine_Rust#6 |
-| PUT | `/api/config/dimension` | missing | jateeter/RealityEngine_Rust#10 |  |
-| PUT | `/api/config/threshold` | missing | jateeter/RealityEngine_Rust#10 |  |
+| GET | `/api/config` | implemented |  | reports eventDimension and matchThreshold; qdrantUrl and collectionName (a Qdrant store this engine does not have) are omitted pending the owner's decision: jateeter/RealityEngine_Rust#6 |
+| PUT | `/api/config/dimension` | implemented |  |  |
+| PUT | `/api/config/threshold` | implemented |  | the three engines disagree on what the write does; provisionally follows C++: RealityEngine_CI#674 |
 | GET | `/api/engine/config` | missing | jateeter/RealityEngine_Rust#10 |  |
 | GET | `/api/engine/config/:control` | missing | jateeter/RealityEngine_Rust#10 |  |
 | PUT | `/api/engine/config/:control` | missing | jateeter/RealityEngine_Rust#10 |  |
@@ -89,7 +89,7 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `9a32bc5ce874`.
 | PUT | `/api/machines/:id` | missing | jateeter/RealityEngine_Rust#13 |  |
 | PATCH | `/api/machines/:id` | missing | jateeter/RealityEngine_Rust#13 |  |
 | DELETE | `/api/machines/:id` | implemented |  |  |
-| POST | `/api/machines/:id/process` | implemented |  | answers inputVector, not inputEvent: jateeter/RealityEngine_Rust#6 |
+| POST | `/api/machines/:id/process` | implemented |  |  |
 | POST | `/api/machines/:id/process-universal` | missing | jateeter/RealityEngine_Rust#13 |  |
 | POST | `/api/machines/:id/whatif` | missing | jateeter/RealityEngine_Rust#13 |  |
 | POST | `/api/machines/:id/whatif-universal` | missing | jateeter/RealityEngine_Rust#13 |  |
