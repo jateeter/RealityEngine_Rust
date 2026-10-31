@@ -17,6 +17,10 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
+pub mod instance_clock;
+
+use instance_clock::InstanceClock;
+
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(Debug)]
@@ -174,6 +178,8 @@ pub struct Engine {
     coverage: Coverage,
     /// Bumped on every machine added or removed (`re_runtime_mapping_version`).
     mapping_version: u64,
+    /// The instance's Lamport clock (RealityEngine_CI#296). Never reset.
+    clock: InstanceClock,
 }
 
 /// The id a corpus file's machine gets, on every engine: `machine-` and the
@@ -1325,6 +1331,18 @@ impl Engine {
         json!({ "history": self.history })
     }
 
+    /// SURFACE_SPEC.md, "The instance clock": `{instance, lamport, step}` for
+    /// the newest committed step. Only the space-runtime step path commits a
+    /// step (C++ `onStepCommitted`; the process routes do not), and this engine
+    /// has none yet (#11), so `step` is always -1 and the clock does not tick.
+    fn clock(&self) -> Value {
+        json!({
+            "instance": self.clock.instance(),
+            "lamport": self.clock.lamport(),
+            "step": -1,
+        })
+    }
+
     fn record_history(&mut self, result: Value) {
         const HISTORY_LIMIT: usize = 256;
         if self.history.len() == HISTORY_LIMIT {
@@ -1556,6 +1574,13 @@ async fn engine_stats(
     Ok(Json(state.stats()))
 }
 
+async fn engine_clock(
+    State(engine): State<SharedEngine>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let state = engine.read().map_err(|_| error_response(lock_error()))?;
+    Ok(Json(state.clock()))
+}
+
 async fn engine_history(
     State(engine): State<SharedEngine>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
@@ -1731,6 +1756,7 @@ pub fn app(engine: Engine) -> Router {
         )
         .route("/api/metrics", get(metrics))
         .route("/api/engine/history", get(engine_history))
+        .route("/api/engine/clock", get(engine_clock))
         .route("/api/engine/reset", post(reset))
         .with_state(state)
 }
@@ -1740,7 +1766,20 @@ pub fn engine_from_environment() -> Result<Engine, EngineError> {
         .ok()
         .and_then(|value| value.parse::<usize>().ok())
         .unwrap_or(7680);
+    // Before the corpus loads, so an allocated instance that cannot keep its
+    // clock, or whose UUID another live process holds, fails at once rather
+    // than after the load (RealityEngine_CI#296).
+    let clock = InstanceClock::boot().map_err(|message| EngineError {
+        status: StatusCode::INTERNAL_SERVER_ERROR,
+        message,
+    })?;
+    eprintln!(
+        "reality-engine: instance {}, lamport {}",
+        clock.instance(),
+        clock.lamport()
+    );
     let mut engine = Engine::new(dimension);
+    engine.clock = clock;
     // SURFACE_SPEC.md, "GET /api/config": the Qdrant store's address and
     // collection, as C++, LSP and Scala report them.
     if let Ok(url) = std::env::var("QDRANT_URL") {
@@ -2106,6 +2145,30 @@ mod tests {
         )
         .await;
         assert_eq!(r["machineOutput"]["vector"], json!([1.0]));
+    }
+
+    #[tokio::test]
+    async fn clock_reports_the_instance_and_no_committed_step() {
+        let (app, id) = loaded_app();
+        let (status, before) = send(&app, "GET", "/api/engine/clock", None).await;
+        assert_eq!(status, StatusCode::OK);
+        let instance = before["instance"].as_str().unwrap();
+        assert!(instance_clock::canonical_uuid(instance), "{instance}");
+        assert_eq!(before["lamport"], 0);
+        assert_eq!(before["step"], -1);
+        // Neither process route commits a step, and a reset leaves the clock.
+        let uri = format!("/api/machines/{id}/process");
+        send(&app, "POST", &uri, Some(json!({ "inputEvent": [1.0] }))).await;
+        send(
+            &app,
+            "POST",
+            "/api/engine/process",
+            Some(json!({ "inputEvent": [1.0] })),
+        )
+        .await;
+        send(&app, "POST", "/api/engine/reset", None).await;
+        let (_, after) = send(&app, "GET", "/api/engine/clock", None).await;
+        assert_eq!(after, before);
     }
 
     #[tokio::test]

@@ -1,6 +1,6 @@
 # RealityEngine_Rust Guidance
 
-Last reviewed: 2026-10-30
+Last reviewed: 2026-10-31
 
 See `/Users/johnt/workspace/GitHub/CLAUDE.md` for the integrated application map. Update both this file and the root map when the Rust engine's role, validation tiers, ports or parity responsibilities change.
 
@@ -11,7 +11,9 @@ This repo is the Rust Reality Engine. It is a **non-voting conformance follower*
 ## Codebase Map
 
 - `src/lib.rs`: the engine (`Engine`, machine transitions, arbitration, output merge) and the axum router (`app`).
-- `src/main.rs`: entrypoint; `serve()` reads `REALITY_ENGINE_PORT`, `VECTOR_DIMENSION`, `MACHINES_DIR`.
+- `src/instance_clock.rs`: the instance's Lamport clock and identity (RealityEngine_CI#296): `INSTANCE_UUID`, `<uuid>.lamport` in `INSTANCE_CLOCK_DIR`, and the `fcntl` lock on `<uuid>.lock` that refuses a second live process with the same UUID. It must stay a POSIX record lock (not `File::try_lock`, which is `flock`): `instance_uuids.py live` probes with `F_GETLK`.
+- `src/main.rs`: entrypoint; `serve()` reads `REALITY_ENGINE_PORT`, `VECTOR_DIMENSION`, `MACHINES_DIR`, `INSTANCE_UUID`, `INSTANCE_CLOCK_DIR`.
+- `tests/instance_identity.rs`: a second engine process with a held UUID refuses to boot.
 - `tests/conformance.rs`: tier R1, the corpus replay.
 - `tests/surface.rs`: tier R1, every SURFACE_SPEC route probed for its implementation status.
 - `conformance/SURFACE_STATUS.md`: **the readable answer to "which documented APIs exist"**, generated from `conformance/surface-status.json`, which records each route's status and tracking issue.

@@ -246,8 +246,8 @@
       "tracking": "jateeter/RealityEngine_Rust#11"
     },
     "RE GET /api/engine/clock": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#12"
+      "notes": "instance and lamport per RealityEngine_CI#296 (allocated UUID, persisted reservation, fcntl instance lock); only the space-runtime step path commits a step, which this engine lacks, so step is -1 and the clock does not tick until #11",
+      "status": "implemented"
     },
     "RE GET /api/engine/config": {
       "notes": "carries transitionsInhibited only; the other seven universal controls join with the behaviour they govern (historyLimit, include*, phaseDetail: jateeter/RealityEngine_Rust#11; arbitrationRetention, arbitrationWindow: #12)",

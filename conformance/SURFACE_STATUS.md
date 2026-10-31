@@ -6,7 +6,7 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 
 | layer | implemented | routes |
 |---|---|---|
-| RE | 22 | 79 |
+| RE | 23 | 79 |
 | PE | 0 | 47 |
 | RE-phase2 | 0 | 5 |
 
@@ -74,7 +74,7 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 | GET | `/api/engine/osre-history` | missing | jateeter/RealityEngine_Rust#11 |  |
 | GET | `/api/engine/isre-history` | missing | jateeter/RealityEngine_Rust#11 |  |
 | GET | `/api/engine/steps/:n/pair` | missing | jateeter/RealityEngine_Rust#11 |  |
-| GET | `/api/engine/clock` | missing | jateeter/RealityEngine_Rust#12 |  |
+| GET | `/api/engine/clock` | implemented |  | instance and lamport per RealityEngine_CI#296 (allocated UUID, persisted reservation, fcntl instance lock); only the space-runtime step path commits a step, which this engine lacks, so step is -1 and the clock does not tick until #11 |
 | GET | `/api/arbitration` | missing | jateeter/RealityEngine_Rust#12 |  |
 | POST | `/api/engine/process` | implemented |  |  |
 | POST | `/api/engine/reset` | implemented |  |  |
