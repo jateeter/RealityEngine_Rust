@@ -1,0 +1,176 @@
+{
+  "version": "1.0.0",
+  "machine": {
+    "name": "Arbitration Provider Peer",
+    "description": "Contention fixture 9b: machine writer onto [16940:16941], the lane an agent also projects into.",
+    "metadata": {
+      "category": "digital-logic",
+      "author": "Reality Engine",
+      "created": "2026-08-13T00:00:00Z",
+      "eventSpace": "2D binary vectors",
+      "outputSpace": "2D binary",
+      "tags": [
+        "arbitration-fixture",
+        "arbitration-provider-peer",
+        "ces-sequences",
+        "ces-sequences-1",
+        "digital-logic",
+        "input-sequences",
+        "input-sequences-1",
+        "startup-loadable"
+      ],
+      "sequenceCount": 1,
+      "description": "Contention fixture 9b: machine writer onto [16940:16941], the lane an agent also projects into.",
+      "tagging": {
+        "schemaVersion": "1.0.0",
+        "managedBy": "scripts/manage_machine_tags.mjs",
+        "primaryDomain": "digital-logic",
+        "domainTags": [
+          "digital-logic"
+        ],
+        "family": "arbitration-provider-peer",
+        "machineCode": "arbitration-provider-peer",
+        "capabilityTags": [],
+        "workflowTags": [
+          "arbitration-fixture",
+          "arbitration-provider-peer"
+        ],
+        "integrationTags": [
+          "digital-logic"
+        ],
+        "validationTags": [
+          "ces-sequences",
+          "ces-sequences-1",
+          "input-sequences",
+          "input-sequences-1",
+          "startup-loadable"
+        ],
+        "allTags": [
+          "arbitration-fixture",
+          "arbitration-provider-peer",
+          "ces-sequences",
+          "ces-sequences-1",
+          "digital-logic",
+          "input-sequences",
+          "input-sequences-1",
+          "startup-loadable"
+        ]
+      },
+      "governance": {
+        "schemaVersion": "1.0.0",
+        "ownerTeam": "reliability-engineering",
+        "runbook": "https://runbooks.example.org/digital-logic/arbitrationproviderpeer",
+        "escalationPolicy": "slack:#reliability-test",
+        "contact": {
+          "primary": "reliability-engineering-primary@example.org",
+          "secondary": "reliability-engineering-secondary@example.org"
+        },
+        "sla": {
+          "ok": null,
+          "info": null,
+          "warning": 600,
+          "error": null
+        },
+        "notes": "Arbitration conformance fixture (ARBITER_CONTRACT.md 9). SLA set because the trigger rules use paging tiers: an envelope that can page must carry a response contract."
+      },
+      "triggerConfig": {
+        "processId": "ARBPROVPEER",
+        "processName": "Arbitration Provider Peer",
+        "rules": [
+          {
+            "sequenceId": "arb-d-assert",
+            "outputMatches": [
+              1,
+              1
+            ],
+            "ragStatusCode": "AMBER",
+            "processStatus": "warning",
+            "description": "Machine determination asserts"
+          }
+        ]
+      },
+      "machineClass": "signal-monitor",
+      "inputSemantics": [
+        "Arbitration Provider Peer input 1",
+        "Arbitration Provider Peer input 2"
+      ],
+      "outputSemantics": [
+        "Arbitration Provider Peer output 1",
+        "Arbitration Provider Peer output 2"
+      ]
+    },
+    "arbiterRule": "PASSTHROUGH",
+    "perceptualMapping": {
+      "input": {
+        "offset": 16936,
+        "length": 2
+      },
+      "output": {
+        "offset": 16940,
+        "length": 2
+      },
+      "bitsPerElement": 1
+    },
+    "sequences": [
+      {
+        "id": "arb-d-assert",
+        "name": "Peer asserts",
+        "metadata": {
+          "description": "Machine determination asserts 1 on the contended lane"
+        },
+        "events": [
+          {
+            "id": "arb-d-event",
+            "elements": [
+              {
+                "value": 1,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": true,
+            "metadata": {
+              "name": "assert",
+              "description": "Machine determination asserts 1 on the contended lane"
+            },
+            "outputEvents": [
+              {
+                "id": "arb-d-event-out",
+                "vector": [
+                  1,
+                  1
+                ],
+                "metadata": {
+                  "description": "Machine determination asserts 1 on the contended lane",
+                  "action": "log-activity",
+                  "actionNarrative": "Machine determination asserts 1 on the contended lane"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "inputSequences": [
+      {
+        "name": "Assert",
+        "pattern": "00 -> 10",
+        "description": "drive the fixture",
+        "events": [
+          [
+            0,
+            0
+          ],
+          [
+            1,
+            0
+          ]
+        ]
+      }
+    ],
+    "matchAlgorithm": "gte"
+  }
+}

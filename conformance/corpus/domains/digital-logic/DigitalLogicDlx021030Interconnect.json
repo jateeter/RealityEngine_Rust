@@ -1,0 +1,1009 @@
+{
+  "version": "1.0.0",
+  "machine": {
+    "name": "Digital Logic DLX-021-030 Interconnect",
+    "description": "Published digital-logic bridge bus that composes Digital Logic DLX-021-030 into a compact domain family response lane. PE owns source composition and writes the compact input lane; RE evaluates this machine as ordinary vector state.",
+    "metadata": {
+      "category": "digital-logic",
+      "domain": "Digital Logic - Digital Logic DLX-021-030 Bus",
+      "author": "Reality Engine",
+      "domainLevelTag": "published-bus-digital-logic-dlx-021-030",
+      "publishedDomainBus": {
+        "id": "digital-logic.dlx-021-030",
+        "tag": "published-bus-digital-logic-dlx-021-030",
+        "domain": "digital-logic",
+        "name": "Digital Logic DLX-021-030 Bus",
+        "description": "Family-level published bus for Digital Logic: Digital Logic DLX-021-030.",
+        "inputRegion": {
+          "offset": 14364,
+          "length": 20
+        },
+        "outputRegion": {
+          "offset": 14384,
+          "length": 4
+        },
+        "inputComposition": [
+          {
+            "role": "logical_infrastructure_enable_qualified_valid",
+            "sourceMachine": "DLX021_enable-qualified-valid.json",
+            "machineInputRegion": {
+              "offset": 1603,
+              "length": 4
+            },
+            "machineOutputRegion": {
+              "offset": 1607,
+              "length": 2
+            },
+            "composedInputElements": [
+              0,
+              1
+            ],
+            "mapping": {
+              "activeOutput0": "Logical Infrastructure Enable Qualified Valid output[0]",
+              "activeOutput1": "Logical Infrastructure Enable Qualified Valid output[1]"
+            }
+          },
+          {
+            "role": "logical_infrastructure_enable_disable_cycle",
+            "sourceMachine": "DLX022_enable-disable-cycle.json",
+            "machineInputRegion": {
+              "offset": 1609,
+              "length": 4
+            },
+            "machineOutputRegion": {
+              "offset": 1613,
+              "length": 2
+            },
+            "composedInputElements": [
+              2,
+              3
+            ],
+            "mapping": {
+              "activeOutput0": "Logical Infrastructure Enable Disable Cycle output[0]",
+              "activeOutput1": "Logical Infrastructure Enable Disable Cycle output[1]"
+            }
+          },
+          {
+            "role": "logical_infrastructure_clock_gate_request_grant",
+            "sourceMachine": "DLX023_clock-gate-request-grant.json",
+            "machineInputRegion": {
+              "offset": 1615,
+              "length": 4
+            },
+            "machineOutputRegion": {
+              "offset": 1619,
+              "length": 2
+            },
+            "composedInputElements": [
+              4,
+              5
+            ],
+            "mapping": {
+              "activeOutput0": "Logical Infrastructure Clock Gate Request Grant output[0]",
+              "activeOutput1": "Logical Infrastructure Clock Gate Request Grant output[1]"
+            }
+          },
+          {
+            "role": "logical_infrastructure_clock_gate_open_close",
+            "sourceMachine": "DLX024_clock-gate-open-close.json",
+            "machineInputRegion": {
+              "offset": 1621,
+              "length": 4
+            },
+            "machineOutputRegion": {
+              "offset": 1625,
+              "length": 2
+            },
+            "composedInputElements": [
+              6,
+              7
+            ],
+            "mapping": {
+              "activeOutput0": "Logical Infrastructure Clock Gate Open Close output[0]",
+              "activeOutput1": "Logical Infrastructure Clock Gate Open Close output[1]"
+            }
+          },
+          {
+            "role": "logical_infrastructure_power_up_sequence",
+            "sourceMachine": "DLX025_power-up-sequence.json",
+            "machineInputRegion": {
+              "offset": 1627,
+              "length": 4
+            },
+            "machineOutputRegion": {
+              "offset": 1631,
+              "length": 2
+            },
+            "composedInputElements": [
+              8,
+              9
+            ],
+            "mapping": {
+              "activeOutput0": "Logical Infrastructure Power Up Sequence output[0]",
+              "activeOutput1": "Logical Infrastructure Power Up Sequence output[1]"
+            }
+          },
+          {
+            "role": "logical_infrastructure_power_down_sequence",
+            "sourceMachine": "DLX026_power-down-sequence.json",
+            "machineInputRegion": {
+              "offset": 1633,
+              "length": 4
+            },
+            "machineOutputRegion": {
+              "offset": 1637,
+              "length": 2
+            },
+            "composedInputElements": [
+              10,
+              11
+            ],
+            "mapping": {
+              "activeOutput0": "Logical Infrastructure Power Down Sequence output[0]",
+              "activeOutput1": "Logical Infrastructure Power Down Sequence output[1]"
+            }
+          },
+          {
+            "role": "logical_infrastructure_isolation_enable_before_powerdown",
+            "sourceMachine": "DLX027_isolation-enable-before-powerdown.json",
+            "machineInputRegion": {
+              "offset": 1639,
+              "length": 4
+            },
+            "machineOutputRegion": {
+              "offset": 1643,
+              "length": 2
+            },
+            "composedInputElements": [
+              12,
+              13
+            ],
+            "mapping": {
+              "activeOutput0": "Logical Infrastructure Isolation Enable Before Powerdown output[0]",
+              "activeOutput1": "Logical Infrastructure Isolation Enable Before Powerdown output[1]"
+            }
+          },
+          {
+            "role": "logical_infrastructure_retention_save_restore",
+            "sourceMachine": "DLX028_retention-save-restore.json",
+            "machineInputRegion": {
+              "offset": 1645,
+              "length": 4
+            },
+            "machineOutputRegion": {
+              "offset": 1649,
+              "length": 2
+            },
+            "composedInputElements": [
+              14,
+              15
+            ],
+            "mapping": {
+              "activeOutput0": "Logical Infrastructure Retention Save Restore output[0]",
+              "activeOutput1": "Logical Infrastructure Retention Save Restore output[1]"
+            }
+          },
+          {
+            "role": "logical_infrastructure_scan_shift_capture",
+            "sourceMachine": "DLX029_scan-shift-capture.json",
+            "machineInputRegion": {
+              "offset": 1651,
+              "length": 4
+            },
+            "machineOutputRegion": {
+              "offset": 1655,
+              "length": 2
+            },
+            "composedInputElements": [
+              16,
+              17
+            ],
+            "mapping": {
+              "activeOutput0": "Logical Infrastructure Scan Shift Capture output[0]",
+              "activeOutput1": "Logical Infrastructure Scan Shift Capture output[1]"
+            }
+          },
+          {
+            "role": "logical_infrastructure_scan_enable_deassert",
+            "sourceMachine": "DLX030_scan-enable-deassert.json",
+            "machineInputRegion": {
+              "offset": 1657,
+              "length": 4
+            },
+            "machineOutputRegion": {
+              "offset": 1661,
+              "length": 2
+            },
+            "composedInputElements": [
+              18,
+              19
+            ],
+            "mapping": {
+              "activeOutput0": "Logical Infrastructure Scan Enable Deassert output[0]",
+              "activeOutput1": "Logical Infrastructure Scan Enable Deassert output[1]"
+            }
+          }
+        ],
+        "downstreamConsumers": [
+          {
+            "machine": "DLX021_enable-qualified-valid.json",
+            "inputRegion": {
+              "offset": 14384,
+              "length": 4
+            },
+            "lanes": [
+              "domain_family_review",
+              "domain_family_optimization",
+              "domain_family_monitoring"
+            ],
+            "outputMatchesAny": [
+              [
+                1,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                1,
+                0
+              ]
+            ],
+            "purpose": "lane-scoped family fan-out"
+          },
+          {
+            "machine": "DLX022_enable-disable-cycle.json",
+            "inputRegion": {
+              "offset": 14384,
+              "length": 4
+            },
+            "lanes": [
+              "domain_family_review",
+              "domain_family_optimization",
+              "domain_family_monitoring"
+            ],
+            "outputMatchesAny": [
+              [
+                1,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                1,
+                0
+              ]
+            ],
+            "purpose": "lane-scoped family fan-out"
+          },
+          {
+            "machine": "DLX023_clock-gate-request-grant.json",
+            "inputRegion": {
+              "offset": 14384,
+              "length": 4
+            },
+            "lanes": [
+              "domain_family_review",
+              "domain_family_optimization",
+              "domain_family_monitoring"
+            ],
+            "outputMatchesAny": [
+              [
+                1,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                1,
+                0
+              ]
+            ],
+            "purpose": "lane-scoped family fan-out"
+          },
+          {
+            "machine": "DLX030_scan-enable-deassert.json",
+            "inputRegion": {
+              "offset": 14384,
+              "length": 4
+            },
+            "lanes": [
+              "domain_family_review",
+              "domain_family_optimization",
+              "domain_family_monitoring"
+            ],
+            "outputMatchesAny": [
+              [
+                1,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                1,
+                0
+              ]
+            ],
+            "purpose": "lane-scoped family fan-out"
+          }
+        ],
+        "localAIResolver": {
+          "resolverId": "localai.digital-logic.dlx-021-030.resolver",
+          "provider": "localAIStack/Ollama",
+          "dispatchMode": "accepted-no-wait",
+          "input": {
+            "source": "published bus output",
+            "region": {
+              "offset": 14384,
+              "length": 4
+            }
+          },
+          "completionWriteBack": {
+            "owner": "perception-engine",
+            "mode": "configured-source-mapping",
+            "region": {
+              "offset": 14384,
+              "length": 4
+            }
+          },
+          "contract": "Resolver may enrich dispatch payloads, summarize domain family state, or select lane-scoped handoff templates. PE accepts completion as a source update and never waits inside a PE cycle."
+        }
+      },
+      "machineClass": "bridge",
+      "severity": "operational-support",
+      "tags": [
+        "digital-logic",
+        "published-domain-bus",
+        "machine-interconnect",
+        "openclaw",
+        "localai",
+        "startup-loadable",
+        "dlx-021-030"
+      ],
+      "inputSemantics": [
+        "Logical Infrastructure Enable Qualified Valid active output[0] bit",
+        "Logical Infrastructure Enable Qualified Valid active output[1] bit",
+        "Logical Infrastructure Enable Disable Cycle active output[0] bit",
+        "Logical Infrastructure Enable Disable Cycle active output[1] bit",
+        "Logical Infrastructure Clock Gate Request Grant active output[0] bit",
+        "Logical Infrastructure Clock Gate Request Grant active output[1] bit",
+        "Logical Infrastructure Clock Gate Open Close active output[0] bit",
+        "Logical Infrastructure Clock Gate Open Close active output[1] bit",
+        "Logical Infrastructure Power Up Sequence active output[0] bit",
+        "Logical Infrastructure Power Up Sequence active output[1] bit",
+        "Logical Infrastructure Power Down Sequence active output[0] bit",
+        "Logical Infrastructure Power Down Sequence active output[1] bit",
+        "Logical Infrastructure Isolation Enable Before Powerdown active output[0] bit",
+        "Logical Infrastructure Isolation Enable Before Powerdown active output[1] bit",
+        "Logical Infrastructure Retention Save Restore active output[0] bit",
+        "Logical Infrastructure Retention Save Restore active output[1] bit",
+        "Logical Infrastructure Scan Shift Capture active output[0] bit",
+        "Logical Infrastructure Scan Shift Capture active output[1] bit",
+        "Logical Infrastructure Scan Enable Deassert active output[0] bit",
+        "Logical Infrastructure Scan Enable Deassert active output[1] bit"
+      ],
+      "outputSemantics": [
+        "domain family review bit",
+        "domain family optimization bit",
+        "domain family monitoring bit",
+        "domain family stable bit"
+      ],
+      "eventSpace": "20D PE-composed Digital Logic DLX-021-030 input space",
+      "outputSpace": "4D binary at [14384:14387]: [1,0,0,0]=DOMAIN_FAMILY_REVIEW, [0,1,0,0]=DOMAIN_FAMILY_OPTIMIZATION, [0,0,1,0]=DOMAIN_FAMILY_MONITORING, [0,0,0,1]=DOMAIN_FAMILY_STABLE",
+      "sequenceCount": 4,
+      "testCaseCount": 3,
+      "triggerConfig": {
+        "processId": "DIGITALLOGICDLX021030INTERCONNECT",
+        "processName": "Digital Logic DLX-021-030 Interconnect",
+        "rules": [
+          {
+            "sequenceId": "dlx-021-030-domain-family-review",
+            "outputMatches": [
+              1,
+              0,
+              0,
+              0
+            ],
+            "ragStatusCode": "RED",
+            "processStatus": "error",
+            "description": "Digital Logic DLX-021-030 domain family review at [14384:14387]"
+          },
+          {
+            "sequenceId": "dlx-021-030-domain-family-optimization",
+            "outputMatches": [
+              0,
+              1,
+              0,
+              0
+            ],
+            "ragStatusCode": "AMBER",
+            "processStatus": "warning",
+            "description": "Digital Logic DLX-021-030 domain family optimization at [14384:14387]"
+          },
+          {
+            "sequenceId": "dlx-021-030-domain-family-monitoring",
+            "outputMatches": [
+              0,
+              0,
+              1,
+              0
+            ],
+            "ragStatusCode": "AMBER",
+            "processStatus": "warning",
+            "description": "Digital Logic DLX-021-030 domain family monitoring at [14384:14387]"
+          },
+          {
+            "sequenceId": "dlx-021-030-domain-family-stable",
+            "outputMatches": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "ragStatusCode": "GREEN",
+            "processStatus": "info",
+            "description": "Digital Logic DLX-021-030 domain family stable at [14384:14387]"
+          }
+        ]
+      },
+      "governance": {
+        "schemaVersion": "1.0.0",
+        "ownerTeam": "logic-validation-ops",
+        "runbook": "https://runbooks.example.org/digital-logic/dlx-021-030",
+        "escalationPolicy": "pagerduty:logic-validation",
+        "contact": {
+          "primary": "logic-validation-ops-primary@example.org",
+          "secondary": "platform-ops-primary@example.org"
+        },
+        "sla": {
+          "ok": null,
+          "info": null,
+          "warning": 86400,
+          "error": 3600
+        },
+        "notes": "Published PE-composed bridge bus for Digital Logic DLX-021-030. RE evaluates only vector state; PE owns source provenance and completion ingestion."
+      }
+    },
+    "arbiterRule": "PASSTHROUGH",
+    "matchAlgorithm": "equals",
+    "perceptualMapping": {
+      "input": {
+        "offset": 14364,
+        "length": 20
+      },
+      "output": {
+        "offset": 14384,
+        "length": 4
+      },
+      "bitsPerElement": 1
+    },
+    "sequences": [
+      {
+        "id": "dlx-021-030-domain-family-review",
+        "name": "Digital Logic DLX-021-030 domain family review",
+        "metadata": {
+          "description": "Digital Logic DLX-021-030 domain family review",
+          "output": "[1,0,0,0]"
+        },
+        "events": [
+          {
+            "id": "dlx-021-030-domain-family-review-state",
+            "elements": [
+              {
+                "value": 1
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 1
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 1
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              }
+            ],
+            "isInitial": true,
+            "outputEvents": [
+              {
+                "id": "dlx-021-030-domain-family-review-output",
+                "vector": [
+                  1,
+                  0,
+                  0,
+                  0
+                ],
+                "metadata": {
+                  "action": "route-review",
+                  "actionNarrative": "Route domain family review, escalation, and resolver summary."
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dlx-021-030-domain-family-optimization",
+        "name": "Digital Logic DLX-021-030 domain family optimization",
+        "metadata": {
+          "description": "Digital Logic DLX-021-030 domain family optimization",
+          "output": "[0,1,0,0]"
+        },
+        "events": [
+          {
+            "id": "dlx-021-030-domain-family-optimization-state",
+            "elements": [
+              {
+                "value": 0
+              },
+              {
+                "value": 1
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 1
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 1
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              }
+            ],
+            "isInitial": true,
+            "outputEvents": [
+              {
+                "id": "dlx-021-030-domain-family-optimization-output",
+                "vector": [
+                  0,
+                  1,
+                  0,
+                  0
+                ],
+                "metadata": {
+                  "action": "route-review",
+                  "actionNarrative": "Route domain family optimization or plan adjustment."
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dlx-021-030-domain-family-monitoring",
+        "name": "Digital Logic DLX-021-030 domain family monitoring",
+        "metadata": {
+          "description": "Digital Logic DLX-021-030 domain family monitoring",
+          "output": "[0,0,1,0]"
+        },
+        "events": [
+          {
+            "id": "dlx-021-030-domain-family-monitoring-state",
+            "elements": [
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 1
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 1
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 1
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              }
+            ],
+            "isInitial": true,
+            "outputEvents": [
+              {
+                "id": "dlx-021-030-domain-family-monitoring-output",
+                "vector": [
+                  0,
+                  0,
+                  1,
+                  0
+                ],
+                "metadata": {
+                  "action": "route-review",
+                  "actionNarrative": "Route monitoring, evidence, or data-quality follow-up."
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dlx-021-030-domain-family-stable",
+        "name": "Digital Logic DLX-021-030 domain family stable",
+        "metadata": {
+          "description": "Digital Logic DLX-021-030 domain family stable",
+          "output": "[0,0,0,1]"
+        },
+        "events": [
+          {
+            "id": "dlx-021-030-domain-family-stable-state",
+            "elements": [
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              }
+            ],
+            "isInitial": true,
+            "outputEvents": [
+              {
+                "id": "dlx-021-030-domain-family-stable-output",
+                "vector": [
+                  0,
+                  0,
+                  0,
+                  1
+                ],
+                "metadata": {
+                  "action": "continue-monitoring",
+                  "actionNarrative": "Record stable family state and keep baseline cadence."
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "inputSequences": [
+      {
+        "name": "Digital Logic DLX-021-030 review fan-out",
+        "pattern": "PE composed family input: source review bits active.",
+        "description": "Activates domain family review.",
+        "events": [
+          [
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        ],
+        "metadata": {
+          "scenario": "dlx-021-030-review",
+          "expectedOutputVector": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "expectedOutputRegion": {
+            "offset": 14384,
+            "length": 4
+          },
+          "fanOutPolicy": "lane-scoped domain_family_review"
+        }
+      },
+      {
+        "name": "Digital Logic DLX-021-030 optimization fan-out",
+        "pattern": "PE composed family input: source optimization bits active.",
+        "description": "Activates domain family optimization.",
+        "events": [
+          [
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        ],
+        "metadata": {
+          "scenario": "dlx-021-030-optimization",
+          "expectedOutputVector": [
+            0,
+            1,
+            0,
+            0
+          ],
+          "expectedOutputRegion": {
+            "offset": 14384,
+            "length": 4
+          },
+          "fanOutPolicy": "lane-scoped domain_family_optimization"
+        }
+      },
+      {
+        "name": "Digital Logic DLX-021-030 monitoring fan-out",
+        "pattern": "PE composed family input: source monitoring bits active.",
+        "description": "Activates domain family monitoring.",
+        "events": [
+          [
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        ],
+        "metadata": {
+          "scenario": "dlx-021-030-monitoring",
+          "expectedOutputVector": [
+            0,
+            0,
+            1,
+            0
+          ],
+          "expectedOutputRegion": {
+            "offset": 14384,
+            "length": 4
+          },
+          "fanOutPolicy": "lane-scoped domain_family_monitoring"
+        }
+      }
+    ]
+  }
+}

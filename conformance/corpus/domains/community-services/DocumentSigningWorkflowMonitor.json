@@ -1,0 +1,507 @@
+{
+  "version": "1.0.0",
+  "machine": {
+    "name": "Document Signing Workflow Monitor",
+    "description": "Tracks document collection completeness, signature status, witness verification, and legal validity for community service enrollment agreements, consent forms, release of information authorizations, and benefit assignment documents. Document signing is a critical gating step in community services — unsigned consent forms block care coordination, unsigned ROIs prevent inter-agency data sharing, and missing program agreements delay benefit issuance by days or weeks. Output at [960:963] feeds the Workflow Completion Monitor.",
+    "metadata": {
+      "category": "community-services",
+      "domain": "Community Services — Document Signing / Workflow",
+      "author": "Reality Engine",
+      "outputSpace": "4D binary at [960:963]: [1,0,0,0]=SIGNING_BLOCKED, [0,1,0,0]=SIGNATURE_PENDING, [0,0,1,0]=PARTIAL_SIGNING, [0,0,0,1]=SIGNING_COMPLETE",
+      "tags": [
+        "ces-sequences",
+        "ces-sequences-3",
+        "community-services",
+        "community-services-document-signing-workflow",
+        "consent",
+        "document-signing",
+        "document-signing-workflow-monitor",
+        "e-signature",
+        "input-sequences",
+        "input-sequences-1",
+        "intake",
+        "kleene-plus",
+        "qualification-workflow",
+        "release-of-information",
+        "startup-loadable",
+        "workflow"
+      ],
+      "sequenceCount": 3,
+      "populationFocus": "Community service enrollees requiring consent forms, ROI authorizations, program agreements; applicants with limited digital access; participants with cognitive or literacy barriers",
+      "sensorNormalization": {
+        "documents_received_norm": "0.0=no required documents collected (zero of required set), 0.5=half of required documents collected, 1.0=all required documents collected and on file",
+        "signature_completeness_norm": "0.0=no signatures obtained (client unreachable or refusing), 0.5=partial signatures (some forms signed; key forms unsigned), 1.0=all required signatures obtained",
+        "witness_verification_norm": "0.0=witness signature required but not obtained; notarization missing; co-signer absent, 0.5=witness present but verification pending (identity check in progress), 1.0=all witness and notarization requirements satisfied",
+        "legal_validity_norm": "0.0=documents legally invalid (expired forms, wrong version, jurisdiction mismatch, capacity concern), 0.5=documents submitted but legal review pending, 1.0=all documents legally valid and accepted by receiving program"
+      },
+      "downstreamMachine": "WorkflowCompletionMonitor (reads [960:967])",
+      "tagging": {
+        "schemaVersion": "1.0.0",
+        "managedBy": "scripts/manage_machine_tags.mjs",
+        "primaryDomain": "community-services",
+        "domainTags": [
+          "community-services",
+          "document-signing",
+          "workflow"
+        ],
+        "family": "document-signing-workflow-monitor",
+        "machineCode": "document-signing-workflow-monitor",
+        "capabilityTags": [
+          "community-services-document-signing-workflow",
+          "document-signing-workflow-monitor",
+          "qualification-workflow",
+          "workflow"
+        ],
+        "workflowTags": [
+          "consent",
+          "e-signature",
+          "intake",
+          "kleene-plus",
+          "release-of-information"
+        ],
+        "integrationTags": [],
+        "validationTags": [
+          "ces-sequences",
+          "ces-sequences-3",
+          "input-sequences",
+          "input-sequences-1",
+          "startup-loadable"
+        ],
+        "allTags": [
+          "ces-sequences",
+          "ces-sequences-3",
+          "community-services",
+          "community-services-document-signing-workflow",
+          "consent",
+          "document-signing",
+          "document-signing-workflow-monitor",
+          "e-signature",
+          "input-sequences",
+          "input-sequences-1",
+          "intake",
+          "kleene-plus",
+          "qualification-workflow",
+          "release-of-information",
+          "startup-loadable",
+          "workflow"
+        ]
+      },
+      "governance": {
+        "schemaVersion": "1.0.0",
+        "ownerTeam": "social-services-on-call",
+        "runbook": "https://runbooks.example.org/community-services/documentsigningworkflowmonitor",
+        "escalationPolicy": "pagerduty:social-services",
+        "contact": {
+          "primary": "social-services-on-call-primary@example.org",
+          "secondary": "social-services-on-call-secondary@example.org"
+        },
+        "sla": {
+          "ok": null,
+          "info": null,
+          "warning": 1800,
+          "error": 600
+        },
+        "notes": "Auto-backfilled by scripts/backfill-governance.mjs from primaryDomain=\"community-services\".  Review and tune the routing as the team owning DocumentSigningWorkflowMonitor matures."
+      },
+      "triggerConfig": {
+        "processId": "DOCUMENTSIGNINGWORKFLOWMONITOR",
+        "processName": "Document Signing Workflow Monitor",
+        "rules": [
+          {
+            "sequenceId": "signing-blocked-escalation",
+            "outputMatches": [
+              1,
+              0,
+              0,
+              0
+            ],
+            "ragStatusCode": "RED",
+            "processStatus": "error",
+            "description": "SIGNING_BLOCKED: document signing failure halting service enrollment at [960:963]"
+          },
+          {
+            "sequenceId": "signing-partial",
+            "outputMatches": [
+              0,
+              0,
+              1,
+              0
+            ],
+            "ragStatusCode": "GREEN",
+            "processStatus": "info",
+            "description": "PARTIAL_SIGNING: primary documents signed; supplementary forms outstanding at [960:963]"
+          },
+          {
+            "sequenceId": "signing-complete",
+            "outputMatches": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "ragStatusCode": "GREEN",
+            "processStatus": "info",
+            "description": "SIGNING_COMPLETE: all required documents executed and legally valid at [960:963]"
+          }
+        ]
+      },
+      "machineClass": "signal-monitor",
+      "inputSemantics": [
+        "Document Signing Workflow Monitor input 1",
+        "Document Signing Workflow Monitor input 2",
+        "Document Signing Workflow Monitor input 3",
+        "Document Signing Workflow Monitor input 4"
+      ],
+      "interconnections": [
+        {
+          "id": "community-services.community-services-core.document-signing-workflow-monitor",
+          "type": "published-domain-bus-producer",
+          "role": "document_signing_workflow_monitor",
+          "sourceMachine": "Document Signing Workflow Monitor",
+          "sourceOutputRegion": {
+            "offset": 960,
+            "length": 4
+          },
+          "targetInputElements": [
+            12,
+            13,
+            14
+          ],
+          "normalizedElements": [
+            "Document Signing Workflow Monitor active output[0] bit",
+            "Document Signing Workflow Monitor active output[1] bit",
+            "Document Signing Workflow Monitor active output[2] bit"
+          ],
+          "purpose": "Publish Document Signing Workflow Monitor active response lanes into community-services.community-services-core.",
+          "busId": "community-services.community-services-core",
+          "busTag": "published-bus-community-services-community-services-core",
+          "targetMachine": "Community Services Core Interconnect",
+          "targetMachineFile": "CommunityServicesCoreInterconnect.json",
+          "targetInputRegion": {
+            "offset": 13758,
+            "length": 36
+          },
+          "busInputRegion": {
+            "offset": 13758,
+            "length": 36
+          },
+          "publishedOutputRegion": {
+            "offset": 13794,
+            "length": 4
+          },
+          "busOutputRegion": {
+            "offset": 13794,
+            "length": 4
+          },
+          "peCompositionRequired": true,
+          "compositionOwner": "perception-engine",
+          "dispatchMode": "asynchronous-no-wait",
+          "privacyBoundary": "PE composes normalized domain status bits only; raw regulated records, operator notes, telemetry payloads, documents, and provider-specific source payloads remain outside the universal Reality Event."
+        }
+      ],
+      "openClawProjection": {
+        "projectionId": "openclaw-document-signing-workflow-monitor-native-input-projection",
+        "owner": "openclaw-input-analyst",
+        "dispatchMode": "accepted-no-wait",
+        "writeBackRegion": {
+          "offset": 928,
+          "length": 4
+        },
+        "normalization": "machine-native-binary",
+        "semantics": [
+          "documents_received_norm",
+          "signature_completeness_norm",
+          "witness_verification_norm",
+          "legal_validity_norm"
+        ],
+        "peContract": "OpenClaw maps domain observations to this machine's native input lane; PE writes the vector source and does not wait inside a PE cycle."
+      }
+    },
+    "arbiterRule": "PASSTHROUGH",
+    "perceptualMapping": {
+      "input": {
+        "offset": 928,
+        "length": 4
+      },
+      "output": {
+        "offset": 960,
+        "length": 4
+      },
+      "bitsPerElement": 8
+    },
+    "sequences": [
+      {
+        "id": "signing-blocked-escalation",
+        "name": "Signing Failure: ACTIVE+ → STALLED → BLOCKED → SIGNING_BLOCKED",
+        "metadata": {
+          "description": "Tracks signing workflow deterioration from an active state through stall to full blockage. In community services, signing blockages most commonly arise from client unreachability, legal capacity questions (dementia, guardianship), or documents arriving in a format the client cannot access (online-only portal for a client without internet). Requires ACTIVE+ baseline before block escalation can arm.",
+          "path": "ACTIVE+ → STALLED → BLOCKED → output[1,0,0,0]",
+          "output": "[1,0,0,0] (SIGNING_BLOCKED)"
+        },
+        "events": [
+          {
+            "id": "ds-active",
+            "elements": [
+              {
+                "value": 0.62,
+                "threshold": 0.5
+              },
+              {
+                "value": 0.6,
+                "threshold": 0.5
+              },
+              {
+                "value": 0.58,
+                "threshold": 0.5
+              },
+              {
+                "value": 0.6,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": true,
+            "metadata": {
+              "name": "ACTIVE",
+              "description": "ACTIVE+ — documents being collected; signatures in progress; witness requirements on track; no legal concerns flagged. isInitial A*A = A+.",
+              "signing_status": "0.55–0.72 (signing workflow progressing normally)"
+            },
+            "nextEventIds": [
+              "ds-active",
+              "ds-stalled"
+            ]
+          },
+          {
+            "id": "ds-stalled",
+            "elements": [
+              {
+                "value": 0.38,
+                "threshold": 0.5
+              },
+              {
+                "value": 0.3,
+                "threshold": 0.5
+              },
+              {
+                "value": 0.4,
+                "threshold": 0.5
+              },
+              {
+                "value": 0.35,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": false,
+            "metadata": {
+              "name": "STALLED",
+              "description": "STALLED — documents partially collected; some signatures missing; client contact attempts unanswered; legal review initiated.",
+              "signing_status": "0.25–0.45 (one or more key forms unsigned after 5+ days)"
+            },
+            "nextEventIds": [
+              "ds-blocked"
+            ]
+          },
+          {
+            "id": "ds-blocked",
+            "elements": [
+              {
+                "value": 0.15,
+                "threshold": 0.5
+              },
+              {
+                "value": 0.1,
+                "threshold": 0.5
+              },
+              {
+                "value": 0.18,
+                "threshold": 0.5
+              },
+              {
+                "value": 0.12,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": false,
+            "metadata": {
+              "name": "BLOCKED",
+              "description": "BLOCKED — critical documents unsigned; client unreachable or refusing; legal validity question unresolved. Service delivery halted pending signing. Fires SIGNING_BLOCKED.",
+              "signing_status": "0.0–0.18 (signing halted; benefit issuance on hold)"
+            },
+            "outputEvents": [
+              {
+                "id": "ds-blocked-output",
+                "vector": [
+                  1,
+                  0,
+                  0,
+                  0
+                ],
+                "metadata": {
+                  "description": "SIGNING_BLOCKED: document signing failure halting service enrollment at [960:963]",
+                  "action": "route-referral",
+                  "actionNarrative": "Outreach worker escalation; alternative signing method assessment (in-person, paper); legal capacity evaluation referral; guardian/POA contact"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "signing-partial",
+        "name": "Partial Signing: PARTIAL+ → PARTIAL_SIGNING signal",
+        "metadata": {
+          "description": "Fires PARTIAL_SIGNING when key program documents are signed and services can begin provisionally, but non-critical supplementary forms remain outstanding. Common in community services where some benefits can be initiated while ROI and data-sharing authorizations are still being obtained.",
+          "pattern": "PARTIAL+",
+          "output": "[0,0,1,0] (PARTIAL_SIGNING)"
+        },
+        "events": [
+          {
+            "id": "ds-partial",
+            "elements": [
+              {
+                "value": 0.55,
+                "threshold": 0.5
+              },
+              {
+                "value": 0.38,
+                "threshold": 0.5
+              },
+              {
+                "value": 0.52,
+                "threshold": 0.5
+              },
+              {
+                "value": 0.42,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": true,
+            "metadata": {
+              "name": "PARTIAL",
+              "description": "PARTIAL+ — primary program agreement signed; some supplementary forms (ROI, data sharing) unsigned. Core services can initiate; cross-agency coordination limited. isInitial A*A = A+: fires PARTIAL_SIGNING each cycle.",
+              "scenario": "Housing program agreement signed; utility assistance consent signed; release of information to mental health provider still pending"
+            },
+            "outputEvents": [
+              {
+                "id": "ds-partial-output",
+                "vector": [
+                  0,
+                  0,
+                  1,
+                  0
+                ],
+                "metadata": {
+                  "description": "PARTIAL_SIGNING: primary documents signed; supplementary forms outstanding at [960:963]",
+                  "action": "route-review",
+                  "actionNarrative": "Initiate services on signed agreements; schedule follow-up for remaining forms; limit cross-agency data sharing until ROI obtained"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "signing-complete",
+        "name": "Signing Complete: COMPLETE+ → SIGNING_COMPLETE signal",
+        "metadata": {
+          "description": "Fires SIGNING_COMPLETE when all required documents are collected, all signatures obtained, witness and notarization requirements met, and all documents pass legal validity review. Full inter-agency coordination can proceed.",
+          "pattern": "COMPLETE+",
+          "output": "[0,0,0,1] (SIGNING_COMPLETE)"
+        },
+        "events": [
+          {
+            "id": "ds-complete",
+            "elements": [
+              {
+                "value": 0.68,
+                "threshold": 0.5
+              },
+              {
+                "value": 0.65,
+                "threshold": 0.5
+              },
+              {
+                "value": 0.62,
+                "threshold": 0.5
+              },
+              {
+                "value": 0.65,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": true,
+            "metadata": {
+              "name": "COMPLETE",
+              "description": "COMPLETE+ — all documents collected; all signatures obtained; witness requirements met; legal validity confirmed. Fires SIGNING_COMPLETE each cycle.",
+              "scenario": "SNAP agreement, consent to share data with WIC, and ROI for health coordinator all signed at in-person intake appointment"
+            },
+            "outputEvents": [
+              {
+                "id": "ds-complete-output",
+                "vector": [
+                  0,
+                  0,
+                  0,
+                  1
+                ],
+                "metadata": {
+                  "description": "SIGNING_COMPLETE: all required documents executed and legally valid at [960:963]",
+                  "action": "continue-monitoring",
+                  "actionNarrative": "Workflow completion monitor registers signing complete; full inter-agency coordination authorized"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "inputSequences": [
+      {
+        "name": "E-Signature Portal Barrier for Elder Applicant",
+        "pattern": "5-step: ACTIVE→ACTIVE→STALLED (portal inaccessible)→BLOCKED (no digital access)→COMPLETE (after paper alternative)",
+        "description": "Elderly applicant cannot access online signing portal (no smartphone, no computer); repeated contact attempts fail; in-person paper signing alternative arranged; complete.",
+        "events": [
+          [
+            0.63,
+            0.61,
+            0.59,
+            0.61
+          ],
+          [
+            0.61,
+            0.59,
+            0.57,
+            0.59
+          ],
+          [
+            0.37,
+            0.29,
+            0.39,
+            0.34
+          ],
+          [
+            0.14,
+            0.09,
+            0.17,
+            0.11
+          ],
+          [
+            0.69,
+            0.66,
+            0.63,
+            0.66
+          ]
+        ],
+        "metadata": {
+          "scenario": "elder-portal-barrier-paper-alternative",
+          "expectedOutputs": {
+            "steps_1_2": "SIGNING_COMPLETE fires [0,0,0,1]",
+            "step_3": "no output (STALLED intermediate)",
+            "step_4": "SIGNING_BLOCKED fires [1,0,0,0]",
+            "step_5": "SIGNING_COMPLETE fires [0,0,0,1] (after in-person paper signing)"
+          }
+        }
+      }
+    ],
+    "matchAlgorithm": "gte"
+  }
+}

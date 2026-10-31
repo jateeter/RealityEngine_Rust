@@ -1,0 +1,7 @@
+# The toolchain every lane builds with. rustup reads this file; Homebrew's
+# cargo ignores it, so scripts/validate.sh compares `rustc --version` with the
+# channel: a mismatch fails the hosted lane and warns locally.
+[toolchain]
+channel = "1.99.1"
+components = ["rustfmt", "clippy"]
+profile = "minimal"

@@ -1,0 +1,662 @@
+{
+  "version": "1.0.0",
+  "machine": {
+    "name": "Community Services Behavioral Health And Crisis Mobile Crisis Co Response",
+    "description": "Community-services machine for mobile crisis co response in the behavioral health and crisis workstream. It monitors behavioral acuity, field safety, clinician availability, and law-enforcement support and emits AI-triggered actions for health and human services, law enforcement/public safety coordination, homelessness response, and city operations.",
+    "metadata": {
+      "category": "community-services",
+      "domain": "Community Services - Behavioral Health And Crisis",
+      "author": "Reality Engine",
+      "workstream": "Behavioral Health And Crisis",
+      "operationalFocus": "Mobile Crisis Co Response",
+      "focusDescription": "behavioral acuity, field safety, clinician availability, and law-enforcement support",
+      "upstreamMachine": "Community Services Behavioral Health And Crisis 988 Warm Handoff Router",
+      "upstreamDomain": "community-services",
+      "upstreamOutputRegion": "[1084:1087]",
+      "upstreamPurpose": null,
+      "downstreamMachines": [
+        "Community Services Behavioral Health And Crisis Substance Use Outreach"
+      ],
+      "crossDomainInterconnect": false,
+      "crossDomainOutputTarget": null,
+      "crossDomainOutputPurpose": null,
+      "dispatchableAgent": "public_safety_agent",
+      "aiTrigger": "community-services-behavioral-health-and-crisis-mobile-crisis-co-response",
+      "predictiveFlowTrigger": "community-services-predictive-behavioral-health-and-crisis-mobile-crisis-co-response",
+      "agentActions": [
+        "Dispatch public_safety_agent for urgent community-services intervention on mobile crisis co response.",
+        "Coordinate health, housing, public safety, transportation, or city service partners for mobile crisis co response.",
+        "Create field work order or mobile team task for mobile crisis co response.",
+        "Maintain monitored service path for mobile crisis co response."
+      ],
+      "inputSpace": "4D binary at [1084:1087]",
+      "outputSpace": "4D binary at [1088:1091]: [1,0,0,0]=URGENT_RESPONSE, [0,1,0,0]=COORDINATE_SERVICES, [0,0,1,0]=FIELD_WORK_ORDER, [0,0,0,1]=STABLE_SERVICE_PATH",
+      "inputSemantics": [
+        "resident need severity",
+        "eligibility and documentation readiness",
+        "field capacity or operational readiness",
+        "safety, mobility, and health risk"
+      ],
+      "tags": [
+        "ai-trigger",
+        "ai-triggers",
+        "behavioral-health-and-crisis",
+        "ces-sequences",
+        "ces-sequences-4",
+        "city-services",
+        "community-services",
+        "community-services-behavioral-health-and-crisis",
+        "community-services-behavioral-health-and-crisis-mobile-crisis-co-response",
+        "community-services-generated",
+        "community-services-predictive-behavioral-health-and-crisis-mobile-crisis-co-response",
+        "cross-domain",
+        "csx022",
+        "dispatchable-agent",
+        "dispatchable-agents",
+        "health-and-human-services",
+        "homelessness",
+        "input-sequences",
+        "input-sequences-5",
+        "law-enforcement",
+        "machine-interconnect",
+        "mobile-crisis-co-response",
+        "public-safety",
+        "public-safety-agent",
+        "startup-loadable"
+      ],
+      "sequenceCount": 5,
+      "reuseGuideline": "Map 311, case-management, CAD/RMS, shelter HMIS, benefit enrollment, outreach, public health, and transit-access signals into the 4D input lane. Route outputs to case workers, mobile crisis, public safety, housing navigators, field crews, transportation dispatch, or health-service agents.",
+      "downstreamPattern": "Output region [1088:1091] feeds Community Services Behavioral Health And Crisis Substance Use Outreach.",
+      "tagging": {
+        "schemaVersion": "1.0.0",
+        "managedBy": "scripts/manage_machine_tags.mjs",
+        "primaryDomain": "community-services",
+        "domainTags": [
+          "behavioral-health-and-crisis",
+          "community-services"
+        ],
+        "family": "community-services-generated",
+        "machineCode": "csx022",
+        "capabilityTags": [
+          "ai-triggers",
+          "community-services-predictive-behavioral-health-and-crisis-mobile-crisis-co-response",
+          "dispatchable-agents"
+        ],
+        "workflowTags": [
+          "ai-trigger",
+          "city-services",
+          "community-services-behavioral-health-and-crisis",
+          "community-services-behavioral-health-and-crisis-mobile-crisis-co-response",
+          "community-services-generated",
+          "cross-domain",
+          "csx022",
+          "dispatchable-agent",
+          "health-and-human-services",
+          "homelessness",
+          "law-enforcement",
+          "mobile-crisis-co-response",
+          "public-safety",
+          "public-safety-agent"
+        ],
+        "integrationTags": [
+          "ai-trigger",
+          "dispatchable-agent",
+          "machine-interconnect"
+        ],
+        "validationTags": [
+          "ces-sequences",
+          "ces-sequences-4",
+          "input-sequences",
+          "input-sequences-5",
+          "startup-loadable"
+        ],
+        "allTags": [
+          "ai-trigger",
+          "ai-triggers",
+          "behavioral-health-and-crisis",
+          "ces-sequences",
+          "ces-sequences-4",
+          "city-services",
+          "community-services",
+          "community-services-behavioral-health-and-crisis",
+          "community-services-behavioral-health-and-crisis-mobile-crisis-co-response",
+          "community-services-generated",
+          "community-services-predictive-behavioral-health-and-crisis-mobile-crisis-co-response",
+          "cross-domain",
+          "csx022",
+          "dispatchable-agent",
+          "dispatchable-agents",
+          "health-and-human-services",
+          "homelessness",
+          "input-sequences",
+          "input-sequences-5",
+          "law-enforcement",
+          "machine-interconnect",
+          "mobile-crisis-co-response",
+          "public-safety",
+          "public-safety-agent",
+          "startup-loadable"
+        ]
+      },
+      "governance": {
+        "schemaVersion": "1.0.0",
+        "ownerTeam": "social-services-on-call",
+        "runbook": "https://runbooks.example.org/community-services/csx022_behavioral-health-and-crisis-mobile-crisis-co-response",
+        "escalationPolicy": "pagerduty:social-services",
+        "contact": {
+          "primary": "social-services-on-call-primary@example.org",
+          "secondary": "social-services-on-call-secondary@example.org"
+        },
+        "sla": {
+          "ok": null,
+          "info": null,
+          "warning": 1800,
+          "error": 600
+        },
+        "notes": "Auto-backfilled by scripts/backfill-governance.mjs from primaryDomain=\"community-services\".  Review and tune the routing as the team owning CSX022_behavioral-health-and-crisis-mobile-crisis-co-response matures."
+      },
+      "triggerConfig": {
+        "processId": "CSX022_BEHAVIORAL_HEALTH_AND_CRISIS_MOBILE_CRISIS_CO_RESPONSE",
+        "processName": "Community Services Behavioral Health And Crisis Mobile Crisis Co Response",
+        "rules": [
+          {
+            "sequenceId": "csx-022-urgent-response",
+            "outputMatches": [
+              1,
+              0,
+              0,
+              0
+            ],
+            "ragStatusCode": "RED",
+            "processStatus": "error",
+            "description": "Mobile Crisis Co Response: WATCH -> URGENT_RESPONSE"
+          },
+          {
+            "sequenceId": "csx-022-coordinate-services",
+            "outputMatches": [
+              0,
+              1,
+              0,
+              0
+            ],
+            "ragStatusCode": "RED",
+            "processStatus": "error",
+            "description": "Mobile Crisis Co Response: COORDINATION_NEEDED -> COORDINATE_SERVICES"
+          },
+          {
+            "sequenceId": "csx-022-field-work-order",
+            "outputMatches": [
+              0,
+              0,
+              1,
+              0
+            ],
+            "ragStatusCode": "RED",
+            "processStatus": "error",
+            "description": "Mobile Crisis Co Response: FIELD_TASK_NEEDED -> FIELD_WORK_ORDER"
+          },
+          {
+            "sequenceId": "csx-022-stable-service-path",
+            "outputMatches": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "ragStatusCode": "RED",
+            "processStatus": "error",
+            "description": "Mobile Crisis Co Response: STABLE_PATH -> STABLE_SERVICE_PATH"
+          }
+        ],
+        "endpoint": "http://localhost:4000/graphql",
+        "template": "triggers/graphql_trigger_template.py",
+        "dispatch": {
+          "target": "localAIStack",
+          "transport": "graphql",
+          "mutation": "updateProcessState",
+          "envelopeSchema": "schemas/ai-trigger-envelope.schema.json",
+          "schemaRef": "localAIStack/services/api/routers/graphql_endpoint.py"
+        }
+      },
+      "severity": "life-safety",
+      "machineClass": "agent-dispatcher",
+      "agentBinding": {
+        "agent": "public_safety_agent",
+        "mode": "supervised-act",
+        "trigger": "community-services-behavioral-health-and-crisis-mobile-crisis-co-response",
+        "allowedActions": [
+          "Dispatch public_safety_agent for urgent community-services intervention on mobile crisis co response.",
+          "Coordinate health, housing, public safety, transportation, or city service partners for mobile crisis co response.",
+          "Create field work order or mobile team task for mobile crisis co response.",
+          "Maintain monitored service path for mobile crisis co response."
+        ],
+        "writeBack": {
+          "type": "pe-sensor",
+          "provider": "localai",
+          "sensorId": "localai.csx022.public.safety.agent.completion",
+          "name": "localAIStack csx022 public.safety.agent completion",
+          "region": {
+            "offset": 1084,
+            "length": 4
+          },
+          "semantics": [
+            "resident_need_severity",
+            "eligibility_and_documentation_readiness",
+            "field_capacity_or_operational_readiness",
+            "safety_mobility_and_health_risk"
+          ],
+          "ttlMs": 300000,
+          "normalization": "already-normalized-0-1",
+          "ingest": {
+            "endpoint": "/api/integrations/completions",
+            "method": "POST",
+            "triggerPush": false,
+            "compactPush": true
+          },
+          "sourceMapping": {
+            "id": "localai-csx022-completion",
+            "sensorId": "localai.csx022.public.safety.agent.completion",
+            "name": "localAIStack csx022 public.safety.agent completion",
+            "region": {
+              "offset": 1084,
+              "length": 4
+            },
+            "ttlMs": 300000
+          }
+        },
+        "riskControls": {
+          "requiresHumanApproval": true,
+          "requiresRunbook": true,
+          "maxAutonomy": "supervised-act",
+          "blockedWhenRag": [
+            "RED"
+          ]
+        },
+        "autonomyPolicy": {
+          "mode": "supervised-act",
+          "stage": 2,
+          "writeBackType": "pe-sensor",
+          "canWriteBack": true,
+          "canStageActions": true,
+          "canExecuteActions": false,
+          "requiresHumanApproval": true,
+          "requiresRunbook": true,
+          "blockedWhenRag": [
+            "RED"
+          ]
+        }
+      },
+      "interconnections": [
+        {
+          "id": "community-services.csx-021-030.behavioral-health-and-crisis-mobile-crisis-co-response",
+          "type": "published-domain-bus-producer",
+          "role": "behavioral_health_and_crisis_mobile_crisis_co_response",
+          "sourceMachine": "Community Services Behavioral Health And Crisis Mobile Crisis Co Response",
+          "sourceOutputRegion": {
+            "offset": 1088,
+            "length": 4
+          },
+          "targetInputElements": [
+            3,
+            4,
+            5
+          ],
+          "normalizedElements": [
+            "Community Services Behavioral Health And Crisis Mobile Crisis Co Response active output[0] bit",
+            "Community Services Behavioral Health And Crisis Mobile Crisis Co Response active output[1] bit",
+            "Community Services Behavioral Health And Crisis Mobile Crisis Co Response active output[2] bit"
+          ],
+          "purpose": "Publish Community Services Behavioral Health And Crisis Mobile Crisis Co Response active response lanes into community-services.csx-021-030.",
+          "busId": "community-services.csx-021-030",
+          "busTag": "published-bus-community-services-csx-021-030",
+          "targetMachine": "Community Services CSX-021-030 Interconnect",
+          "targetMachineFile": "CommunityServicesCsx021030Interconnect.json",
+          "targetInputRegion": {
+            "offset": 13866,
+            "length": 30
+          },
+          "busInputRegion": {
+            "offset": 13866,
+            "length": 30
+          },
+          "publishedOutputRegion": {
+            "offset": 13896,
+            "length": 4
+          },
+          "busOutputRegion": {
+            "offset": 13896,
+            "length": 4
+          },
+          "peCompositionRequired": true,
+          "compositionOwner": "perception-engine",
+          "dispatchMode": "asynchronous-no-wait",
+          "privacyBoundary": "PE composes normalized domain status bits only; raw regulated records, operator notes, telemetry payloads, documents, and provider-specific source payloads remain outside the universal Reality Event."
+        }
+      ],
+      "openClawProjection": {
+        "projectionId": "openclaw-community-services-behavioral-health-and-crisis-mobile-crisis-co-response-native-input-projection",
+        "owner": "openclaw-input-analyst",
+        "dispatchMode": "accepted-no-wait",
+        "writeBackRegion": {
+          "offset": 1084,
+          "length": 4
+        },
+        "normalization": "machine-native-binary",
+        "semantics": [
+          "resident_need_severity",
+          "eligibility_and_documentation_readiness",
+          "field_capacity_or_operational_readiness",
+          "safety_mobility_and_health_risk"
+        ],
+        "peContract": "OpenClaw maps domain observations to this machine's native input lane; PE writes the vector source and does not wait inside a PE cycle."
+      }
+    },
+    "arbiterRule": "PASSTHROUGH",
+    "perceptualMapping": {
+      "input": {
+        "offset": 1084,
+        "length": 4
+      },
+      "output": {
+        "offset": 1088,
+        "length": 4
+      },
+      "bitsPerElement": 1
+    },
+    "sequences": [
+      {
+        "id": "csx-022-urgent-response",
+        "name": "Mobile Crisis Co Response: WATCH -> URGENT_RESPONSE",
+        "metadata": {
+          "description": "Escalates resident or field risk into urgent response.",
+          "output": "[1,0,0,0]",
+          "severity": "life-safety"
+        },
+        "events": [
+          {
+            "id": "csx-022-watch",
+            "elements": [
+              {
+                "value": 1
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 1
+              },
+              {
+                "value": 1
+              }
+            ],
+            "isInitial": true,
+            "nextEventIds": [
+              "csx-022-urgent"
+            ]
+          },
+          {
+            "id": "csx-022-urgent",
+            "elements": [
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 1
+              },
+              {
+                "value": 1
+              }
+            ],
+            "isInitial": false,
+            "outputEvents": [
+              {
+                "id": "csx-022-urgent-output",
+                "vector": [
+                  1,
+                  0,
+                  0,
+                  0
+                ],
+                "metadata": {
+                  "action": "urgent-intervention",
+                  "actionNarrative": "Dispatch public_safety_agent for urgent community-services intervention on mobile crisis co response.",
+                  "ragStatusCode": "RED"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "csx-022-coordinate-services",
+        "name": "Mobile Crisis Co Response: COORDINATION_NEEDED -> COORDINATE_SERVICES",
+        "metadata": {
+          "description": "Triggers cross-agency coordination.",
+          "output": "[0,1,0,0]",
+          "severity": "life-safety"
+        },
+        "events": [
+          {
+            "id": "csx-022-coordinate",
+            "elements": [
+              {
+                "value": 0
+              },
+              {
+                "value": 1
+              },
+              {
+                "value": 1
+              },
+              {
+                "value": 0
+              }
+            ],
+            "isInitial": true,
+            "outputEvents": [
+              {
+                "id": "csx-022-coordinate-output",
+                "vector": [
+                  0,
+                  1,
+                  0,
+                  0
+                ],
+                "metadata": {
+                  "action": "urgent-intervention",
+                  "actionNarrative": "Coordinate health, housing, public safety, transportation, or city service partners for mobile crisis co response.",
+                  "ragStatusCode": "RED"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "csx-022-field-work-order",
+        "name": "Mobile Crisis Co Response: FIELD_TASK_NEEDED -> FIELD_WORK_ORDER",
+        "metadata": {
+          "description": "Creates a field crew, outreach, or mobile response task.",
+          "output": "[0,0,1,0]",
+          "severity": "life-safety"
+        },
+        "events": [
+          {
+            "id": "csx-022-field-task",
+            "elements": [
+              {
+                "value": 1
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 1
+              }
+            ],
+            "isInitial": true,
+            "outputEvents": [
+              {
+                "id": "csx-022-field-output",
+                "vector": [
+                  0,
+                  0,
+                  1,
+                  0
+                ],
+                "metadata": {
+                  "action": "create-work-order",
+                  "actionNarrative": "Create field work order or mobile team task for mobile crisis co response."
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "csx-022-stable-service-path",
+        "name": "Mobile Crisis Co Response: STABLE_PATH -> STABLE_SERVICE_PATH",
+        "metadata": {
+          "description": "Confirms resident service path is stable and monitored.",
+          "output": "[0,0,0,1]",
+          "severity": "life-safety"
+        },
+        "events": [
+          {
+            "id": "csx-022-stable",
+            "elements": [
+              {
+                "value": 1
+              },
+              {
+                "value": 1
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              }
+            ],
+            "isInitial": true,
+            "outputEvents": [
+              {
+                "id": "csx-022-stable-output",
+                "vector": [
+                  0,
+                  0,
+                  0,
+                  1
+                ],
+                "metadata": {
+                  "action": "urgent-intervention",
+                  "actionNarrative": "Maintain monitored service path for mobile crisis co response.",
+                  "ragStatusCode": "RED"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "inputSequences": [
+      {
+        "name": "Urgent response sequence",
+        "description": "Two-step community risk escalation ending in urgent response.",
+        "events": [
+          [
+            1,
+            0,
+            1,
+            1
+          ],
+          [
+            0,
+            0,
+            1,
+            1
+          ]
+        ],
+        "metadata": {
+          "expectedOutputCount": 1,
+          "expectedOutputVector": "[1,0,0,0]",
+          "scenario": "urgent-response",
+          "sequenceLength": 2
+        }
+      },
+      {
+        "name": "Coordinate services",
+        "description": "Coordinates health, public safety, housing, transit, or city service partners.",
+        "events": [
+          [
+            0,
+            1,
+            1,
+            0
+          ]
+        ],
+        "metadata": {
+          "expectedOutputCount": 1,
+          "expectedOutputVector": "[0,1,0,0]",
+          "scenario": "coordinate-services"
+        }
+      },
+      {
+        "name": "Field work order",
+        "description": "Creates a field response or outreach task.",
+        "events": [
+          [
+            1,
+            0,
+            0,
+            1
+          ]
+        ],
+        "metadata": {
+          "expectedOutputCount": 1,
+          "expectedOutputVector": "[0,0,1,0]",
+          "scenario": "field-work-order"
+        }
+      },
+      {
+        "name": "Stable service path",
+        "description": "Confirms the resident or city service path is stable.",
+        "events": [
+          [
+            1,
+            1,
+            0,
+            0
+          ]
+        ],
+        "metadata": {
+          "expectedOutputCount": 1,
+          "expectedOutputVector": "[0,0,0,1]",
+          "scenario": "stable-service-path"
+        }
+      },
+      {
+        "name": "Baseline without output",
+        "description": "Initial observation arms the urgent path without firing.",
+        "events": [
+          [
+            1,
+            0,
+            1,
+            1
+          ]
+        ],
+        "metadata": {
+          "expectedOutputCount": 0,
+          "scenario": "baseline-no-output"
+        }
+      }
+    ]
+  }
+}

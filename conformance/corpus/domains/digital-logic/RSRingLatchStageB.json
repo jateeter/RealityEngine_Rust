@@ -1,0 +1,324 @@
+{
+  "version": "1.0.0",
+  "machine": {
+    "name": "RS Ring Latch Stage B",
+    "description": "RS bistable forming one half of the minimal provable feedback ring. Reads [S,R] at [16922:16923] and emits [Q,/Q] at [16920:16921]. Paired with RS Ring Latch Stage A to close a two-stage latch ring.",
+    "metadata": {
+      "category": "digital-logic",
+      "author": "Reality Engine",
+      "created": "2026-08-12T00:00:00Z",
+      "eventSpace": "2D binary vectors: [S, R] inputs (00, 01, 10, 11)",
+      "outputSpace": "2D binary: {[0,1]=RESET/LOW, [1,0]=SET/HIGH}",
+      "tags": [
+        "ces-sequences",
+        "ces-sequences-2",
+        "digital-logic",
+        "feedback-ring",
+        "flip-flop",
+        "immediate-response",
+        "input-sequences",
+        "input-sequences-3",
+        "rs-flip-flop",
+        "rs-ring-latch",
+        "rs-ring-latch-stage-b",
+        "startup-loadable"
+      ],
+      "sequenceCount": 2,
+      "description": "Two always-active events: SET (10 -> [1,0]) and RESET (01 -> [0,1])",
+      "ringCircuit": {
+        "circuitId": "digital-logic.rs-ring-latch",
+        "role": "feedback-driver",
+        "partnerMachine": "RS Ring Latch Stage A",
+        "forwardLane": {
+          "offset": 16922,
+          "length": 2,
+          "writer": "RS Ring Latch Stage A",
+          "reader": "RS Ring Latch Stage B"
+        },
+        "feedbackLane": {
+          "offset": 16920,
+          "length": 2,
+          "writer": "RS Ring Latch Stage B",
+          "reader": "RS Ring Latch Stage A"
+        },
+        "coupling": "output-event-to-universal-input-event (no region remapping)",
+        "rationale": "Two unique machines, each composed of proven CESs, coupled on coincident lanes. One lap of the ring is exactly two RE -> PE -> RE transitions: each stage's output event is composed into the next universal input event that is presented to the other stage. Because no region remapping is involved, a failure localises to the output-event/merge transition itself rather than to lane translation, which is what makes this the smallest circuit whose connectivity is provable.",
+        "provableProperties": [
+          "two RE -> PE -> RE transitions per lap, one per stage, with no other transfer path available",
+          "forward propagation: a SET at stage A reaches stage B only via the universal input event that follows A's output event",
+          "feedback propagation: stage B's output event re-drives stage A the same way, closing the ring",
+          "state retention: after the external stimulus is withdrawn the ring sustains its state through the merge alone",
+          "bistability: the ring latches SET or RESET and holds exactly one of them",
+          "quiescence: with both lanes at [0,0] neither stage matches, so the ring rests until driven"
+        ],
+        "testProtocol": [
+          "reset the universe so no CES progression is carried in",
+          "assert both lanes read [0,0] and neither stage emits",
+          "drive lane [16920:16921] with [1,0] as an external SET stimulus",
+          "step; assert stage A emitted an output event and that it appears in the NEXT universal input event, not the current one",
+          "step; assert stage B's initial event consumed lane [16922:16923] and emitted onto lane [16920:16921]",
+          "withdraw the external stimulus and step; assert the ring still reads SET (retention through the merge alone)",
+          "repeat with [0,1] to prove the RESET state",
+          "assert the lap took exactly two output-event/universal-input-event transitions"
+        ],
+        "transferContract": "Nothing passes between machines except through the output event -> universal input event transition. That is the only path. The two stages are addressed on coincident lanes, so the merge needs no region remapping to carry one stage's output into the other's input event — but the transition itself is not skipped and cannot be.",
+        "cycleTrace": [
+          "Stage B initial event matches its input in the current universal input event",
+          "Stage B final event emits [Q,/Q] onto lane [16920:16921] as an output event",
+          "RE -> PE: the output event is composed into the Output Space Merge",
+          "PE -> RE: the next universal input event is presented; Stage A's initial event reads lane [16920:16921]",
+          "Stage A final event emits onto lane [16922:16923] as an output event",
+          "RE -> PE: second composition into the Output Space Merge",
+          "PE -> RE: the following universal input event re-presents lane [16922:16923] to Stage B, closing the lap"
+        ]
+      },
+      "tagging": {
+        "schemaVersion": "1.0.0",
+        "managedBy": "scripts/manage_machine_tags.mjs",
+        "primaryDomain": "digital-logic",
+        "domainTags": [
+          "digital-logic"
+        ],
+        "family": "rs-ring-latch-stage-b",
+        "machineCode": "rs-ring-latch-stage-b",
+        "capabilityTags": [],
+        "workflowTags": [
+          "feedback-ring",
+          "flip-flop",
+          "immediate-response",
+          "rs-flip-flop",
+          "rs-ring-latch",
+          "rs-ring-latch-stage-b"
+        ],
+        "integrationTags": [
+          "digital-logic"
+        ],
+        "validationTags": [
+          "ces-sequences",
+          "ces-sequences-2",
+          "input-sequences",
+          "input-sequences-3",
+          "startup-loadable"
+        ],
+        "allTags": [
+          "ces-sequences",
+          "ces-sequences-2",
+          "digital-logic",
+          "feedback-ring",
+          "flip-flop",
+          "immediate-response",
+          "input-sequences",
+          "input-sequences-3",
+          "rs-flip-flop",
+          "rs-ring-latch",
+          "rs-ring-latch-stage-b",
+          "startup-loadable"
+        ]
+      },
+      "governance": {
+        "schemaVersion": "1.0.0",
+        "ownerTeam": "reliability-engineering",
+        "runbook": "https://runbooks.example.org/digital-logic/rsringlatchstageb",
+        "escalationPolicy": "slack:#reliability-test",
+        "contact": {
+          "primary": "reliability-engineering-primary@example.org",
+          "secondary": "reliability-engineering-secondary@example.org"
+        },
+        "sla": {
+          "ok": null,
+          "info": null,
+          "warning": null,
+          "error": null
+        },
+        "notes": "Provability fixture for the minimal feedback ring; owned with the digital-logic conformance set."
+      },
+      "triggerConfig": {
+        "processId": "RSRINGLATCHSTAGEB",
+        "processName": "RS Ring Latch Stage B",
+        "rules": [
+          {
+            "sequenceId": "rsr-b-set-sequence",
+            "outputMatches": [
+              1,
+              0
+            ],
+            "ragStatusCode": "GREEN",
+            "processStatus": "info",
+            "description": "RS Ring Latch Stage B SET to HIGH (1)"
+          },
+          {
+            "sequenceId": "rsr-b-reset-sequence",
+            "outputMatches": [
+              0,
+              1
+            ],
+            "ragStatusCode": "GREEN",
+            "processStatus": "info",
+            "description": "RS Ring Latch Stage B RESET to LOW (0)"
+          }
+        ]
+      },
+      "machineClass": "signal-monitor",
+      "inputSemantics": [
+        "RS Ring Latch Stage B set input (S)",
+        "RS Ring Latch Stage B reset input (R)"
+      ],
+      "outputSemantics": [
+        "RS Ring Latch Stage B Q",
+        "RS Ring Latch Stage B not-Q"
+      ]
+    },
+    "arbiterRule": "PASSTHROUGH",
+    "perceptualMapping": {
+      "input": {
+        "offset": 16922,
+        "length": 2
+      },
+      "output": {
+        "offset": 16920,
+        "length": 2
+      },
+      "bitsPerElement": 1
+    },
+    "sequences": [
+      {
+        "id": "rsr-b-set-sequence",
+        "name": "Stage B SET Sequence: 10 -> [1,0]",
+        "metadata": {
+          "description": "Outputs HIGH when S=1, R=0",
+          "path": "10 -> [1,0]",
+          "output": "[1,0]"
+        },
+        "events": [
+          {
+            "id": "rsr-b-event-10",
+            "elements": [
+              {
+                "value": 1,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": true,
+            "metadata": {
+              "name": "10",
+              "description": "Set state (S=1, R=0)",
+              "state": "SET"
+            },
+            "outputEvents": [
+              {
+                "id": "rsr-b-output-set",
+                "vector": [
+                  1,
+                  0
+                ],
+                "metadata": {
+                  "description": "Stage B SET; drives the feedback lane [16920:16921] to [1,0]",
+                  "state": "SET",
+                  "action": "log-activity",
+                  "actionNarrative": "Feedback leg asserted: stage A is re-driven SET, closing the ring."
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "rsr-b-reset-sequence",
+        "name": "Stage B RESET Sequence: 01 -> [0,1]",
+        "metadata": {
+          "description": "Outputs LOW when S=0, R=1",
+          "path": "01 -> [0,1]",
+          "output": "[0,1]"
+        },
+        "events": [
+          {
+            "id": "rsr-b-event-01",
+            "elements": [
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 1,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": true,
+            "metadata": {
+              "name": "01",
+              "description": "Reset state (S=0, R=1)",
+              "state": "RESET"
+            },
+            "outputEvents": [
+              {
+                "id": "rsr-b-output-reset",
+                "vector": [
+                  0,
+                  1
+                ],
+                "metadata": {
+                  "description": "Stage B RESET; drives the feedback lane [16920:16921] to [0,1]",
+                  "state": "RESET",
+                  "action": "log-activity",
+                  "actionNarrative": "Feedback leg cleared: stage A is re-driven RESET, closing the ring."
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "inputSequences": [
+      {
+        "name": "SET Operation",
+        "pattern": "00 -> 10",
+        "description": "Drive the stage from quiescent to set",
+        "events": [
+          [
+            0,
+            0
+          ],
+          [
+            1,
+            0
+          ]
+        ]
+      },
+      {
+        "name": "RESET Operation",
+        "pattern": "00 -> 01",
+        "description": "Drive the stage from quiescent to reset",
+        "events": [
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            1
+          ]
+        ]
+      },
+      {
+        "name": "RING RETENTION",
+        "pattern": "10 -> 00",
+        "description": "Withdraw stimulus; the partner stage re-drives this one",
+        "events": [
+          [
+            1,
+            0
+          ],
+          [
+            0,
+            0
+          ]
+        ]
+      }
+    ],
+    "matchAlgorithm": "gte"
+  }
+}

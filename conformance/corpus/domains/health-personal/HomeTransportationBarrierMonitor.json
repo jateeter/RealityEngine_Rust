@@ -1,0 +1,810 @@
+{
+  "version": "1.0.0",
+  "machine": {
+    "name": "Home Transportation Barrier Monitor",
+    "description": "Monitors transportation access barriers that prevent low- and medium-income home health patients from attending medical appointments, filling prescriptions, and accessing community services. Transportation is a top driver of missed care in rural and low-income urban settings — more predictive of care gaps than insurance status alone. Output at [2015:2018] feeds the Home Social Isolation Monitor alongside the Medication Cost Barrier Monitor.",
+    "metadata": {
+      "category": "health-personal",
+      "domain": "Home Health — Social Determinants / Transportation Access",
+      "author": "Reality Engine",
+      "outputSpace": "4D binary at [2015:2018]: [1,0,0,0]=CRITICAL_ACCESS_FAILURE, [0,1,0,0]=APPOINTMENT_BARRIER, [0,0,1,0]=TRANSIT_DEPENDENT_RISK, [0,0,0,1]=TRANSPORTATION_ADEQUATE",
+      "tags": [
+        "agent-dispatcher",
+        "ai-trigger",
+        "appointment-attendance",
+        "caregiver-support-agent",
+        "ces-sequences",
+        "ces-sequences-3",
+        "dispatchable-agent",
+        "health-personal",
+        "home-health",
+        "home-health-social-determinants-transportation-access",
+        "home-transportation-barrier-agent-dispatcher-risk-signal",
+        "home-transportation-barrier-monitor",
+        "input-sequences",
+        "input-sequences-1",
+        "kleene-plus",
+        "low-income",
+        "rural-health",
+        "social-determinants",
+        "startup-loadable",
+        "transportation",
+        "transportation-access"
+      ],
+      "sequenceCount": 3,
+      "populationFocus": "Rural and low-income urban patients; elderly without vehicles; patients relying on public transit or ride programs in transit deserts",
+      "sensorNormalization": {
+        "appointment_attendance_norm": "0.0=no appointments attended in past period (complete care avoidance due to transport), 0.5=~50% attendance (some missed due to transport), 1.0=all scheduled appointments attended",
+        "transit_access_norm": "0.0=no viable transit options (rural transit desert; no car; no rideshare), 0.5=limited access (one-way possible, return uncertain; shared ride program with waitlist), 1.0=reliable transit or personal vehicle available",
+        "missed_critical_care_norm": "0.0=critical care missed (dialysis, chemotherapy, specialty follow-up) due to transport, 0.5=non-critical missed (primary care, routine labs), 1.0=no care missed due to transport",
+        "proximity_norm": "0.0=>30 miles from nearest relevant provider with no transit, 0.5=10–30 miles with unreliable transit, 1.0=within 5 miles or transport resolved"
+      },
+      "downstreamMachine": "HomeSocialIsolationMonitor (reads [2011:2018])",
+      "tagging": {
+        "schemaVersion": "1.0.0",
+        "managedBy": "scripts/manage_machine_tags.mjs",
+        "primaryDomain": "health-personal",
+        "domainTags": [
+          "health-personal",
+          "home-health",
+          "social-determinants",
+          "transportation-access"
+        ],
+        "family": "home-transportation-barrier-monitor",
+        "machineCode": "home-transportation-barrier-monitor",
+        "capabilityTags": [
+          "agent-dispatcher",
+          "home-transportation-barrier-agent-dispatcher-risk-signal"
+        ],
+        "workflowTags": [
+          "ai-trigger",
+          "appointment-attendance",
+          "caregiver-support-agent",
+          "dispatchable-agent",
+          "home-health-social-determinants-transportation-access",
+          "home-transportation-barrier-monitor",
+          "kleene-plus",
+          "low-income",
+          "rural-health",
+          "transportation"
+        ],
+        "integrationTags": [
+          "ai-trigger",
+          "dispatchable-agent"
+        ],
+        "validationTags": [
+          "ces-sequences",
+          "ces-sequences-3",
+          "input-sequences",
+          "input-sequences-1",
+          "startup-loadable"
+        ],
+        "allTags": [
+          "agent-dispatcher",
+          "ai-trigger",
+          "appointment-attendance",
+          "caregiver-support-agent",
+          "ces-sequences",
+          "ces-sequences-3",
+          "dispatchable-agent",
+          "health-personal",
+          "home-health",
+          "home-health-social-determinants-transportation-access",
+          "home-transportation-barrier-agent-dispatcher-risk-signal",
+          "home-transportation-barrier-monitor",
+          "input-sequences",
+          "input-sequences-1",
+          "kleene-plus",
+          "low-income",
+          "rural-health",
+          "social-determinants",
+          "startup-loadable",
+          "transportation",
+          "transportation-access"
+        ]
+      },
+      "governance": {
+        "schemaVersion": "1.0.0",
+        "ownerTeam": "patient-safety-on-call",
+        "runbook": "https://runbooks.example.org/health-personal/hometransportationbarriermonitor",
+        "escalationPolicy": "pagerduty:patient-safety",
+        "contact": {
+          "primary": "patient-safety-on-call-primary@example.org",
+          "secondary": "patient-safety-on-call-secondary@example.org"
+        },
+        "sla": {
+          "ok": null,
+          "info": null,
+          "warning": 600,
+          "error": 60
+        },
+        "notes": "Auto-backfilled by scripts/backfill-governance.mjs from primaryDomain=\"health-personal\".  Review and tune the routing as the team owning HomeTransportationBarrierMonitor matures."
+      },
+      "triggerConfig": {
+        "processId": "HOMETRANSPORTATIONBARRIERMONITOR",
+        "processName": "Home Transportation Barrier Monitor",
+        "rules": [
+          {
+            "sequenceId": "transport-critical-failure",
+            "outputMatches": [
+              1,
+              0,
+              0,
+              0
+            ],
+            "ragStatusCode": "RED",
+            "processStatus": "error",
+            "description": "CRITICAL_ACCESS_FAILURE: patient missing critical care due to transportation barrier at [2015:2018]"
+          },
+          {
+            "sequenceId": "transport-transit-dependent-risk",
+            "outputMatches": [
+              0,
+              0,
+              1,
+              0
+            ],
+            "ragStatusCode": "AMBER",
+            "processStatus": "warning",
+            "description": "TRANSIT_DEPENDENT_RISK: care access contingent on fragile transit arrangement at [2015:2018]"
+          },
+          {
+            "sequenceId": "transport-adequate",
+            "outputMatches": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "ragStatusCode": "AMBER",
+            "processStatus": "warning",
+            "description": "TRANSPORTATION_ADEQUATE: care access not transport-limited at [2015:2018]"
+          }
+        ],
+        "endpoint": "http://localhost:4000/graphql",
+        "template": "triggers/graphql_trigger_template.py",
+        "dispatch": {
+          "target": "localAIStack",
+          "transport": "graphql",
+          "mutation": "updateProcessState",
+          "envelopeSchema": "schemas/ai-trigger-envelope.schema.json",
+          "schemaRef": "localAIStack/services/api/routers/graphql_endpoint.py"
+        }
+      },
+      "machineClass": "agent-dispatcher",
+      "interconnections": [
+        {
+          "id": "health-personal.patient-safety-transport.transport-access",
+          "type": "published-domain-bus-producer",
+          "role": "transport_access",
+          "sourceMachine": "Home Transportation Barrier Monitor",
+          "sourceOutputRegion": {
+            "offset": 2015,
+            "length": 4
+          },
+          "targetInputElements": [
+            3,
+            4,
+            5,
+            6
+          ],
+          "normalizedElements": [
+            "critical access failure bit from HomeTransportationBarrierMonitor [2015]",
+            "appointment barrier bit from HomeTransportationBarrierMonitor [2016]",
+            "transit dependent risk bit from HomeTransportationBarrierMonitor [2017]",
+            "transportation adequate bit from HomeTransportationBarrierMonitor [2018]"
+          ],
+          "purpose": "Publish medical transportation availability into the personal-health patient-safety transport bus.",
+          "busId": "health-personal.patient-safety-transport",
+          "busTag": "published-bus-health-personal-patient-safety-transport",
+          "targetMachine": "Patient Safety Transport Interconnect",
+          "targetInputRegion": {
+            "offset": 4310,
+            "length": 10
+          },
+          "publishedOutputRegion": {
+            "offset": 7378,
+            "length": 4
+          },
+          "peCompositionRequired": true,
+          "privacyBoundary": "PE composes normalized status bits only; raw PHI and source payloads remain outside the universal Reality Event."
+        },
+        {
+          "id": "health-personal.chronic-disease-response.transport-access-status",
+          "type": "published-domain-bus-producer",
+          "role": "transport_access_status",
+          "sourceMachine": "Home Transportation Barrier Monitor",
+          "sourceOutputRegion": {
+            "offset": 2015,
+            "length": 4
+          },
+          "targetInputElements": [
+            8,
+            9,
+            10,
+            11
+          ],
+          "normalizedElements": [
+            "critical access failure bit from HomeTransportationBarrierMonitor [2015]",
+            "appointment barrier bit from HomeTransportationBarrierMonitor [2016]",
+            "transit dependent risk bit from HomeTransportationBarrierMonitor [2017]",
+            "transportation adequate bit from HomeTransportationBarrierMonitor [2018]"
+          ],
+          "purpose": "Publish appointment and care-access transportation context into the personal-health chronic disease response bus.",
+          "privacyBoundary": "PE composes normalized transportation status bits only; raw trip, ride, and appointment records remain outside the universal Reality Event.",
+          "busId": "health-personal.chronic-disease-response",
+          "busTag": "published-bus-health-personal-chronic-disease-response",
+          "targetMachine": "Home Chronic Disease Response Interconnect",
+          "targetMachineFile": "HomeChronicDiseaseResponseInterconnect.json",
+          "busInputRegion": {
+            "offset": 4368,
+            "length": 18
+          },
+          "busOutputRegion": {
+            "offset": 4386,
+            "length": 4
+          },
+          "peCompositionRequired": true,
+          "compositionOwner": "perception-engine",
+          "dispatchMode": "asynchronous-no-wait"
+        },
+        {
+          "id": "health-personal.facilities-maintenance-response.transport-access",
+          "type": "published-domain-bus-producer",
+          "role": "transport_access",
+          "sourceMachine": "Home Transportation Barrier Monitor",
+          "sourceOutputRegion": {
+            "offset": 2015,
+            "length": 4
+          },
+          "targetInputElements": [
+            12,
+            13
+          ],
+          "normalizedElements": [
+            "critical access failure bit from HomeTransportationBarrierMonitor output[0]",
+            "appointment barrier bit from HomeTransportationBarrierMonitor output[1]"
+          ],
+          "purpose": "Publish transportation access barriers that may block facilities, care, or remediation follow-up.",
+          "busId": "health-personal.facilities-maintenance-response",
+          "busTag": "published-bus-health-personal-facilities-maintenance-response",
+          "targetMachine": "Facilities Maintenance Response Interconnect",
+          "targetMachineFile": "FacilitiesMaintenanceResponseInterconnect.json",
+          "targetInputRegion": {
+            "offset": 4502,
+            "length": 18
+          },
+          "busInputRegion": {
+            "offset": 4502,
+            "length": 18
+          },
+          "publishedOutputRegion": {
+            "offset": 4520,
+            "length": 4
+          },
+          "busOutputRegion": {
+            "offset": 4520,
+            "length": 4
+          },
+          "peCompositionRequired": true,
+          "compositionOwner": "perception-engine",
+          "dispatchMode": "asynchronous-no-wait",
+          "privacyBoundary": "PE composes normalized facilities, environment, access, and wellness status bits only; raw PHI, staff notes, work orders, and source payloads remain outside the universal Reality Event."
+        },
+        {
+          "id": "health-personal.medication-access-adherence.transport-access",
+          "type": "published-domain-bus-producer",
+          "role": "transport_access",
+          "sourceMachine": "Home Transportation Barrier Monitor",
+          "sourceOutputRegion": {
+            "offset": 2015,
+            "length": 4
+          },
+          "targetInputElements": [
+            7,
+            8
+          ],
+          "normalizedElements": [
+            "critical access failure",
+            "appointment barrier"
+          ],
+          "purpose": "Publish transport access into health-personal.medication-access-adherence.",
+          "busId": "health-personal.medication-access-adherence",
+          "busTag": "published-bus-health-personal-medication-access-adherence",
+          "targetMachine": "Medication Access Adherence Interconnect",
+          "targetMachineFile": "MedicationAccessAdherenceInterconnect.json",
+          "targetInputRegion": {
+            "offset": 4524,
+            "length": 14
+          },
+          "busInputRegion": {
+            "offset": 4524,
+            "length": 14
+          },
+          "publishedOutputRegion": {
+            "offset": 4538,
+            "length": 4
+          },
+          "busOutputRegion": {
+            "offset": 4538,
+            "length": 4
+          },
+          "peCompositionRequired": true,
+          "compositionOwner": "perception-engine",
+          "dispatchMode": "asynchronous-no-wait",
+          "privacyBoundary": "PE composes normalized health-personal status bits only; raw PHI, staff notes, device telemetry, claims, records, and source payloads remain outside the universal Reality Event."
+        },
+        {
+          "id": "health-personal.social-isolation-access.transport-access",
+          "type": "published-domain-bus-producer",
+          "role": "transport_access",
+          "sourceMachine": "Home Transportation Barrier Monitor",
+          "sourceOutputRegion": {
+            "offset": 2015,
+            "length": 4
+          },
+          "targetInputElements": [
+            8,
+            9,
+            10,
+            11
+          ],
+          "normalizedElements": [
+            "critical access failure",
+            "appointment barrier",
+            "transit dependent risk",
+            "transport adequate"
+          ],
+          "purpose": "Publish transport access into health-personal.social-isolation-access.",
+          "busId": "health-personal.social-isolation-access",
+          "busTag": "published-bus-health-personal-social-isolation-access",
+          "targetMachine": "Social Isolation Access Interconnect",
+          "targetMachineFile": "SocialIsolationAccessInterconnect.json",
+          "targetInputRegion": {
+            "offset": 4602,
+            "length": 14
+          },
+          "busInputRegion": {
+            "offset": 4602,
+            "length": 14
+          },
+          "publishedOutputRegion": {
+            "offset": 4616,
+            "length": 4
+          },
+          "busOutputRegion": {
+            "offset": 4616,
+            "length": 4
+          },
+          "peCompositionRequired": true,
+          "compositionOwner": "perception-engine",
+          "dispatchMode": "asynchronous-no-wait",
+          "privacyBoundary": "PE composes normalized health-personal status bits only; raw PHI, staff notes, device telemetry, claims, records, and source payloads remain outside the universal Reality Event."
+        },
+        {
+          "id": "health.infrastructure-support.consumer.home_transportation_barrier_context",
+          "type": "published-domain-bus-consumer",
+          "role": "home_transportation_barrier_context",
+          "sourceMachine": "Health Infrastructure Support Interconnect",
+          "sourceMachineFile": "HealthInfrastructureSupportInterconnect.json",
+          "sourceOutputRegion": {
+            "offset": 16916,
+            "length": 4
+          },
+          "targetMachine": "Home Transportation Barrier Monitor",
+          "targetMachineFile": "HomeTransportationBarrierMonitor.json",
+          "targetInputRegion": {
+            "offset": 1983,
+            "length": 4
+          },
+          "publishedOutputRegion": {
+            "offset": 16916,
+            "length": 4
+          },
+          "consumedLanes": [
+            "transportation_ada_service_access",
+            "transportation_rider_alert_reliability",
+            "transportation_stop_shelter_condition",
+            "transportation_vertical_access"
+          ],
+          "purpose": "Use regional transportation access state to refine the resident transportation barrier source.",
+          "busId": "health.infrastructure-support",
+          "busTag": "published-bus-health-infrastructure-support",
+          "peCompositionRequired": true,
+          "compositionOwner": "perception-engine",
+          "dispatchMode": "asynchronous-no-wait",
+          "consumerMapping": "Configured PE source mapping composes bus output into the consumer's native input space; RE receives only the consumer vector.",
+          "privacyBoundary": "Consumer receives support-state classification only; raw transportation, built-space, community-service, and resident records remain outside RE."
+        }
+      ],
+      "inputSemantics": [
+        "appointment_transport_confirmed_norm",
+        "vehicle_or_transit_reliability_norm",
+        "ride_support_availability_norm",
+        "mobility_access_norm"
+      ],
+      "openClawProjection": {
+        "projectionId": "openclaw-home-transportation-barrier-native-input-projection",
+        "owner": "openclaw-input-analyst",
+        "dispatchMode": "accepted-no-wait",
+        "writeBackRegion": {
+          "offset": 1983,
+          "length": 4
+        },
+        "normalization": "machine-native-scalar",
+        "semantics": [
+          "appointment_transport_confirmed_norm",
+          "vehicle_or_transit_reliability_norm",
+          "ride_support_availability_norm",
+          "mobility_access_norm"
+        ],
+        "peContract": "OpenClaw maps transportation and appointment-access observations to native machine input axes; PE writes the vector source and does not wait inside a PE cycle."
+      },
+      "function": "Agent Dispatcher",
+      "aiTrigger": "home-transportation-barrier-agent-dispatcher-risk-signal",
+      "dispatchableAgent": "caregiver_support_agent",
+      "agentActions": [
+        "Dispatch caregiver_support_agent to coordinate appointment transportation when care access is blocked or fragile.",
+        "Stage ride-support, caregiver outreach, or community-service referral actions for patient transport gaps.",
+        "Record the resolved transportation support plan back through the PE completion source mapping."
+      ],
+      "agentBinding": {
+        "agent": "caregiver_support_agent",
+        "mode": "supervised-act",
+        "trigger": "home-transportation-barrier-agent-dispatcher-risk-signal",
+        "allowedActions": [
+          "Dispatch caregiver_support_agent to coordinate appointment transportation when care access is blocked or fragile.",
+          "Stage ride-support, caregiver outreach, or community-service referral actions for patient transport gaps.",
+          "Record the resolved transportation support plan back through the PE completion source mapping."
+        ],
+        "writeBack": {
+          "type": "pe-sensor",
+          "provider": "localai",
+          "sensorId": "localai.home.transportation.barrier.monitor.caregiver.support.agent.completion",
+          "name": "localAIStack home-transportation-barrier-monitor caregiver.support.agent completion",
+          "region": {
+            "offset": 1983,
+            "length": 4
+          },
+          "semantics": [
+            "appointment_transport_confirmed_norm",
+            "vehicle_or_transit_reliability_norm",
+            "ride_support_availability_norm",
+            "mobility_access_norm"
+          ],
+          "ttlMs": 300000,
+          "normalization": "already-normalized-0-1",
+          "ingest": {
+            "endpoint": "/api/integrations/completions",
+            "method": "POST",
+            "triggerPush": false,
+            "compactPush": true
+          },
+          "sourceMapping": {
+            "id": "localai-home-transportation-barrier-monitor-completion",
+            "sensorId": "localai.home.transportation.barrier.monitor.caregiver.support.agent.completion",
+            "name": "localAIStack home-transportation-barrier-monitor caregiver.support.agent completion",
+            "region": {
+              "offset": 1983,
+              "length": 4
+            },
+            "ttlMs": 300000
+          }
+        },
+        "riskControls": {
+          "requiresHumanApproval": true,
+          "requiresRunbook": true,
+          "maxAutonomy": "supervised-act",
+          "blockedWhenRag": [
+            "RED"
+          ]
+        },
+        "autonomyPolicy": {
+          "mode": "supervised-act",
+          "stage": 2,
+          "writeBackType": "pe-sensor",
+          "canWriteBack": true,
+          "canStageActions": true,
+          "canExecuteActions": false,
+          "requiresHumanApproval": true,
+          "requiresRunbook": true,
+          "blockedWhenRag": [
+            "RED"
+          ]
+        }
+      }
+    },
+    "arbiterRule": "PASSTHROUGH",
+    "perceptualMapping": {
+      "input": {
+        "offset": 1983,
+        "length": 4
+      },
+      "output": {
+        "offset": 2015,
+        "length": 4
+      },
+      "bitsPerElement": 8
+    },
+    "sequences": [
+      {
+        "id": "transport-critical-failure",
+        "name": "Access Collapse: MOBILE+ → STRAINED → IMPAIRED → CRITICAL_ACCESS_FAILURE",
+        "metadata": {
+          "description": "Tracks progressive transportation access collapse. In rural and low-income urban areas, loss of a vehicle (breakdown, repossession) or transit program changes can instantly eliminate care access for patients dependent on dialysis, oncology, or specialty chronic disease management. The MOBILE+ baseline requires confirmed transportation before collapse can be signaled.",
+          "path": "MOBILE+ → STRAINED → IMPAIRED → output[1,0,0,0]",
+          "output": "[1,0,0,0] (CRITICAL_ACCESS_FAILURE)"
+        },
+        "events": [
+          {
+            "id": "tp-mobile",
+            "elements": [
+              {
+                "value": 0.65,
+                "threshold": 0.5
+              },
+              {
+                "value": 0.62,
+                "threshold": 0.5
+              },
+              {
+                "value": 0.68,
+                "threshold": 0.5
+              },
+              {
+                "value": 0.6,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": true,
+            "metadata": {
+              "name": "MOBILE",
+              "description": "MOBILE+ — reliable transportation; appointments attended; no critical care missed; reasonable provider proximity or transit access. isInitial A*A = A+.",
+              "appointment_attendance": "0.60–0.78 (attending most scheduled care)"
+            },
+            "nextEventIds": [
+              "tp-mobile",
+              "tp-strained"
+            ]
+          },
+          {
+            "id": "tp-strained",
+            "elements": [
+              {
+                "value": 0.38,
+                "threshold": 0.5
+              },
+              {
+                "value": 0.32,
+                "threshold": 0.5
+              },
+              {
+                "value": 0.55,
+                "threshold": 0.5
+              },
+              {
+                "value": 0.35,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": false,
+            "metadata": {
+              "name": "STRAINED",
+              "description": "STRAINED — appointment attendance declining; transit access unreliable; ride program waitlist; non-critical care being missed.",
+              "appointment_attendance": "0.28–0.48 (missing ~half of appointments; transport cited)"
+            },
+            "nextEventIds": [
+              "tp-impaired"
+            ]
+          },
+          {
+            "id": "tp-impaired",
+            "elements": [
+              {
+                "value": 0.12,
+                "threshold": 0.5
+              },
+              {
+                "value": 0.1,
+                "threshold": 0.5
+              },
+              {
+                "value": 0.2,
+                "threshold": 0.5
+              },
+              {
+                "value": 0.15,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": false,
+            "metadata": {
+              "name": "IMPAIRED",
+              "description": "IMPAIRED — critical care being missed (dialysis, specialty); no transit options available; proximity barrier severe. Fires CRITICAL_ACCESS_FAILURE.",
+              "appointment_attendance": "0.0–0.18 (critical care missed; hospitalization risk elevated)"
+            },
+            "outputEvents": [
+              {
+                "id": "tp-critical-output",
+                "vector": [
+                  1,
+                  0,
+                  0,
+                  0
+                ],
+                "metadata": {
+                  "description": "CRITICAL_ACCESS_FAILURE: patient missing critical care due to transportation barrier at [2015:2018]",
+                  "action": "route-referral",
+                  "actionNarrative": "NEMT (non-emergency medical transport) referral; volunteer driver program; care coordination for telemedicine substitution where appropriate"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "transport-transit-dependent-risk",
+        "name": "Transit Dependency: TRANSIT_DEPENDENT+ → TRANSIT_DEPENDENT_RISK signal",
+        "metadata": {
+          "description": "Fires TRANSIT_DEPENDENT_RISK for patients whose care access depends entirely on unreliable public transit or shared ride programs — a fragile state that one schedule change or route cut can break. Targets rural and low-income urban transit deserts.",
+          "pattern": "TRANSIT_DEPENDENT+",
+          "output": "[0,0,1,0] (TRANSIT_DEPENDENT_RISK)"
+        },
+        "events": [
+          {
+            "id": "tp-transit-dependent",
+            "elements": [
+              {
+                "value": 0.42,
+                "threshold": 0.5
+              },
+              {
+                "value": 0.32,
+                "threshold": 0.5
+              },
+              {
+                "value": 0.55,
+                "threshold": 0.5
+              },
+              {
+                "value": 0.3,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": true,
+            "metadata": {
+              "name": "TRANSIT_DEPENDENT",
+              "description": "TRANSIT_DEPENDENT+ — patient currently attending care but solely reliant on public transit or paratransit with no backup option. isInitial A*A = A+: fires TRANSIT_DEPENDENT_RISK each cycle.",
+              "scenario": "Rural patient on county medical transport van; one missed pickup = missed dialysis"
+            },
+            "outputEvents": [
+              {
+                "id": "tp-transit-risk-output",
+                "vector": [
+                  0,
+                  0,
+                  1,
+                  0
+                ],
+                "metadata": {
+                  "description": "TRANSIT_DEPENDENT_RISK: care access contingent on fragile transit arrangement at [2015:2018]",
+                  "action": "route-referral",
+                  "actionNarrative": "Backup transportation plan; volunteer driver registration; identify family/neighbor support; telemedicine option assessment"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "transport-adequate",
+        "name": "Transportation Adequate: ADEQUATE+ → TRANSPORTATION_ADEQUATE signal",
+        "metadata": {
+          "description": "Fires TRANSPORTATION_ADEQUATE when patient has reliable transportation and is attending scheduled care consistently. May reflect personal vehicle, Medicaid NEMT, or stable transit with high attendance history.",
+          "pattern": "ADEQUATE+",
+          "output": "[0,0,0,1] (TRANSPORTATION_ADEQUATE)"
+        },
+        "events": [
+          {
+            "id": "tp-adequate",
+            "elements": [
+              {
+                "value": 0.68,
+                "threshold": 0.5
+              },
+              {
+                "value": 0.65,
+                "threshold": 0.5
+              },
+              {
+                "value": 0.72,
+                "threshold": 0.5
+              },
+              {
+                "value": 0.62,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": true,
+            "metadata": {
+              "name": "ADEQUATE",
+              "description": "ADEQUATE+ — transportation reliable; no missed care due to transport; reasonable proximity or NEMT coverage. Fires TRANSPORTATION_ADEQUATE each matching cycle.",
+              "scenario": "Medicaid NEMT enrolled; or family member providing consistent rides; or rural transit schedule matched to care schedule"
+            },
+            "outputEvents": [
+              {
+                "id": "tp-adequate-output",
+                "vector": [
+                  0,
+                  0,
+                  0,
+                  1
+                ],
+                "metadata": {
+                  "description": "TRANSPORTATION_ADEQUATE: care access not transport-limited at [2015:2018]",
+                  "action": "continue-monitoring",
+                  "actionNarrative": "Social isolation monitor registers transportation stable"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "inputSequences": [
+      {
+        "name": "Rural Vehicle Breakdown — Dialysis Risk",
+        "pattern": "6-step: MOBILE→MOBILE→STRAINED→IMPAIRED→IMPAIRED (crisis)→ADEQUATE (after NEMT)",
+        "description": "Patient's only vehicle breaks down; rural area has no public transit; two dialysis sessions missed in one week; NEMT referral resolves access.",
+        "events": [
+          [
+            0.66,
+            0.63,
+            0.69,
+            0.61
+          ],
+          [
+            0.64,
+            0.61,
+            0.67,
+            0.59
+          ],
+          [
+            0.37,
+            0.31,
+            0.54,
+            0.34
+          ],
+          [
+            0.11,
+            0.09,
+            0.19,
+            0.14
+          ],
+          [
+            0.1,
+            0.08,
+            0.18,
+            0.12
+          ],
+          [
+            0.69,
+            0.66,
+            0.73,
+            0.63
+          ]
+        ],
+        "metadata": {
+          "scenario": "rural-vehicle-breakdown-dialysis",
+          "expectedOutputs": {
+            "steps_1_2": "TRANSPORTATION_ADEQUATE fires [0,0,0,1]",
+            "step_3": "no output (STRAINED intermediate)",
+            "steps_4_5": "CRITICAL_ACCESS_FAILURE fires [1,0,0,0]",
+            "step_6": "TRANSPORTATION_ADEQUATE fires [0,0,0,1] (after NEMT enrollment)"
+          }
+        }
+      }
+    ],
+    "matchAlgorithm": "gte"
+  }
+}

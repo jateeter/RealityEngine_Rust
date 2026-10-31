@@ -1,0 +1,1107 @@
+{
+  "version": "1.0.0",
+  "machine": {
+    "name": "Fall Detection",
+    "description": "Resilient fall classifier. Each candidate fall must survive a multi-step critical event sequence that validates duration AND impact strength before a determination is broadcast to listeners. RED (emergency dispatch) requires six consecutive ticks of progressive evidence: motion onset → sustained motion → severe motion → post-impact stillness onset → sustained stillness → very-sustained stillness. AMBER tiers report less-certain patterns (recovered stumbles, recovered impacts, sustained instability) without escalating to emergency.",
+    "metadata": {
+      "category": "health-personal",
+      "domain": "wellness",
+      "author": "Reality Engine",
+      "created": "2026-04-21T00:00:00Z",
+      "lastRevised": "2026-05-08T00:00:00Z",
+      "workflow": "in-home-fall-detection",
+      "eventSpace": "2D ordinal: input[0] = motion-progression (0=none, 1=brief, 2=sustained, 3=severe); input[1] = stillness-progression (0=moving, 1=brief-still, 2=sustained-still, 3=very-sustained-still)",
+      "outputSpace": "2D ordinal: output[0] = tier (0=GREEN, 1=AMBER-low, 2=AMBER-med, 3=AMBER-high, 4=RED); output[1] = confidence (0=very-low … 3=high)",
+      "designNotes": "All multi-step transitions use Hamming distance 1 — each tick changes exactly one element. The sensor pre-aggregator is responsible for translating raw IMU samples into the 0..3 ordinal levels (typically: brief = 1 tick of signal, sustained = 3 ticks, severe = 5+ ticks). RED is reserved for the only sequence that can prove an impact preceded sustained stillness; slow-fall (collapse without struggle) gets RED at lower confidence after 3 ticks of monotonic stillness escalation.",
+      "inputSemantics": [
+        "motion progression ordinal",
+        "stillness progression ordinal"
+      ],
+      "tags": [
+        "anomaly-detection",
+        "ces-sequences",
+        "ces-sequences-7",
+        "elder-care",
+        "fall-detection",
+        "health-personal",
+        "in-home-monitoring",
+        "input-sequences",
+        "input-sequences-7",
+        "multi-step-validation",
+        "security",
+        "startup-loadable",
+        "trigger",
+        "wellness"
+      ],
+      "sequenceCount": 7,
+      "severity": "life-safety",
+      "governance": {
+        "schemaVersion": "1.0.0",
+        "ownerTeam": "patient-safety-on-call",
+        "runbook": "https://runbooks.example.org/patient-safety/fall-detection",
+        "escalationPolicy": "pagerduty:patient-safety-tier-1",
+        "contact": {
+          "primary": "patient-safety-team@example.org",
+          "secondary": "clinical-engineering-oncall@example.org"
+        },
+        "sla": {
+          "ok": null,
+          "info": null,
+          "warning": 1800,
+          "error": 60
+        },
+        "notes": "RED outputs page primary on-call within 60s. AMBER warnings page within 30min to caregiver-facing channel. Sole source of truth — DO NOT override paging policy elsewhere."
+      },
+      "triggerConfig": {
+        "endpoint": "http://localhost:4000/graphql",
+        "template": "examples/triggers/graphql_trigger_template.py",
+        "processId": "FALL-DETECTION",
+        "processName": "Fall Detection",
+        "rules": [
+          {
+            "sequenceId": "fall-nominal",
+            "outputMatches": [
+              0,
+              3
+            ],
+            "ragStatusCode": "GREEN",
+            "processStatus": "ok",
+            "description": "Nominal monitoring — no fall indication"
+          },
+          {
+            "sequenceId": "fall-stumble-recovered",
+            "outputMatches": [
+              1,
+              2
+            ],
+            "ragStatusCode": "AMBER",
+            "processStatus": "info",
+            "description": "Brief stumble + recovery (1 tick of motion, then nominal) — log only"
+          },
+          {
+            "sequenceId": "fall-sustained-instability",
+            "outputMatches": [
+              2,
+              2
+            ],
+            "ragStatusCode": "AMBER",
+            "processStatus": "warning",
+            "description": "Three ticks of progressively worsening motion without recovery — caregiver should monitor"
+          },
+          {
+            "sequenceId": "fall-impact-recovered",
+            "outputMatches": [
+              3,
+              3
+            ],
+            "ragStatusCode": "AMBER",
+            "processStatus": "warning",
+            "description": "Severe motion sustained then recovered — caregiver check-in recommended"
+          },
+          {
+            "sequenceId": "fall-confirmed",
+            "outputMatches": [
+              4,
+              3
+            ],
+            "ragStatusCode": "RED",
+            "processStatus": "error",
+            "description": "Confirmed fall: motion onset → sustained → severe → impact stillness over six ticks. Dispatch caregiver / emergency contact.",
+            "governance": {
+              "slaSeconds": 30,
+              "runbook": "https://runbooks.example.org/patient-safety/fall-detection#confirmed-red",
+              "ownerTeam": "patient-safety-on-call-tier-1"
+            }
+          },
+          {
+            "sequenceId": "fall-slow-collapse",
+            "outputMatches": [
+              4,
+              2
+            ],
+            "ragStatusCode": "RED",
+            "processStatus": "error",
+            "description": "Sudden onset of stillness escalating over three ticks without preceding motion — possible syncope / silent collapse",
+            "governance": {
+              "slaSeconds": 45,
+              "runbook": "https://runbooks.example.org/patient-safety/fall-detection#slow-collapse"
+            }
+          },
+          {
+            "sequenceId": "fall-intentional-lying",
+            "outputMatches": [
+              0,
+              2
+            ],
+            "ragStatusCode": "GREEN",
+            "processStatus": "info",
+            "description": "Stillness reached without preceding motion or impact — likely intentional lying down (sleep / rest)"
+          }
+        ]
+      },
+      "tagging": {
+        "schemaVersion": "1.0.0",
+        "managedBy": "scripts/manage_machine_tags.mjs",
+        "primaryDomain": "health-personal",
+        "domainTags": [
+          "health-personal",
+          "wellness"
+        ],
+        "family": "fall-detection",
+        "machineCode": "fall-detection",
+        "capabilityTags": [
+          "in-home-monitoring"
+        ],
+        "workflowTags": [
+          "anomaly-detection",
+          "elder-care",
+          "fall-detection",
+          "multi-step-validation",
+          "security",
+          "trigger"
+        ],
+        "integrationTags": [],
+        "validationTags": [
+          "ces-sequences",
+          "ces-sequences-7",
+          "input-sequences",
+          "input-sequences-7",
+          "startup-loadable"
+        ],
+        "allTags": [
+          "anomaly-detection",
+          "ces-sequences",
+          "ces-sequences-7",
+          "elder-care",
+          "fall-detection",
+          "health-personal",
+          "in-home-monitoring",
+          "input-sequences",
+          "input-sequences-7",
+          "multi-step-validation",
+          "security",
+          "startup-loadable",
+          "trigger",
+          "wellness"
+        ]
+      },
+      "machineClass": "signal-monitor",
+      "interconnections": [
+        {
+          "id": "health-personal.patient-safety-transport.fall-outcome",
+          "type": "published-domain-bus-producer",
+          "role": "fall_outcome",
+          "sourceMachine": "Fall Detection",
+          "sourceOutputRegion": {
+            "offset": 1941,
+            "length": 2
+          },
+          "targetInputElements": [
+            0,
+            1,
+            2
+          ],
+          "normalizedElements": [
+            "fall red tier bit derived from FallDetection output[0] == 4",
+            "fall amber-high tier bit derived from FallDetection output[0] == 3",
+            "fall high-confidence bit derived from FallDetection output[1] >= 3"
+          ],
+          "purpose": "Publish fall severity and confidence into the personal-health patient-safety transport bus.",
+          "busId": "health-personal.patient-safety-transport",
+          "busTag": "published-bus-health-personal-patient-safety-transport",
+          "targetMachine": "Patient Safety Transport Interconnect",
+          "targetInputRegion": {
+            "offset": 4310,
+            "length": 10
+          },
+          "publishedOutputRegion": {
+            "offset": 7378,
+            "length": 4
+          },
+          "peCompositionRequired": true,
+          "privacyBoundary": "PE composes normalized status bits only; raw PHI and source payloads remain outside the universal Reality Event."
+        },
+        {
+          "id": "health-personal.daily-patient-care-response.fall-criticality",
+          "type": "published-domain-bus-producer",
+          "role": "fall_criticality",
+          "sourceMachine": "Fall Detection",
+          "sourceOutputRegion": {
+            "offset": 1941,
+            "length": 2
+          },
+          "targetInputElements": [
+            11
+          ],
+          "normalizedElements": [
+            "fall red high-confidence bit derived from FallDetection output[0] == 4 and output[1] >= 3"
+          ],
+          "purpose": "Publish fall criticality into the personal-health daily patient care response bus.",
+          "busId": "health-personal.daily-patient-care-response",
+          "busTag": "published-bus-health-personal-daily-patient-care-response",
+          "targetMachine": "Daily Patient Care Response Interconnect",
+          "targetMachineFile": "DailyPatientCareResponseInterconnect.json",
+          "targetInputRegion": {
+            "offset": 4480,
+            "length": 18
+          },
+          "busInputRegion": {
+            "offset": 4480,
+            "length": 18
+          },
+          "publishedOutputRegion": {
+            "offset": 4498,
+            "length": 4
+          },
+          "busOutputRegion": {
+            "offset": 4498,
+            "length": 4
+          },
+          "peCompositionRequired": true,
+          "compositionOwner": "perception-engine",
+          "dispatchMode": "asynchronous-no-wait",
+          "privacyBoundary": "PE composes normalized status bits only; raw PHI and source payloads remain outside the universal Reality Event."
+        }
+      ],
+      "openClawProjection": {
+        "projectionId": "openclaw-fall-detection-native-input-projection",
+        "owner": "openclaw-input-analyst",
+        "dispatchMode": "accepted-no-wait",
+        "writeBackRegion": {
+          "offset": 3813,
+          "length": 2
+        },
+        "normalization": "machine-native-ordinal",
+        "semantics": [
+          "motion_progression_ordinal",
+          "stillness_progression_ordinal"
+        ],
+        "peContract": "OpenClaw maps fall observations to native motion/stillness ordinals; PE writes the vector source and does not wait inside a PE cycle."
+      }
+    },
+    "arbiterRule": "PASSTHROUGH",
+    "matchAlgorithm": "equals",
+    "outputMergeTransformation": "join",
+    "perceptualMapping": {
+      "input": {
+        "offset": 3813,
+        "length": 2
+      },
+      "output": {
+        "offset": 1941,
+        "length": 2
+      },
+      "bitsPerElement": 4
+    },
+    "sequences": [
+      {
+        "id": "fall-nominal",
+        "name": "Nominal monitoring → GREEN",
+        "metadata": {
+          "description": "All-clear baseline. Fires every tick the sensor reports no motion progression and no stillness progression."
+        },
+        "events": [
+          {
+            "id": "fall-nominal-v",
+            "elements": [
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": true,
+            "metadata": {
+              "name": "nominal",
+              "state": "NOMINAL"
+            },
+            "outputEvents": [
+              {
+                "id": "fall-nominal-out",
+                "vector": [
+                  0,
+                  3
+                ],
+                "metadata": {
+                  "ragStatusCode": "GREEN",
+                  "tier": "NOMINAL",
+                  "confidence": "high"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "fall-stumble-recovered",
+        "name": "Brief stumble (recovered in 2 ticks) → AMBER-low",
+        "metadata": {
+          "description": "Single tick of motion-progression=1 followed by full recovery. Logged but not escalated."
+        },
+        "events": [
+          {
+            "id": "fall-stumble-v1",
+            "elements": [
+              {
+                "value": 1,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": true,
+            "metadata": {
+              "name": "brief-motion",
+              "state": "MOTION_BRIEF",
+              "stepIndex": 1
+            },
+            "nextEventIds": [
+              "fall-stumble-v2"
+            ]
+          },
+          {
+            "id": "fall-stumble-v2",
+            "elements": [
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": false,
+            "metadata": {
+              "name": "recovered",
+              "state": "RECOVERED",
+              "stepIndex": 2
+            },
+            "outputEvents": [
+              {
+                "id": "fall-stumble-out",
+                "vector": [
+                  1,
+                  2
+                ],
+                "metadata": {
+                  "ragStatusCode": "AMBER",
+                  "tier": "AMBER_LOW",
+                  "confidence": "medium",
+                  "action": "log-only"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "fall-sustained-instability",
+        "name": "Sustained instability (motion 1→2→3 over 3 ticks) → AMBER-med",
+        "metadata": {
+          "description": "Motion progression climbs across three ticks without a corresponding impact or recovery — caregiver should watch the resident."
+        },
+        "events": [
+          {
+            "id": "fall-sust-v1",
+            "elements": [
+              {
+                "value": 1,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": true,
+            "metadata": {
+              "name": "motion-brief",
+              "stepIndex": 1
+            },
+            "nextEventIds": [
+              "fall-sust-v2"
+            ]
+          },
+          {
+            "id": "fall-sust-v2",
+            "elements": [
+              {
+                "value": 2,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": false,
+            "metadata": {
+              "name": "motion-sustained",
+              "stepIndex": 2
+            },
+            "nextEventIds": [
+              "fall-sust-v3"
+            ]
+          },
+          {
+            "id": "fall-sust-v3",
+            "elements": [
+              {
+                "value": 3,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": false,
+            "metadata": {
+              "name": "motion-severe",
+              "stepIndex": 3
+            },
+            "outputEvents": [
+              {
+                "id": "fall-sust-out",
+                "vector": [
+                  2,
+                  2
+                ],
+                "metadata": {
+                  "ragStatusCode": "AMBER",
+                  "tier": "AMBER_MEDIUM",
+                  "confidence": "medium",
+                  "action": "caregiver-watch"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "fall-impact-recovered",
+        "name": "Severe motion that recovers → AMBER-high",
+        "metadata": {
+          "description": "Same motion-1→2→3 progression as 'sustained-instability', but the resident then returns to fully nominal. Log + suggest caregiver check-in. Note: this sequence runs in parallel with 'sustained-instability' and only reaches its terminal output if the resident actually recovers; if they stay severe, only the AMBER-medium fires."
+        },
+        "events": [
+          {
+            "id": "fall-imprec-v1",
+            "elements": [
+              {
+                "value": 1,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": true,
+            "metadata": {
+              "name": "motion-brief",
+              "stepIndex": 1
+            },
+            "nextEventIds": [
+              "fall-imprec-v2"
+            ]
+          },
+          {
+            "id": "fall-imprec-v2",
+            "elements": [
+              {
+                "value": 2,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": false,
+            "metadata": {
+              "name": "motion-sustained",
+              "stepIndex": 2
+            },
+            "nextEventIds": [
+              "fall-imprec-v3"
+            ]
+          },
+          {
+            "id": "fall-imprec-v3",
+            "elements": [
+              {
+                "value": 3,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": false,
+            "metadata": {
+              "name": "motion-severe",
+              "stepIndex": 3
+            },
+            "nextEventIds": [
+              "fall-imprec-v4"
+            ]
+          },
+          {
+            "id": "fall-imprec-v4",
+            "elements": [
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": false,
+            "metadata": {
+              "name": "recovered",
+              "stepIndex": 4
+            },
+            "outputEvents": [
+              {
+                "id": "fall-imprec-out",
+                "vector": [
+                  3,
+                  3
+                ],
+                "metadata": {
+                  "ragStatusCode": "AMBER",
+                  "tier": "AMBER_HIGH",
+                  "confidence": "high",
+                  "action": "caregiver-check-in"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "fall-confirmed",
+        "name": "Confirmed fall (motion → severe → sustained stillness) → RED",
+        "metadata": {
+          "description": "The only path that escalates to emergency dispatch. Six ticks of monotonic evidence are required: motion onset → sustained motion → severe motion → post-event stillness onset → sustained stillness → very-sustained stillness. Each transition is Hamming-distance 1, so a single anomalous tick (recovery, sensor noise) aborts the sequence and prevents an unwarranted RED dispatch.",
+          "severity": "life-safety"
+        },
+        "events": [
+          {
+            "id": "fall-conf-v1",
+            "elements": [
+              {
+                "value": 1,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": true,
+            "metadata": {
+              "name": "motion-brief",
+              "stepIndex": 1
+            },
+            "nextEventIds": [
+              "fall-conf-v2"
+            ]
+          },
+          {
+            "id": "fall-conf-v2",
+            "elements": [
+              {
+                "value": 2,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": false,
+            "metadata": {
+              "name": "motion-sustained",
+              "stepIndex": 2
+            },
+            "nextEventIds": [
+              "fall-conf-v3"
+            ]
+          },
+          {
+            "id": "fall-conf-v3",
+            "elements": [
+              {
+                "value": 3,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": false,
+            "metadata": {
+              "name": "motion-severe",
+              "stepIndex": 3
+            },
+            "nextEventIds": [
+              "fall-conf-v4"
+            ]
+          },
+          {
+            "id": "fall-conf-v4",
+            "elements": [
+              {
+                "value": 3,
+                "threshold": 0.5
+              },
+              {
+                "value": 1,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": false,
+            "metadata": {
+              "name": "post-impact-stillness-onset",
+              "stepIndex": 4
+            },
+            "nextEventIds": [
+              "fall-conf-v5"
+            ]
+          },
+          {
+            "id": "fall-conf-v5",
+            "elements": [
+              {
+                "value": 3,
+                "threshold": 0.5
+              },
+              {
+                "value": 2,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": false,
+            "metadata": {
+              "name": "stillness-sustained",
+              "stepIndex": 5
+            },
+            "nextEventIds": [
+              "fall-conf-v6"
+            ]
+          },
+          {
+            "id": "fall-conf-v6",
+            "elements": [
+              {
+                "value": 3,
+                "threshold": 0.5
+              },
+              {
+                "value": 3,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": false,
+            "metadata": {
+              "name": "stillness-very-sustained",
+              "stepIndex": 6,
+              "lifeSafety": true
+            },
+            "outputEvents": [
+              {
+                "id": "fall-conf-out",
+                "vector": [
+                  4,
+                  3
+                ],
+                "metadata": {
+                  "ragStatusCode": "RED",
+                  "tier": "RED",
+                  "confidence": "high",
+                  "action": "emergency-dispatch",
+                  "lifeSafety": true,
+                  "rationale": "Six-tick validated fall pattern: progressive motion + sustained post-event stillness."
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "fall-slow-collapse",
+        "name": "Slow collapse / silent fall (no motion, escalating stillness) → RED",
+        "metadata": {
+          "description": "Catches the case where a resident slumps without struggle (syncope, stroke, cardiac event). Three ticks of monotonically increasing stillness with zero motion-progression. Lower confidence than the motion-validated path because silent stillness can also indicate intentional rest — the sequence requires the stillness signal to climb from 1→2→3, which is unusual for normal sleep transitions.",
+          "severity": "life-safety"
+        },
+        "events": [
+          {
+            "id": "fall-slow-v1",
+            "elements": [
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 1,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": true,
+            "metadata": {
+              "name": "stillness-onset-no-motion",
+              "stepIndex": 1
+            },
+            "nextEventIds": [
+              "fall-slow-v2"
+            ]
+          },
+          {
+            "id": "fall-slow-v2",
+            "elements": [
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 2,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": false,
+            "metadata": {
+              "name": "stillness-sustained-no-motion",
+              "stepIndex": 2
+            },
+            "nextEventIds": [
+              "fall-slow-v3"
+            ]
+          },
+          {
+            "id": "fall-slow-v3",
+            "elements": [
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 3,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": false,
+            "metadata": {
+              "name": "stillness-very-sustained-no-motion",
+              "stepIndex": 3,
+              "lifeSafety": true
+            },
+            "outputEvents": [
+              {
+                "id": "fall-slow-out",
+                "vector": [
+                  4,
+                  2
+                ],
+                "metadata": {
+                  "ragStatusCode": "RED",
+                  "tier": "RED",
+                  "confidence": "medium",
+                  "action": "emergency-dispatch",
+                  "lifeSafety": true,
+                  "rationale": "Three-tick monotonic stillness escalation without any motion — possible syncope."
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "fall-intentional-lying",
+        "name": "Intentional lying down (sustained stillness reached directly) → NOMINAL log",
+        "metadata": {
+          "description": "Stillness-progression=2 reached without progressing through level 1 first (i.e., the resident chose to lie down). Logged at GREEN as 'intentional rest' so the dashboard reflects current activity without any alert."
+        },
+        "events": [
+          {
+            "id": "fall-intent-v",
+            "elements": [
+              {
+                "value": 0,
+                "threshold": 0.5
+              },
+              {
+                "value": 2,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": true,
+            "metadata": {
+              "name": "intentional-rest",
+              "state": "INTENTIONAL_LYING"
+            },
+            "outputEvents": [
+              {
+                "id": "fall-intent-out",
+                "vector": [
+                  0,
+                  2
+                ],
+                "metadata": {
+                  "ragStatusCode": "GREEN",
+                  "tier": "NOMINAL",
+                  "confidence": "medium",
+                  "action": "log-activity"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "inputSequences": [
+      {
+        "name": "Quiet baseline",
+        "pattern": "[0,0]…",
+        "description": "Resident moving normally — only the NOMINAL sequence fires.",
+        "events": [
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "metadata": {
+          "expectedOutput": [
+            0,
+            3
+          ],
+          "expectedSequence": "fall-nominal"
+        }
+      },
+      {
+        "name": "Brief stumble (recovered)",
+        "pattern": "[0,0]→[1,0]→[0,0]",
+        "description": "One tick of brief motion, then immediate recovery. Triggers AMBER-low only.",
+        "events": [
+          [
+            0,
+            0
+          ],
+          [
+            1,
+            0
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "metadata": {
+          "expectedOutputs": [
+            "[0,3] then [1,2]"
+          ],
+          "expectedSequence": "fall-stumble-recovered"
+        }
+      },
+      {
+        "name": "Sustained instability (no recovery)",
+        "pattern": "[0,0]→[1,0]→[2,0]→[3,0]→[3,0]…",
+        "description": "Motion climbs across three ticks and stays severe — AMBER-medium fires at tick 4 to alert caregiver to watch.",
+        "events": [
+          [
+            0,
+            0
+          ],
+          [
+            1,
+            0
+          ],
+          [
+            2,
+            0
+          ],
+          [
+            3,
+            0
+          ],
+          [
+            3,
+            0
+          ]
+        ],
+        "metadata": {
+          "expectedTerminalOutput": [
+            2,
+            2
+          ],
+          "expectedSequence": "fall-sustained-instability",
+          "noRedExpected": true
+        }
+      },
+      {
+        "name": "Hard impact recovered",
+        "pattern": "[0,0]→[1,0]→[2,0]→[3,0]→[0,0]",
+        "description": "Severe motion then full recovery. AMBER-medium fires at tick 4 (sustained-instability terminal) and AMBER-high at tick 5 (impact-recovered terminal).",
+        "events": [
+          [
+            0,
+            0
+          ],
+          [
+            1,
+            0
+          ],
+          [
+            2,
+            0
+          ],
+          [
+            3,
+            0
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "metadata": {
+          "expectedOutputs": [
+            "[2,2] then [3,3]"
+          ],
+          "expectedSequences": [
+            "fall-sustained-instability",
+            "fall-impact-recovered"
+          ],
+          "noRedExpected": true
+        }
+      },
+      {
+        "name": "Confirmed fall (motion → impact → sustained stillness)",
+        "pattern": "[0,0]→[1,0]→[2,0]→[3,0]→[3,1]→[3,2]→[3,3]",
+        "description": "Full six-tick validated fall pattern. AMBER-medium fires at tick 4, then RED fires at tick 7 once stillness has climbed to maximum.",
+        "events": [
+          [
+            0,
+            0
+          ],
+          [
+            1,
+            0
+          ],
+          [
+            2,
+            0
+          ],
+          [
+            3,
+            0
+          ],
+          [
+            3,
+            1
+          ],
+          [
+            3,
+            2
+          ],
+          [
+            3,
+            3
+          ]
+        ],
+        "metadata": {
+          "expectedTerminalOutput": [
+            4,
+            3
+          ],
+          "expectedSequence": "fall-confirmed",
+          "redExpected": true,
+          "earliestRedTick": 7
+        }
+      },
+      {
+        "name": "Slow collapse (silent fall, no motion)",
+        "pattern": "[0,0]→[0,1]→[0,2]→[0,3]",
+        "description": "Stillness escalates over three ticks with zero motion — RED at lower confidence to surface possible syncope.",
+        "events": [
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            1
+          ],
+          [
+            0,
+            2
+          ],
+          [
+            0,
+            3
+          ]
+        ],
+        "metadata": {
+          "expectedTerminalOutput": [
+            4,
+            2
+          ],
+          "expectedSequence": "fall-slow-collapse",
+          "redExpected": true,
+          "earliestRedTick": 4
+        }
+      },
+      {
+        "name": "Intentional lying down",
+        "pattern": "[0,0]→[0,2]…",
+        "description": "Resident lies down directly (without progressing through stillness=1 from a fall). Only the NOMINAL 'intentional-lying' sequence fires; slow-collapse never starts because its initial vector requires stillness=1.",
+        "events": [
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            2
+          ],
+          [
+            0,
+            2
+          ],
+          [
+            0,
+            2
+          ]
+        ],
+        "metadata": {
+          "expectedTerminalOutput": [
+            0,
+            2
+          ],
+          "expectedSequence": "fall-intentional-lying",
+          "noRedExpected": true
+        }
+      }
+    ]
+  }
+}

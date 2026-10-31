@@ -1,0 +1,176 @@
+{
+  "version": "1.0.0",
+  "machine": {
+    "name": "Arbitration Writer A",
+    "description": "Contention fixture 9a: writes the shared lane [16930:16931] at AMBER severity asserting 1.",
+    "metadata": {
+      "category": "digital-logic",
+      "author": "Reality Engine",
+      "created": "2026-08-13T00:00:00Z",
+      "eventSpace": "2D binary vectors",
+      "outputSpace": "2D binary",
+      "tags": [
+        "arbitration-fixture",
+        "arbitration-writer-a",
+        "ces-sequences",
+        "ces-sequences-1",
+        "digital-logic",
+        "input-sequences",
+        "input-sequences-1",
+        "startup-loadable"
+      ],
+      "sequenceCount": 1,
+      "description": "Contention fixture 9a: writes the shared lane [16930:16931] at AMBER severity asserting 1.",
+      "tagging": {
+        "schemaVersion": "1.0.0",
+        "managedBy": "scripts/manage_machine_tags.mjs",
+        "primaryDomain": "digital-logic",
+        "domainTags": [
+          "digital-logic"
+        ],
+        "family": "arbitration-writer-a",
+        "machineCode": "arbitration-writer-a",
+        "capabilityTags": [],
+        "workflowTags": [
+          "arbitration-fixture",
+          "arbitration-writer-a"
+        ],
+        "integrationTags": [
+          "digital-logic"
+        ],
+        "validationTags": [
+          "ces-sequences",
+          "ces-sequences-1",
+          "input-sequences",
+          "input-sequences-1",
+          "startup-loadable"
+        ],
+        "allTags": [
+          "arbitration-fixture",
+          "arbitration-writer-a",
+          "ces-sequences",
+          "ces-sequences-1",
+          "digital-logic",
+          "input-sequences",
+          "input-sequences-1",
+          "startup-loadable"
+        ]
+      },
+      "governance": {
+        "schemaVersion": "1.0.0",
+        "ownerTeam": "reliability-engineering",
+        "runbook": "https://runbooks.example.org/digital-logic/arbitrationwritera",
+        "escalationPolicy": "slack:#reliability-test",
+        "contact": {
+          "primary": "reliability-engineering-primary@example.org",
+          "secondary": "reliability-engineering-secondary@example.org"
+        },
+        "sla": {
+          "ok": null,
+          "info": null,
+          "warning": 600,
+          "error": null
+        },
+        "notes": "Arbitration conformance fixture (ARBITER_CONTRACT.md 9). SLA set because the trigger rules use paging tiers: an envelope that can page must carry a response contract."
+      },
+      "triggerConfig": {
+        "processId": "ARBWRITERA",
+        "processName": "Arbitration Writer A",
+        "rules": [
+          {
+            "sequenceId": "arb-a-assert",
+            "outputMatches": [
+              1,
+              1
+            ],
+            "ragStatusCode": "AMBER",
+            "processStatus": "warning",
+            "description": "Writer A asserts at AMBER"
+          }
+        ]
+      },
+      "machineClass": "signal-monitor",
+      "inputSemantics": [
+        "Arbitration Writer A input 1",
+        "Arbitration Writer A input 2"
+      ],
+      "outputSemantics": [
+        "Arbitration Writer A output 1",
+        "Arbitration Writer A output 2"
+      ]
+    },
+    "arbiterRule": "PASSTHROUGH",
+    "perceptualMapping": {
+      "input": {
+        "offset": 16924,
+        "length": 2
+      },
+      "output": {
+        "offset": 16930,
+        "length": 2
+      },
+      "bitsPerElement": 1
+    },
+    "sequences": [
+      {
+        "id": "arb-a-assert",
+        "name": "A asserts at AMBER",
+        "metadata": {
+          "description": "Writer A asserts 1 on the shared lane at AMBER"
+        },
+        "events": [
+          {
+            "id": "arb-a-event",
+            "elements": [
+              {
+                "value": 1,
+                "threshold": 0.5
+              },
+              {
+                "value": 0,
+                "threshold": 0.5
+              }
+            ],
+            "isInitial": true,
+            "metadata": {
+              "name": "assert",
+              "description": "Writer A asserts 1 on the shared lane at AMBER"
+            },
+            "outputEvents": [
+              {
+                "id": "arb-a-event-out",
+                "vector": [
+                  1,
+                  1
+                ],
+                "metadata": {
+                  "description": "Writer A asserts 1 on the shared lane at AMBER",
+                  "action": "log-activity",
+                  "actionNarrative": "Writer A asserts 1 on the shared lane at AMBER"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "inputSequences": [
+      {
+        "name": "Assert",
+        "pattern": "00 -> 10",
+        "description": "drive the fixture",
+        "events": [
+          [
+            0,
+            0
+          ],
+          [
+            1,
+            0
+          ]
+        ]
+      }
+    ],
+    "matchAlgorithm": "gte"
+  }
+}

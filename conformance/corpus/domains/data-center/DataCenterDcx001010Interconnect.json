@@ -1,0 +1,1189 @@
+{
+  "version": "1.0.0",
+  "machine": {
+    "name": "Data Center DCX-001-010 Interconnect",
+    "description": "Published data-center bridge bus that composes Data Center DCX-001-010 into a compact domain family response lane. PE owns source composition and writes the compact input lane; RE evaluates this machine as ordinary vector state.",
+    "metadata": {
+      "category": "data-center",
+      "domain": "Data Center - Data Center DCX-001-010 Bus",
+      "author": "Reality Engine",
+      "domainLevelTag": "published-bus-data-center-dcx-001-010",
+      "publishedDomainBus": {
+        "id": "data-center.dcx-001-010",
+        "tag": "published-bus-data-center-dcx-001-010",
+        "domain": "data-center",
+        "name": "Data Center DCX-001-010 Bus",
+        "description": "Family-level published bus for Data Center: Data Center DCX-001-010.",
+        "inputRegion": {
+          "offset": 14127,
+          "length": 30
+        },
+        "outputRegion": {
+          "offset": 14157,
+          "length": 4
+        },
+        "inputComposition": [
+          {
+            "role": "power_utility_feed_monitor",
+            "sourceMachine": "DCX001_power-utility-feed-monitor.json",
+            "machineInputRegion": {
+              "offset": 4057,
+              "length": 4
+            },
+            "machineOutputRegion": {
+              "offset": 4061,
+              "length": 4
+            },
+            "composedInputElements": [
+              0,
+              1,
+              2
+            ],
+            "mapping": {
+              "activeOutput0": "Data Center Power Utility Feed Monitor output[0]",
+              "activeOutput1": "Data Center Power Utility Feed Monitor output[1]",
+              "activeOutput2": "Data Center Power Utility Feed Monitor output[2]"
+            }
+          },
+          {
+            "role": "ups_battery_health_manager",
+            "sourceMachine": "DCX002_ups-battery-health-manager.json",
+            "machineInputRegion": {
+              "offset": 4061,
+              "length": 4
+            },
+            "machineOutputRegion": {
+              "offset": 4067,
+              "length": 4
+            },
+            "composedInputElements": [
+              3,
+              4,
+              5
+            ],
+            "mapping": {
+              "activeOutput0": "Data Center UPS Battery Health Manager output[0]",
+              "activeOutput1": "Data Center UPS Battery Health Manager output[1]",
+              "activeOutput2": "Data Center UPS Battery Health Manager output[2]"
+            }
+          },
+          {
+            "role": "generator_readiness_controller",
+            "sourceMachine": "DCX003_generator-readiness-controller.json",
+            "machineInputRegion": {
+              "offset": 4067,
+              "length": 4
+            },
+            "machineOutputRegion": {
+              "offset": 4073,
+              "length": 4
+            },
+            "composedInputElements": [
+              6,
+              7,
+              8
+            ],
+            "mapping": {
+              "activeOutput0": "Data Center Generator Readiness Controller output[0]",
+              "activeOutput1": "Data Center Generator Readiness Controller output[1]",
+              "activeOutput2": "Data Center Generator Readiness Controller output[2]"
+            }
+          },
+          {
+            "role": "pdu_load_balance_monitor",
+            "sourceMachine": "DCX004_pdu-load-balance-monitor.json",
+            "machineInputRegion": {
+              "offset": 4061,
+              "length": 4
+            },
+            "machineOutputRegion": {
+              "offset": 4077,
+              "length": 4
+            },
+            "composedInputElements": [
+              9,
+              10,
+              11
+            ],
+            "mapping": {
+              "activeOutput0": "Data Center PDU Load Balance Monitor output[0]",
+              "activeOutput1": "Data Center PDU Load Balance Monitor output[1]",
+              "activeOutput2": "Data Center PDU Load Balance Monitor output[2]"
+            }
+          },
+          {
+            "role": "rack_thermal_envelope_monitor",
+            "sourceMachine": "DCX005_rack-thermal-envelope-monitor.json",
+            "machineInputRegion": {
+              "offset": 4077,
+              "length": 4
+            },
+            "machineOutputRegion": {
+              "offset": 4083,
+              "length": 4
+            },
+            "composedInputElements": [
+              12,
+              13,
+              14
+            ],
+            "mapping": {
+              "activeOutput0": "Data Center Rack Thermal Envelope Monitor output[0]",
+              "activeOutput1": "Data Center Rack Thermal Envelope Monitor output[1]",
+              "activeOutput2": "Data Center Rack Thermal Envelope Monitor output[2]"
+            }
+          },
+          {
+            "role": "crac_crah_maintenance_planner",
+            "sourceMachine": "DCX006_crac-crah-maintenance-planner.json",
+            "machineInputRegion": {
+              "offset": 4083,
+              "length": 4
+            },
+            "machineOutputRegion": {
+              "offset": 4089,
+              "length": 4
+            },
+            "composedInputElements": [
+              15,
+              16,
+              17
+            ],
+            "mapping": {
+              "activeOutput0": "Data Center CRAC CRAH Maintenance Planner output[0]",
+              "activeOutput1": "Data Center CRAC CRAH Maintenance Planner output[1]",
+              "activeOutput2": "Data Center CRAC CRAH Maintenance Planner output[2]"
+            }
+          },
+          {
+            "role": "chiller_plant_efficiency_optimizer",
+            "sourceMachine": "DCX007_chiller-plant-efficiency-optimizer.json",
+            "machineInputRegion": {
+              "offset": 4083,
+              "length": 4
+            },
+            "machineOutputRegion": {
+              "offset": 4093,
+              "length": 4
+            },
+            "composedInputElements": [
+              18,
+              19,
+              20
+            ],
+            "mapping": {
+              "activeOutput0": "Data Center Chiller Plant Efficiency Optimizer output[0]",
+              "activeOutput1": "Data Center Chiller Plant Efficiency Optimizer output[1]",
+              "activeOutput2": "Data Center Chiller Plant Efficiency Optimizer output[2]"
+            }
+          },
+          {
+            "role": "leak_detection_response",
+            "sourceMachine": "DCX008_leak-detection-response.json",
+            "machineInputRegion": {
+              "offset": 4083,
+              "length": 4
+            },
+            "machineOutputRegion": {
+              "offset": 4099,
+              "length": 4
+            },
+            "composedInputElements": [
+              21,
+              22,
+              23
+            ],
+            "mapping": {
+              "activeOutput0": "Data Center Leak Detection Response output[0]",
+              "activeOutput1": "Data Center Leak Detection Response output[1]",
+              "activeOutput2": "Data Center Leak Detection Response output[2]"
+            }
+          },
+          {
+            "role": "fire_suppression_readiness",
+            "sourceMachine": "DCX009_fire-suppression-readiness.json",
+            "machineInputRegion": {
+              "offset": 4099,
+              "length": 4
+            },
+            "machineOutputRegion": {
+              "offset": 4105,
+              "length": 4
+            },
+            "composedInputElements": [
+              24,
+              25,
+              26
+            ],
+            "mapping": {
+              "activeOutput0": "Data Center Fire Suppression Readiness output[0]",
+              "activeOutput1": "Data Center Fire Suppression Readiness output[1]",
+              "activeOutput2": "Data Center Fire Suppression Readiness output[2]"
+            }
+          },
+          {
+            "role": "physical_access_control_monitor",
+            "sourceMachine": "DCX010_physical-access-control-monitor.json",
+            "machineInputRegion": {
+              "offset": 1381,
+              "length": 4
+            },
+            "machineOutputRegion": {
+              "offset": 1385,
+              "length": 4
+            },
+            "composedInputElements": [
+              27,
+              28,
+              29
+            ],
+            "mapping": {
+              "activeOutput0": "Data Center Physical Access Control Monitor output[0]",
+              "activeOutput1": "Data Center Physical Access Control Monitor output[1]",
+              "activeOutput2": "Data Center Physical Access Control Monitor output[2]"
+            }
+          }
+        ],
+        "downstreamConsumers": [
+          {
+            "machine": "DCX001_power-utility-feed-monitor.json",
+            "inputRegion": {
+              "offset": 14157,
+              "length": 4
+            },
+            "lanes": [
+              "domain_family_review",
+              "domain_family_optimization",
+              "domain_family_monitoring"
+            ],
+            "outputMatchesAny": [
+              [
+                1,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                1,
+                0
+              ]
+            ],
+            "purpose": "lane-scoped family fan-out"
+          },
+          {
+            "machine": "DCX002_ups-battery-health-manager.json",
+            "inputRegion": {
+              "offset": 14157,
+              "length": 4
+            },
+            "lanes": [
+              "domain_family_review",
+              "domain_family_optimization",
+              "domain_family_monitoring"
+            ],
+            "outputMatchesAny": [
+              [
+                1,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                1,
+                0
+              ]
+            ],
+            "purpose": "lane-scoped family fan-out"
+          },
+          {
+            "machine": "DCX003_generator-readiness-controller.json",
+            "inputRegion": {
+              "offset": 14157,
+              "length": 4
+            },
+            "lanes": [
+              "domain_family_review",
+              "domain_family_optimization",
+              "domain_family_monitoring"
+            ],
+            "outputMatchesAny": [
+              [
+                1,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                1,
+                0
+              ]
+            ],
+            "purpose": "lane-scoped family fan-out"
+          },
+          {
+            "machine": "DCX010_physical-access-control-monitor.json",
+            "inputRegion": {
+              "offset": 14157,
+              "length": 4
+            },
+            "lanes": [
+              "domain_family_review",
+              "domain_family_optimization",
+              "domain_family_monitoring"
+            ],
+            "outputMatchesAny": [
+              [
+                1,
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                1,
+                0
+              ]
+            ],
+            "purpose": "lane-scoped family fan-out"
+          }
+        ],
+        "localAIResolver": {
+          "resolverId": "localai.data-center.dcx-001-010.resolver",
+          "provider": "localAIStack/Ollama",
+          "dispatchMode": "accepted-no-wait",
+          "input": {
+            "source": "published bus output",
+            "region": {
+              "offset": 14157,
+              "length": 4
+            }
+          },
+          "completionWriteBack": {
+            "owner": "perception-engine",
+            "mode": "configured-source-mapping",
+            "region": {
+              "offset": 14157,
+              "length": 4
+            }
+          },
+          "contract": "Resolver may enrich dispatch payloads, summarize domain family state, or select lane-scoped handoff templates. PE accepts completion as a source update and never waits inside a PE cycle."
+        }
+      },
+      "machineClass": "bridge",
+      "severity": "operational-support",
+      "tags": [
+        "data-center",
+        "published-domain-bus",
+        "machine-interconnect",
+        "openclaw",
+        "localai",
+        "startup-loadable",
+        "dcx-001-010"
+      ],
+      "inputSemantics": [
+        "Data Center Power Utility Feed Monitor active output[0] bit",
+        "Data Center Power Utility Feed Monitor active output[1] bit",
+        "Data Center Power Utility Feed Monitor active output[2] bit",
+        "Data Center UPS Battery Health Manager active output[0] bit",
+        "Data Center UPS Battery Health Manager active output[1] bit",
+        "Data Center UPS Battery Health Manager active output[2] bit",
+        "Data Center Generator Readiness Controller active output[0] bit",
+        "Data Center Generator Readiness Controller active output[1] bit",
+        "Data Center Generator Readiness Controller active output[2] bit",
+        "Data Center PDU Load Balance Monitor active output[0] bit",
+        "Data Center PDU Load Balance Monitor active output[1] bit",
+        "Data Center PDU Load Balance Monitor active output[2] bit",
+        "Data Center Rack Thermal Envelope Monitor active output[0] bit",
+        "Data Center Rack Thermal Envelope Monitor active output[1] bit",
+        "Data Center Rack Thermal Envelope Monitor active output[2] bit",
+        "Data Center CRAC CRAH Maintenance Planner active output[0] bit",
+        "Data Center CRAC CRAH Maintenance Planner active output[1] bit",
+        "Data Center CRAC CRAH Maintenance Planner active output[2] bit",
+        "Data Center Chiller Plant Efficiency Optimizer active output[0] bit",
+        "Data Center Chiller Plant Efficiency Optimizer active output[1] bit",
+        "Data Center Chiller Plant Efficiency Optimizer active output[2] bit",
+        "Data Center Leak Detection Response active output[0] bit",
+        "Data Center Leak Detection Response active output[1] bit",
+        "Data Center Leak Detection Response active output[2] bit",
+        "Data Center Fire Suppression Readiness active output[0] bit",
+        "Data Center Fire Suppression Readiness active output[1] bit",
+        "Data Center Fire Suppression Readiness active output[2] bit",
+        "Data Center Physical Access Control Monitor active output[0] bit",
+        "Data Center Physical Access Control Monitor active output[1] bit",
+        "Data Center Physical Access Control Monitor active output[2] bit"
+      ],
+      "outputSemantics": [
+        "domain family review bit",
+        "domain family optimization bit",
+        "domain family monitoring bit",
+        "domain family stable bit"
+      ],
+      "eventSpace": "30D PE-composed Data Center DCX-001-010 input space",
+      "outputSpace": "4D binary at [14157:14160]: [1,0,0,0]=DOMAIN_FAMILY_REVIEW, [0,1,0,0]=DOMAIN_FAMILY_OPTIMIZATION, [0,0,1,0]=DOMAIN_FAMILY_MONITORING, [0,0,0,1]=DOMAIN_FAMILY_STABLE",
+      "sequenceCount": 4,
+      "testCaseCount": 3,
+      "triggerConfig": {
+        "processId": "DATACENTERDCX001010INTERCONNECT",
+        "processName": "Data Center DCX-001-010 Interconnect",
+        "rules": [
+          {
+            "sequenceId": "dcx-001-010-domain-family-review",
+            "outputMatches": [
+              1,
+              0,
+              0,
+              0
+            ],
+            "ragStatusCode": "RED",
+            "processStatus": "error",
+            "description": "Data Center DCX-001-010 domain family review at [14157:14160]"
+          },
+          {
+            "sequenceId": "dcx-001-010-domain-family-optimization",
+            "outputMatches": [
+              0,
+              1,
+              0,
+              0
+            ],
+            "ragStatusCode": "AMBER",
+            "processStatus": "warning",
+            "description": "Data Center DCX-001-010 domain family optimization at [14157:14160]"
+          },
+          {
+            "sequenceId": "dcx-001-010-domain-family-monitoring",
+            "outputMatches": [
+              0,
+              0,
+              1,
+              0
+            ],
+            "ragStatusCode": "AMBER",
+            "processStatus": "warning",
+            "description": "Data Center DCX-001-010 domain family monitoring at [14157:14160]"
+          },
+          {
+            "sequenceId": "dcx-001-010-domain-family-stable",
+            "outputMatches": [
+              0,
+              0,
+              0,
+              1
+            ],
+            "ragStatusCode": "GREEN",
+            "processStatus": "info",
+            "description": "Data Center DCX-001-010 domain family stable at [14157:14160]"
+          }
+        ]
+      },
+      "governance": {
+        "schemaVersion": "1.0.0",
+        "ownerTeam": "data-center-ops",
+        "runbook": "https://runbooks.example.org/data-center/dcx-001-010",
+        "escalationPolicy": "pagerduty:data-center-ops",
+        "contact": {
+          "primary": "data-center-ops-primary@example.org",
+          "secondary": "platform-ops-primary@example.org"
+        },
+        "sla": {
+          "ok": null,
+          "info": null,
+          "warning": 86400,
+          "error": 3600
+        },
+        "notes": "Published PE-composed bridge bus for Data Center DCX-001-010. RE evaluates only vector state; PE owns source provenance and completion ingestion."
+      }
+    },
+    "arbiterRule": "PASSTHROUGH",
+    "matchAlgorithm": "equals",
+    "perceptualMapping": {
+      "input": {
+        "offset": 14127,
+        "length": 30
+      },
+      "output": {
+        "offset": 14157,
+        "length": 4
+      },
+      "bitsPerElement": 1
+    },
+    "sequences": [
+      {
+        "id": "dcx-001-010-domain-family-review",
+        "name": "Data Center DCX-001-010 domain family review",
+        "metadata": {
+          "description": "Data Center DCX-001-010 domain family review",
+          "output": "[1,0,0,0]"
+        },
+        "events": [
+          {
+            "id": "dcx-001-010-domain-family-review-state",
+            "elements": [
+              {
+                "value": 1
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 1
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 1
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              }
+            ],
+            "isInitial": true,
+            "outputEvents": [
+              {
+                "id": "dcx-001-010-domain-family-review-output",
+                "vector": [
+                  1,
+                  0,
+                  0,
+                  0
+                ],
+                "metadata": {
+                  "action": "route-review",
+                  "actionNarrative": "Route domain family review, escalation, and resolver summary."
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dcx-001-010-domain-family-optimization",
+        "name": "Data Center DCX-001-010 domain family optimization",
+        "metadata": {
+          "description": "Data Center DCX-001-010 domain family optimization",
+          "output": "[0,1,0,0]"
+        },
+        "events": [
+          {
+            "id": "dcx-001-010-domain-family-optimization-state",
+            "elements": [
+              {
+                "value": 0
+              },
+              {
+                "value": 1
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 1
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 1
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              }
+            ],
+            "isInitial": true,
+            "outputEvents": [
+              {
+                "id": "dcx-001-010-domain-family-optimization-output",
+                "vector": [
+                  0,
+                  1,
+                  0,
+                  0
+                ],
+                "metadata": {
+                  "action": "route-review",
+                  "actionNarrative": "Route domain family optimization or plan adjustment."
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dcx-001-010-domain-family-monitoring",
+        "name": "Data Center DCX-001-010 domain family monitoring",
+        "metadata": {
+          "description": "Data Center DCX-001-010 domain family monitoring",
+          "output": "[0,0,1,0]"
+        },
+        "events": [
+          {
+            "id": "dcx-001-010-domain-family-monitoring-state",
+            "elements": [
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 1
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 1
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 1
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              }
+            ],
+            "isInitial": true,
+            "outputEvents": [
+              {
+                "id": "dcx-001-010-domain-family-monitoring-output",
+                "vector": [
+                  0,
+                  0,
+                  1,
+                  0
+                ],
+                "metadata": {
+                  "action": "route-review",
+                  "actionNarrative": "Route monitoring, evidence, or data-quality follow-up."
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dcx-001-010-domain-family-stable",
+        "name": "Data Center DCX-001-010 domain family stable",
+        "metadata": {
+          "description": "Data Center DCX-001-010 domain family stable",
+          "output": "[0,0,0,1]"
+        },
+        "events": [
+          {
+            "id": "dcx-001-010-domain-family-stable-state",
+            "elements": [
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              },
+              {
+                "value": 0
+              }
+            ],
+            "isInitial": true,
+            "outputEvents": [
+              {
+                "id": "dcx-001-010-domain-family-stable-output",
+                "vector": [
+                  0,
+                  0,
+                  0,
+                  1
+                ],
+                "metadata": {
+                  "action": "continue-monitoring",
+                  "actionNarrative": "Record stable family state and keep baseline cadence."
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "inputSequences": [
+      {
+        "name": "Data Center DCX-001-010 review fan-out",
+        "pattern": "PE composed family input: source review bits active.",
+        "description": "Activates domain family review.",
+        "events": [
+          [
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        ],
+        "metadata": {
+          "scenario": "dcx-001-010-review",
+          "expectedOutputVector": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "expectedOutputRegion": {
+            "offset": 14157,
+            "length": 4
+          },
+          "fanOutPolicy": "lane-scoped domain_family_review"
+        }
+      },
+      {
+        "name": "Data Center DCX-001-010 optimization fan-out",
+        "pattern": "PE composed family input: source optimization bits active.",
+        "description": "Activates domain family optimization.",
+        "events": [
+          [
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        ],
+        "metadata": {
+          "scenario": "dcx-001-010-optimization",
+          "expectedOutputVector": [
+            0,
+            1,
+            0,
+            0
+          ],
+          "expectedOutputRegion": {
+            "offset": 14157,
+            "length": 4
+          },
+          "fanOutPolicy": "lane-scoped domain_family_optimization"
+        }
+      },
+      {
+        "name": "Data Center DCX-001-010 monitoring fan-out",
+        "pattern": "PE composed family input: source monitoring bits active.",
+        "description": "Activates domain family monitoring.",
+        "events": [
+          [
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        ],
+        "metadata": {
+          "scenario": "dcx-001-010-monitoring",
+          "expectedOutputVector": [
+            0,
+            0,
+            1,
+            0
+          ],
+          "expectedOutputRegion": {
+            "offset": 14157,
+            "length": 4
+          },
+          "fanOutPolicy": "lane-scoped domain_family_monitoring"
+        }
+      }
+    ]
+  }
+}

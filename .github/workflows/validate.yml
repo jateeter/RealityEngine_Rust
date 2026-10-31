@@ -1,0 +1,61 @@
+# RealityEngine_Rust validation: tiers R0 and R1, self-contained.
+#
+# The protocol is RealityEngine_CI/docs/RUST_VALIDATION_WORKFLOW.md, and the
+# exception that allows a lane of this shape is in
+# RealityEngine_CI/docs/ENGINEERING_CONTRACT.md ("RealityEngine_Rust validates
+# itself"). Both tiers run from this checkout alone: no sibling repositories,
+# no universe. R1 replays the vendored regression corpus (conformance/corpus/,
+# pinned by conformance/corpus.lock.json) through the HTTP router against what
+# the corpus declares, and probes every SURFACE_SPEC.md route (vendored in
+# conformance/surface/) for its implementation status.
+#
+# WHAT THIS DOES NOT COVER
+#   R2  agreement with the three reference engines, beside a live universe
+#   R3  the full RealityEngine_CI regression-test.sh with Rust as a follower
+# Both run locally on their own cadence. A green run here says this checkout
+# conforms to the corpus snapshot it carries; it is not a parity claim.
+name: Validate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      # rustup is preinstalled on the runner; it reads rust-toolchain.toml.
+      - name: Toolchain
+        run: rustup show active-toolchain || rustup toolchain install
+
+      - uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: cargo-${{ runner.os }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock') }}
+
+      - name: R0 static
+        run: scripts/validate.sh r0
+
+      - name: R1 conformance
+        run: scripts/validate.sh r1
+
+      - name: R1 reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: r1-reports
+          path: |
+            target/conformance/r1-report.json
+            target/conformance/surface-report.json
+          if-no-files-found: warn
