@@ -1765,7 +1765,111 @@ pub fn app(engine: Engine) -> Router {
         .method_not_allowed_fallback(|method: Method, uri: Uri| async move {
             unsupported_or(&method, &uri, StatusCode::METHOD_NOT_ALLOWED)
         })
+        .layer(axum::middleware::map_response(ecmascript_numbers))
         .with_state(state)
+}
+
+/// Every JSON body leaves with its numbers in ECMAScript `Number::toString`
+/// form, which is `JSON.stringify`'s and what the three engines emit (C++
+/// `reality::json::format_double`, RealityEngine_CI#91): `1`, not serde_json's
+/// `1.0`; `0.0000015`, not `1.5e-6`; `1e+21`, not `1e21`. One rule for every
+/// route, applied here rather than at each value (#33).
+async fn ecmascript_numbers(response: Response) -> Response {
+    let is_json = response
+        .headers()
+        .get(axum::http::header::CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .is_some_and(|v| v.starts_with("application/json"));
+    if !is_json {
+        return response;
+    }
+    let (mut parts, body) = response.into_parts();
+    let Ok(bytes) = axum::body::to_bytes(body, usize::MAX).await else {
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "response body unreadable",
+        )
+            .into_response();
+    };
+    let rewritten = serde_json::from_slice::<Value>(&bytes)
+        .ok()
+        .and_then(|value| ecmascript_json(&value).ok())
+        .unwrap_or_else(|| bytes.to_vec());
+    parts.headers.remove(axum::http::header::CONTENT_LENGTH);
+    Response::from_parts(parts, axum::body::Body::from(rewritten))
+}
+
+/// `value` serialized with ECMAScript number formatting.
+pub fn ecmascript_json(value: &Value) -> serde_json::Result<Vec<u8>> {
+    use serde::Serialize;
+    let mut out = Vec::new();
+    value.serialize(&mut serde_json::Serializer::with_formatter(
+        &mut out,
+        EcmaFormatter,
+    ))?;
+    Ok(out)
+}
+
+struct EcmaFormatter;
+
+impl serde_json::ser::Formatter for EcmaFormatter {
+    fn write_f64<W: ?Sized + std::io::Write>(
+        &mut self,
+        writer: &mut W,
+        value: f64,
+    ) -> std::io::Result<()> {
+        writer.write_all(ecmascript_number(value).as_bytes())
+    }
+
+    fn write_f32<W: ?Sized + std::io::Write>(
+        &mut self,
+        writer: &mut W,
+        value: f32,
+    ) -> std::io::Result<()> {
+        writer.write_all(ecmascript_number(f64::from(value)).as_bytes())
+    }
+}
+
+/// ECMA-262 `Number::toString` for a finite double (6.1.6.1.20): the shortest
+/// round-trip digits `s` (k of them) with the decimal point at `n`; integer form
+/// up to 1e21, plain decimals down to 1e-6, exponential outside. A non-finite
+/// value is `null`, as `JSON.stringify` writes it.
+pub fn ecmascript_number(value: f64) -> String {
+    if !value.is_finite() {
+        return "null".to_owned();
+    }
+    if value == 0.0 {
+        return "0".to_owned(); // -0 too
+    }
+    // `{:e}` is Rust's shortest round-trip form: `1.5e-6`, `1e21`.
+    let scientific = format!("{:e}", value.abs());
+    let (mantissa, exponent) = scientific.split_once('e').expect("{:e} has an exponent");
+    let digits: String = mantissa.chars().filter(|c| *c != '.').collect();
+    let k = digits.len() as i64;
+    let n = exponent
+        .parse::<i64>()
+        .expect("{:e} exponent is an integer")
+        + 1;
+    let body = if k <= n && n <= 21 {
+        format!("{digits}{}", "0".repeat((n - k) as usize))
+    } else if 0 < n && n <= 21 {
+        format!("{}.{}", &digits[..n as usize], &digits[n as usize..])
+    } else if -6 < n && n <= 0 {
+        format!("0.{}{digits}", "0".repeat((-n) as usize))
+    } else {
+        let sign = if n - 1 < 0 { '-' } else { '+' };
+        let e = (n - 1).abs();
+        if k == 1 {
+            format!("{digits}e{sign}{e}")
+        } else {
+            format!("{}.{}e{sign}{e}", &digits[..1], &digits[1..])
+        }
+    };
+    if value < 0.0 {
+        format!("-{body}")
+    } else {
+        body
+    }
 }
 
 /// SURFACE_SPEC.md's route tables, vendored by `scripts/refresh-surface.sh` and
@@ -2045,7 +2149,7 @@ mod tests {
         let fired = outputs[1].as_array().unwrap();
         assert_eq!(fired.len(), 1);
         let output = &fired[0];
-        assert_eq!(output["vector"], json!([1.0]));
+        assert_eq!(output["vector"], json!([1]));
         assert_eq!(output["metadata"]["sources"], json!(["out"]));
         assert!(output["provenance"].is_array(), "{output}");
         for wrapper_key in [
@@ -2220,7 +2324,52 @@ mod tests {
             Some(process(0.0)),
         )
         .await;
-        assert_eq!(r["machineOutput"]["vector"], json!([1.0]));
+        assert_eq!(r["machineOutput"]["vector"], json!([1]));
+    }
+
+    #[test]
+    fn numbers_take_the_ecmascript_form() {
+        for (value, wire) in [
+            (1.0, "1"),
+            (-3.0, "-3"),
+            (0.0, "0"),
+            (-0.0, "0"),
+            (0.5, "0.5"),
+            (-3.25, "-3.25"),
+            (100.0, "100"),
+            (0.1 + 0.2, "0.30000000000000004"),
+            (1234567.0, "1234567"),
+            (1.5e-6, "0.0000015"),
+            (1e-6, "0.000001"),
+            (1e-7, "1e-7"),
+            (2.5e-7, "2.5e-7"),
+            (1e20, "100000000000000000000"),
+            (1e21, "1e+21"),
+            (1.5e300, "1.5e+300"),
+            (f64::NAN, "null"),
+        ] {
+            assert_eq!(ecmascript_number(value), wire, "{value:e}");
+        }
+    }
+
+    #[tokio::test]
+    async fn the_wire_carries_integral_values_as_integers() {
+        let (app, id) = loaded_app();
+        let uri = format!("/api/machines/{id}/process");
+        let request = Request::builder()
+            .method("POST")
+            .uri(&uri)
+            .header("content-type", "application/json")
+            .body(Body::from(json!({ "inputEvent": [1.0] }).to_string()))
+            .unwrap();
+        let response = app.clone().oneshot(request).await.unwrap();
+        let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        let text = String::from_utf8(body.to_vec()).unwrap();
+        assert!(text.contains(r#""inputEvent":[1]"#), "{text}");
+        assert!(!text.contains("1.0"), "{text}");
+        // A fraction keeps its digits.
+        let (_, config) = send(&app, "GET", "/api/config", None).await;
+        assert_eq!(config["matchThreshold"], json!(0.5));
     }
 
     #[tokio::test]
@@ -2519,7 +2668,12 @@ mod tests {
             let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
             // The transition result itself, at the top level, as the engines answer.
             let result: Value = serde_json::from_slice(&body).unwrap();
-            assert_eq!(result["inputEvent"], vector);
+            // Echoed in the engines' number form: the input's numbers, as
+            // ECMAScript writes them (#33).
+            assert_eq!(
+                ecmascript_json(&result["inputEvent"]).unwrap(),
+                ecmascript_json(&vector).unwrap()
+            );
             if expecting_output {
                 assert_eq!(result["machineOutput"]["vector"][0], 1.0);
             } else {
