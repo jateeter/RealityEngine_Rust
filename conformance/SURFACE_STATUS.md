@@ -6,7 +6,7 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 
 | layer | implemented | routes |
 |---|---|---|
-| RE | 17 | 79 |
+| RE | 22 | 79 |
 | PE | 0 | 47 |
 | RE-phase2 | 0 | 5 |
 
@@ -19,7 +19,7 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 | GET | `/` | implemented |  |  |
 | GET | `/api` | implemented |  |  |
 | GET | `/api/health` | implemented |  | follows the spec {status,timestamp,version}; the three engines return {status}: RealityEngine_CI#610, owner ruling pending |
-| GET | `/api/metrics` | missing | jateeter/RealityEngine_Rust#10 |  |
+| GET | `/api/metrics` | implemented |  | CES coverage and runtime gauges, structurally identical to C++; step-phase, paging and deprecated-fire series absent until measured (#11) |
 
 ## RE: Configuration
 
@@ -28,10 +28,10 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 | GET | `/api/config` | implemented |  |  |
 | PUT | `/api/config/dimension` | implemented |  |  |
 | PUT | `/api/config/threshold` | implemented |  |  |
-| GET | `/api/engine/config` | missing | jateeter/RealityEngine_Rust#10 |  |
-| GET | `/api/engine/config/:control` | missing | jateeter/RealityEngine_Rust#10 |  |
-| PUT | `/api/engine/config/:control` | missing | jateeter/RealityEngine_Rust#10 |  |
-| DELETE | `/api/engine/config/:control` | missing | jateeter/RealityEngine_Rust#10 |  |
+| GET | `/api/engine/config` | implemented |  | carries transitionsInhibited only; the other seven universal controls join with the behaviour they govern (historyLimit, include*, phaseDetail: jateeter/RealityEngine_Rust#11; arbitrationRetention, arbitrationWindow: #12) |
+| GET | `/api/engine/config/:control` | implemented |  | carries transitionsInhibited only; the other seven universal controls join with the behaviour they govern (historyLimit, include*, phaseDetail: jateeter/RealityEngine_Rust#11; arbitrationRetention, arbitrationWindow: #12) |
+| PUT | `/api/engine/config/:control` | implemented |  | carries transitionsInhibited only; the other seven universal controls join with the behaviour they govern (historyLimit, include*, phaseDetail: jateeter/RealityEngine_Rust#11; arbitrationRetention, arbitrationWindow: #12) |
+| DELETE | `/api/engine/config/:control` | implemented |  | carries transitionsInhibited only; the other seven universal controls join with the behaviour they govern (historyLimit, include*, phaseDetail: jateeter/RealityEngine_Rust#11; arbitrationRetention, arbitrationWindow: #12) |
 
 ## RE: Runtime Introspection
 
