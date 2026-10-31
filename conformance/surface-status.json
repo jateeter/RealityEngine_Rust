@@ -242,8 +242,7 @@
       "tracking": "jateeter/RealityEngine_Rust#13"
     },
     "RE GET /api/engine/active": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#11"
+      "status": "implemented"
     },
     "RE GET /api/engine/clock": {
       "status": "missing",
@@ -261,19 +260,16 @@
       "status": "implemented"
     },
     "RE GET /api/engine/isre-history": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#11"
+      "status": "implemented"
     },
     "RE GET /api/engine/osre-history": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#11"
+      "status": "implemented"
     },
     "RE GET /api/engine/stats": {
       "status": "implemented"
     },
     "RE GET /api/engine/steps/:n/pair": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#11"
+      "status": "implemented"
     },
     "RE GET /api/governance/route": {
       "status": "missing",
@@ -309,7 +305,7 @@
       "status": "implemented"
     },
     "RE GET /api/metrics": {
-      "notes": "CES coverage and runtime gauges, structurally identical to C++; step-phase, paging and deprecated-fire series absent until measured (#11)",
+      "notes": "CES coverage, paging decisions and runtime gauges, structurally identical to C++; step-phase and deprecated-fire series absent until measured (#11)",
       "status": "implemented"
     },
     "RE GET /api/perceptual-simulation/history": {
@@ -401,8 +397,8 @@
       "tracking": "jateeter/RealityEngine_Rust#13"
     },
     "RE POST /api/perceive": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#11"
+      "notes": "the step path, live-identical to C++ and LSP (all three input forms) and to Scala (dense vector); no valuesPacked under compact, include* defaults are fixed rather than controls, and no SSE broadcast yet (jateeter/RealityEngine_Rust#11)",
+      "status": "implemented"
     },
     "RE POST /api/perception/diagnostic": {
       "status": "missing",

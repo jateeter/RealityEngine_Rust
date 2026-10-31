@@ -6,7 +6,7 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 
 | layer | implemented | routes |
 |---|---|---|
-| RE | 22 | 79 |
+| RE | 27 | 79 |
 | PE | 0 | 47 |
 | RE-phase2 | 0 | 5 |
 
@@ -19,7 +19,7 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 | GET | `/` | implemented |  |  |
 | GET | `/api` | implemented |  |  |
 | GET | `/api/health` | implemented |  | follows the spec {status,timestamp,version}; the three engines return {status}: RealityEngine_CI#610, owner ruling pending |
-| GET | `/api/metrics` | implemented |  | CES coverage and runtime gauges, structurally identical to C++; step-phase, paging and deprecated-fire series absent until measured (#11) |
+| GET | `/api/metrics` | implemented |  | CES coverage, paging decisions and runtime gauges, structurally identical to C++; step-phase and deprecated-fire series absent until measured (#11) |
 
 ## RE: Configuration
 
@@ -69,11 +69,11 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 | method | path | status | tracking | notes |
 |---|---|---|---|---|
 | GET | `/api/engine/stats` | implemented |  |  |
-| GET | `/api/engine/active` | missing | jateeter/RealityEngine_Rust#11 |  |
+| GET | `/api/engine/active` | implemented |  |  |
 | GET | `/api/engine/history` | implemented |  |  |
-| GET | `/api/engine/osre-history` | missing | jateeter/RealityEngine_Rust#11 |  |
-| GET | `/api/engine/isre-history` | missing | jateeter/RealityEngine_Rust#11 |  |
-| GET | `/api/engine/steps/:n/pair` | missing | jateeter/RealityEngine_Rust#11 |  |
+| GET | `/api/engine/osre-history` | implemented |  |  |
+| GET | `/api/engine/isre-history` | implemented |  |  |
+| GET | `/api/engine/steps/:n/pair` | implemented |  |  |
 | GET | `/api/engine/clock` | missing | jateeter/RealityEngine_Rust#12 |  |
 | GET | `/api/arbitration` | missing | jateeter/RealityEngine_Rust#12 |  |
 | POST | `/api/engine/process` | implemented |  |  |
@@ -139,7 +139,7 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 |---|---|---|---|---|
 | POST | `/api/perception/observe` | missing | jateeter/RealityEngine_Rust#13 |  |
 | POST | `/api/perception/diagnostic` | missing | jateeter/RealityEngine_Rust#13 |  |
-| POST | `/api/perceive` | missing | jateeter/RealityEngine_Rust#11 |  |
+| POST | `/api/perceive` | implemented |  | the step path, live-identical to C++ and LSP (all three input forms) and to Scala (dense vector); no valuesPacked under compact, include* defaults are fixed rather than controls, and no SSE broadcast yet (jateeter/RealityEngine_Rust#11) |
 
 ## RE: Governance
 

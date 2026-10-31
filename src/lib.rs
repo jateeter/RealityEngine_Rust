@@ -17,6 +17,8 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
+mod step;
+
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(Debug)]
@@ -72,6 +74,8 @@ struct Event {
     next_ids: Vec<String>,
     was_just_matched: bool,
     predecessor_chain: Vec<String>,
+    /// The event's declared metadata, reported by `GET /api/engine/active`.
+    metadata: Value,
 }
 
 struct Sequence {
@@ -108,6 +112,9 @@ struct Coverage {
     activated: BTreeMap<(String, String, String, String), u64>,
     /// (machine id, machine name, sequence) -> asserted outputs emitted
     outputs: BTreeMap<(String, String, String), u64>,
+    /// (owner team, process status, RAG status, machine id) -> governance
+    /// decisions resolved by the step, one per merge operation.
+    paging: BTreeMap<(String, String, String, String), u64>,
     started_at_ms: u128,
 }
 
@@ -118,12 +125,20 @@ impl Default for Coverage {
             matched: BTreeMap::new(),
             activated: BTreeMap::new(),
             outputs: BTreeMap::new(),
+            paging: BTreeMap::new(),
             started_at_ms: now_ms(),
         }
     }
 }
 
 impl Coverage {
+    fn record_paging(&mut self, owner: String, process: String, rag: String, machine_id: String) {
+        *self
+            .paging
+            .entry((owner, process, rag, machine_id))
+            .or_default() += 1;
+    }
+
     fn record(&mut self, id: &str, name: &str, result: &Value) {
         let machine = (id.to_owned(), name.to_owned());
         *self.steps.entry(machine.clone()).or_default() += 1;
@@ -174,6 +189,18 @@ pub struct Engine {
     coverage: Coverage,
     /// Bumped on every machine added or removed (`re_runtime_mapping_version`).
     mapping_version: u64,
+    /// The perceptual space the step path reads and writes (`POST /api/perceive`).
+    space: Vec<f64>,
+    /// The number the next step takes; steps are numbered from 0.
+    next_step: i64,
+    /// The last committed step, -1 before any; the completion point publishes it.
+    completed_step: i64,
+    trajectories: step::Trajectories,
+    /// Event-bus bits latched by a firing, re-applied on every perceive.
+    latched_bits: std::collections::BTreeSet<usize>,
+    /// "producer machine id|producer sequence id" -> (subscriber, bit offset)
+    subscriptions: BTreeMap<String, Vec<(String, usize)>>,
+    arbitration: step::ArbitrationRegistry,
 }
 
 /// The id a corpus file's machine gets, on every engine: `machine-` and the
@@ -445,6 +472,10 @@ impl Machine {
                         .collect(),
                     was_just_matched: false,
                     predecessor_chain: Vec::new(),
+                    metadata: event_json
+                        .get("metadata")
+                        .cloned()
+                        .unwrap_or_else(|| json!({})),
                 };
                 if events.insert(event_id.clone(), event).is_some() {
                     return Err(EngineError::bad_request(format!(
@@ -536,7 +567,10 @@ impl Machine {
         }
     }
 
-    fn transition(&mut self, input: &[f64]) -> Value {
+    /// `override_algorithm`: an explicit `matchAlgorithmOverride` (perceive),
+    /// which outranks every element's own comparator (SURFACE_SPEC.md,
+    /// "Comparators").
+    fn transition(&mut self, input: &[f64], override_algorithm: Option<&str>) -> Value {
         let timestamp = now_ms();
         let mut sequence_results = serde_json::Map::new();
         let mut all_outputs: Vec<(String, Output, Vec<String>)> = Vec::new();
@@ -561,7 +595,7 @@ impl Machine {
                 let Some(event) = sequence.events.get_mut(&event_id) else {
                     continue;
                 };
-                let matched_event = event.matches(input, &self.match_algorithm);
+                let matched_event = event.matches(input, &self.match_algorithm, override_algorithm);
                 if !matched_event {
                     if !event.initial {
                         event.active = false;
@@ -623,7 +657,7 @@ impl Machine {
             _ => !all_outputs.is_empty(),
         };
         let picked = if has_output {
-            all_outputs.first().map(|(sequence_id, output, provenance)| {
+            all_outputs.first().map(|(_, output, provenance)| {
                 json!({
                     "id": output.id,
                     "vector": output.vector,
@@ -634,7 +668,6 @@ impl Machine {
                     },
                     "timestamp": timestamp,
                     "provenance": provenance,
-                    "sequenceId": sequence_id,
                 })
             })
         } else {
@@ -650,7 +683,6 @@ impl Machine {
             None
         };
         json!({
-            "machineId": self.id,
             "inputEvent": input,
             "timestamp": timestamp,
             "sequenceResults": sequence_results,
@@ -665,38 +697,43 @@ impl Machine {
         })
     }
 
+    /// The shape of a machine that matched nothing, for an inhibited machine:
+    /// no state change, the arbiter metadata zeroed as C++ and LSP do.
+    fn inhibited_result(&self, input: &[f64]) -> Value {
+        let empty: serde_json::Map<String, Value> = self
+            .sequences
+            .keys()
+            .map(|id| {
+                (
+                    id.clone(),
+                    json!({ "matchedEvents": [], "activatedEvents": [], "assertedOutputs": [] }),
+                )
+            })
+            .collect();
+        json!({
+            "inputEvent": input,
+            "timestamp": now_ms(),
+            "sequenceResults": empty,
+            "machineOutput": null,
+            "mergedOutput": null,
+            "arbiterMetadata": {
+                "rule": self.arbiter_rule,
+                "totalInputs": 0,
+                "sequencesWithOutput": 0,
+                "shouldOutput": false,
+            },
+        })
+    }
+
     /// A Reality Event presented to this machine. Inhibited, it is accepted
     /// and not passed forward: the shape of a machine that matched nothing,
     /// no state change, nothing recorded (SURFACE_SPEC.md,
     /// "`transitionsInhibited`"; the arbiter metadata zeroed as C++ and LSP do).
     fn present(&mut self, input: &[f64], coverage: &mut Coverage) -> Value {
         if self.transitions_inhibited {
-            let empty: serde_json::Map<String, Value> = self
-                .sequences
-                .keys()
-                .map(|id| {
-                    (
-                        id.clone(),
-                        json!({ "matchedEvents": [], "activatedEvents": [], "assertedOutputs": [] }),
-                    )
-                })
-                .collect();
-            return json!({
-                "machineId": self.id,
-                "inputEvent": input,
-                "timestamp": now_ms(),
-                "sequenceResults": empty,
-                "machineOutput": null,
-                "mergedOutput": null,
-                "arbiterMetadata": {
-                    "rule": self.arbiter_rule,
-                    "totalInputs": 0,
-                    "sequencesWithOutput": 0,
-                    "shouldOutput": false,
-                },
-            });
+            return self.inhibited_result(input);
         }
-        let result = self.transition(input);
+        let result = self.transition(input, None);
         coverage.record(&self.id, &self.name, &result);
         result
     }
@@ -707,15 +744,20 @@ impl Event {
     /// the element's `comparatorType`, else the machine's `matchAlgorithm`,
     /// else `gte`; `t` is the element's `threshold`, else the comparator's
     /// default. `gte` binarizes both sides at `t`: a `0` means "must be off".
-    fn matches(&self, input: &[f64], machine_algorithm: &str) -> bool {
+    fn matches(
+        &self,
+        input: &[f64],
+        machine_algorithm: &str,
+        override_algorithm: Option<&str>,
+    ) -> bool {
         if input.len() != self.elements.len() {
             return false;
         }
         self.elements.iter().zip(input).all(|(element, &actual)| {
-            let comparator = if element.comparator.is_empty() {
-                machine_algorithm
-            } else {
-                &element.comparator
+            let comparator = match override_algorithm {
+                Some(explicit) => explicit,
+                None if element.comparator.is_empty() => machine_algorithm,
+                None => &element.comparator,
             };
             let value = element.value;
             match comparator {
@@ -785,6 +827,8 @@ impl Engine {
             threshold: 0.5,
             qdrant_url: "http://localhost:4333".to_owned(),
             collection_name: "reality-events".to_owned(),
+            completed_step: -1,
+            arbitration: step::ArbitrationRegistry::load(None),
             ..Self::default()
         }
     }
@@ -840,8 +884,10 @@ impl Engine {
                 .max(integer(input.and_then(|region| region.get("offset")), 0));
         }
         let summary = machine.summary();
+        let (id, raw) = (machine.id.clone(), machine.raw.clone());
         self.machines.insert(machine.id.clone(), machine);
         self.mapping_version += 1;
+        self.subscribe(&id, &raw);
         Ok(summary)
     }
 
@@ -850,6 +896,7 @@ impl Engine {
             return Ok(0);
         }
         self.machines_dir = Some(directory.to_path_buf());
+        self.arbitration = step::ArbitrationRegistry::load(Some(directory));
 
         let mut paths = Vec::new();
         collect_json_files(directory, &mut paths)?;
@@ -978,6 +1025,7 @@ impl Engine {
         // Validate before replacing, so a bad file leaves the resident machine.
         Machine::from_json(definition.clone())?;
         self.machines.remove(&id);
+        self.unsubscribe(&id);
         self.load_machine(definition)
     }
 
@@ -1000,6 +1048,7 @@ impl Engine {
         let removed = self.machines.remove(id).is_some();
         if removed {
             self.mapping_version += 1;
+            self.unsubscribe(id);
         }
         removed
     }
@@ -1117,10 +1166,9 @@ impl Engine {
     /// `CesCoverageRegistry::to_prometheus_text`), then the runtime gauges.
     ///
     /// Not emitted, because nothing here measures them yet:
-    /// `ces_paging_decisions_total` (governance), `ces_deprecated_fires_total`
-    /// (sequence deprecation) and the `re_step_phase_*` lines (the step path and
-    /// `phaseDetail`, #11). Absent rather than zero: zero would claim a
-    /// measurement.
+    /// `ces_deprecated_fires_total` (sequence deprecation; no corpus sequence is
+    /// deprecated) and the `re_step_phase_*` lines (`phaseDetail`, #11 slice 2).
+    /// Absent rather than zero: zero would claim a measurement.
     fn metrics_text(&self) -> String {
         use std::fmt::Write;
         let esc = |v: &str| {
@@ -1211,6 +1259,22 @@ impl Engine {
                 out,
                 "ces_machine_steps_total{} {n}",
                 labels(&[("machine", name), ("machine_id", id)])
+            );
+        }
+        // Governance decisions the step resolved, one per merge operation.
+        out.push_str("# HELP ces_paging_decisions_total Number of governance-resolved paging decisions issued by the engine.\n# TYPE ces_paging_decisions_total counter\n");
+        for ((owner, process, rag, id), n) in &c.paging {
+            let name = self.machines.get(id).map_or("", |m| m.name.as_str());
+            let _ = writeln!(
+                out,
+                "ces_paging_decisions_total{} {n}",
+                labels(&[
+                    ("owner_team", owner),
+                    ("process_status", process),
+                    ("rag_status_code", rag),
+                    ("machine_id", id),
+                    ("machine", name)
+                ])
             );
         }
         // Zero baselines, so a dashboard can plot every machine before it fires.
@@ -1392,6 +1456,9 @@ impl Engine {
             machine.reset();
         }
         self.step = 0;
+        // The step state too: space, ISRE/OSRE histories, latched bits, and the
+        // step count, which restarts at 0 (SURFACE_SPEC.md, "Step completion").
+        self.reset_steps();
         if clear_audit {
             self.history.clear();
         }
@@ -1407,6 +1474,24 @@ impl Engine {
 }
 
 type SharedEngine = Arc<RwLock<Engine>>;
+
+/// The router's state: the engine, and the step completion point.
+///
+/// `completed` carries the last committed step (-1 before any, and after a
+/// reset). A waiter on `GET /api/engine/steps/:n/pair` awaits it reaching n —
+/// a synchronisation primitive, never a poll (SURFACE_SPEC.md, "Step
+/// completion") — and the engine lock is not held while it waits.
+#[derive(Clone)]
+struct AppState {
+    engine: SharedEngine,
+    completed: Arc<tokio::sync::watch::Sender<i64>>,
+}
+
+impl axum::extract::FromRef<AppState> for SharedEngine {
+    fn from_ref(state: &AppState) -> Self {
+        state.engine.clone()
+    }
+}
 
 fn error_response(error: EngineError) -> (StatusCode, Json<Value>) {
     (error.status, Json(json!({ "error": error.message })))
@@ -1678,7 +1763,7 @@ async fn process_all(
 }
 
 async fn reset(
-    State(engine): State<SharedEngine>,
+    State(app_state): State<AppState>,
     Query(query): Query<HashMap<String, String>>,
     body: Bytes,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
@@ -1698,13 +1783,220 @@ async fn reset(
             .get("clearAudit")
             .and_then(Value::as_bool)
             .unwrap_or(false);
-    let mut state = engine.write().map_err(|_| error_response(lock_error()))?;
-    state.reset(clear_audit);
-    Ok(Json(json!({ "success": true, "message": "engine reset" })))
+    {
+        let mut state = app_state
+            .engine
+            .write()
+            .map_err(|_| error_response(lock_error()))?;
+        state.reset(clear_audit);
+    }
+    // Step numbering restarts, so a waiter for step n waits for the new step n.
+    app_state.completed.send_replace(-1);
+    Ok(Json(
+        json!({ "success": true, "auditCleared": clear_audit }),
+    ))
+}
+
+/// `POST /api/perceive`: exactly one of `vector`, `sparseVector`,
+/// `domainVectors`; then one step, answered as the step itself.
+async fn perceive(
+    State(app_state): State<AppState>,
+    body: Bytes,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    // As C++ parse_body: an empty body is `{}`, so it reaches the input check.
+    let body: Value = if body.is_empty() {
+        json!({})
+    } else {
+        serde_json::from_slice(&body)
+            .map_err(|e| error_response(EngineError::bad_request(e.to_string())))?
+    };
+    let numbers = |v: &Value| -> Vec<f64> {
+        v.as_array()
+            .into_iter()
+            .flatten()
+            .map(|x| x.as_f64().unwrap_or(0.0))
+            .collect()
+    };
+    let mut state = app_state
+        .engine
+        .write()
+        .map_err(|_| error_response(lock_error()))?;
+    let width = state.dimension;
+    let input: Vec<f64> = if body["vector"].is_array() {
+        numbers(&body["vector"])
+    } else if let Some(cells) = body["sparseVector"].as_array() {
+        let end = cells
+            .iter()
+            .filter_map(|c| c["index"].as_u64())
+            .map(|i| i as usize + 1)
+            .max()
+            .unwrap_or(0);
+        let mut v = vec![0.0; end.max(width)];
+        for c in cells {
+            if let Some(i) = c["index"].as_u64() {
+                v[i as usize] = c["value"].as_f64().unwrap_or(0.0);
+            }
+        }
+        v
+    } else if let Some(regions) = body["domainVectors"].as_array() {
+        let end = regions
+            .iter()
+            .map(|r| r["offset"].as_u64().unwrap_or(0) as usize + numbers(&r["values"]).len())
+            .max()
+            .unwrap_or(0);
+        let mut v = vec![0.0; end.max(width)];
+        for r in regions {
+            let offset = r["offset"].as_u64().unwrap_or(0) as usize;
+            for (i, x) in numbers(&r["values"]).into_iter().enumerate() {
+                v[offset + i] = x;
+            }
+        }
+        v
+    } else {
+        return Err(error_response(EngineError::bad_request(
+            "Provide exactly one of: vector, sparseVector, domainVectors",
+        )));
+    };
+    let override_algorithm = body["matchAlgorithmOverride"]
+        .as_str()
+        .map(str::to_lowercase);
+    // C++ reads `compact` twice: the body's omits machineResults by default,
+    // and the body's or the query's adds `valuesPacked` to the merge batch.
+    // Rust does not pack yet (#11), so `?compact` changes nothing here.
+    let machine_results = body["includeMachineResults"]
+        .as_bool()
+        .unwrap_or(!body["compact"].as_bool().unwrap_or(false));
+    let perceptual_space = body["includePerceptualSpace"].as_bool().unwrap_or(true);
+    let active_regions = body["includeActiveRegions"].as_bool().unwrap_or(true);
+    let mut selector = step::Selector::default();
+    if let Some(only) = body["only"].as_object() {
+        selector.active = true;
+        let strings = |k: &str| {
+            only.get(k)
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+                .filter_map(|v| v.as_str().map(str::to_owned))
+                .collect()
+        };
+        selector.sequence_ids = strings("sequenceIds");
+        selector.machine_names = strings("machineNames");
+    }
+    let record = state.perceive(&input, override_algorithm.as_deref());
+    let out = Engine::step_json(
+        &record,
+        machine_results,
+        perceptual_space,
+        active_regions,
+        &selector,
+    );
+    let committed = state.completed_step;
+    drop(state);
+    // B5: the completion point is published, waking every waiter for step n.
+    app_state.completed.send_replace(committed);
+    Ok(Json(out))
+}
+
+async fn engine_active(
+    State(engine): State<SharedEngine>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let state = engine.read().map_err(|_| error_response(lock_error()))?;
+    Ok(Json(json!({ "activeEvents": state.active_events() })))
+}
+
+fn history_window(query: &HashMap<String, String>) -> (i64, usize) {
+    let from = query
+        .get("from")
+        .and_then(|v| v.parse::<i64>().ok())
+        .unwrap_or(0);
+    let limit = query
+        .get("limit")
+        .and_then(|v| v.parse::<usize>().ok())
+        .unwrap_or(0);
+    (from, limit)
+}
+
+async fn isre_history(
+    State(engine): State<SharedEngine>,
+    Query(query): Query<HashMap<String, String>>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let state = engine.read().map_err(|_| error_response(lock_error()))?;
+    let (from, limit) = history_window(&query);
+    Ok(Json(
+        json!({ "history": step::Trajectories::window(&state.trajectories.isre, from, limit) }),
+    ))
+}
+
+async fn osre_history(
+    State(engine): State<SharedEngine>,
+    Query(query): Query<HashMap<String, String>>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let state = engine.read().map_err(|_| error_response(lock_error()))?;
+    let (from, limit) = history_window(&query);
+    Ok(Json(
+        json!({ "history": step::Trajectories::window(&state.trajectories.osre, from, limit) }),
+    ))
+}
+
+const STEP_PAIR_DEFAULT_TIMEOUT_MS: u64 = 5000;
+const STEP_PAIR_MAX_TIMEOUT_MS: u64 = 60_000;
+
+/// `GET /api/engine/steps/:n/pair?timeoutMs=W` (SURFACE_SPEC.md, "Step
+/// completion"): 200 with the committed pair, 408 if step n does not resolve
+/// within W ms, 410 if it resolved and has left the history, 400 if malformed.
+async fn step_pair(
+    State(app_state): State<AppState>,
+    Path(raw): Path<String>,
+    Query(query): Query<HashMap<String, String>>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let n = raw.parse::<i64>().ok().filter(|n| *n >= 0).ok_or_else(|| {
+        error_response(EngineError::bad_request(
+            "step must be a non-negative integer",
+        ))
+    })?;
+    let timeout_ms = match query.get("timeoutMs") {
+        None => STEP_PAIR_DEFAULT_TIMEOUT_MS,
+        Some(raw) => raw
+            .parse::<u64>()
+            .ok()
+            .filter(|t| *t <= STEP_PAIR_MAX_TIMEOUT_MS)
+            .ok_or_else(|| {
+                error_response(EngineError::bad_request(format!(
+                    "timeoutMs must be an integer in [0, {STEP_PAIR_MAX_TIMEOUT_MS}]"
+                )))
+            })?,
+    };
+    let mut completed = app_state.completed.subscribe();
+    let resolved = tokio::time::timeout(
+        std::time::Duration::from_millis(timeout_ms),
+        completed.wait_for(|step| *step >= n),
+    )
+    .await
+    .is_ok_and(|r| r.is_ok());
+    if !resolved {
+        return Err((
+            StatusCode::REQUEST_TIMEOUT,
+            Json(json!({ "error": format!("step {n} not resolved within {timeout_ms} ms") })),
+        ));
+    }
+    let state = app_state
+        .engine
+        .read()
+        .map_err(|_| error_response(lock_error()))?;
+    state.trajectories.pair(n).map(Json).ok_or_else(|| {
+        (
+            StatusCode::GONE,
+            Json(json!({ "error": format!("step {n} is no longer retained") })),
+        )
+    })
 }
 
 pub fn app(engine: Engine) -> Router {
-    let state = Arc::new(RwLock::new(engine));
+    let completed = engine.completed_step;
+    let state = AppState {
+        engine: Arc::new(RwLock::new(engine)),
+        completed: Arc::new(tokio::sync::watch::channel(completed).0),
+    };
     Router::new()
         .route("/", get(root))
         .route("/api", get(root))
@@ -1732,6 +2024,11 @@ pub fn app(engine: Engine) -> Router {
         .route("/api/metrics", get(metrics))
         .route("/api/engine/history", get(engine_history))
         .route("/api/engine/reset", post(reset))
+        .route("/api/perceive", post(perceive))
+        .route("/api/engine/active", get(engine_active))
+        .route("/api/engine/isre-history", get(isre_history))
+        .route("/api/engine/osre-history", get(osre_history))
+        .route("/api/engine/steps/{n}/pair", get(step_pair))
         .with_state(state)
 }
 
@@ -1764,6 +2061,14 @@ pub fn engine_from_environment() -> Result<Engine, EngineError> {
         "reality-engine: loaded {loaded} machines, {events} events from {machine_directory}; eventDimension {}",
         engine.dimension
     );
+    // Contended output cells resolve by these rules; an unread registry means
+    // every cell falls to PRECEDENCE, so say which file (if any) was read.
+    match &engine.arbitration.source {
+        Some(path) => eprintln!("reality-engine: arbitration registry {}", path.display()),
+        None => {
+            eprintln!("reality-engine: no arbitration registry; contended cells use PRECEDENCE")
+        }
+    }
     Ok(engine)
 }
 
@@ -1976,6 +2281,144 @@ mod tests {
         (app(engine), id)
     }
 
+    fn universal(first_cell: f64) -> Value {
+        let mut v = vec![0.0; 8];
+        v[0] = first_cell;
+        json!({ "vector": v })
+    }
+
+    /// SURFACE_SPEC.md, "POST /api/perceive": exactly one input form.
+    #[tokio::test]
+    async fn perceive_requires_exactly_one_input_form() {
+        let (app, _) = loaded_app();
+        for body in [None, Some(json!({})), Some(json!({ "vector": "no" }))] {
+            let (status, r) = send(&app, "POST", "/api/perceive", body).await;
+            assert_eq!(status, StatusCode::BAD_REQUEST);
+            assert_eq!(
+                r["error"],
+                "Provide exactly one of: vector, sparseVector, domainVectors"
+            );
+        }
+    }
+
+    /// One step per perceive: numbered from 0, merged by machine and region,
+    /// and committed as an (ISRE, OSRE) pair.
+    #[tokio::test]
+    async fn perceive_commits_numbered_steps_and_their_trajectories() {
+        let (app, id) = loaded_app();
+        let (_, first) = send(&app, "POST", "/api/perceive", Some(universal(1.0))).await;
+        assert_eq!(first["stepNumber"], 0);
+        assert_eq!(first["mergeBatch"], json!([]));
+        assert!(first["machineResults"][&id].is_object(), "{first}");
+        assert_eq!(first["perceptualSpaceIsDebugProjection"], true);
+
+        // `finish` was activated by step 0's transition.
+        let (_, active) = send(&app, "GET", "/api/engine/active", None).await;
+        assert!(
+            active["activeEvents"].to_string().contains("finish"),
+            "{active}"
+        );
+
+        // The sparse form assembles the same all-zero input.
+        let (_, second) = send(
+            &app,
+            "POST",
+            "/api/perceive",
+            Some(json!({ "sparseVector": [{ "index": 0, "value": 0 }], "compact": true })),
+        )
+        .await;
+        assert_eq!(second["stepNumber"], 1);
+        assert!(second.get("machineResults").is_none(), "compact omits them");
+        let batch = second["mergeBatch"].as_array().unwrap();
+        assert_eq!(batch.len(), 1);
+        assert_eq!(batch[0]["machineId"], id.as_str());
+        assert_eq!(batch[0]["machineName"], "two-step");
+        assert_eq!(batch[0]["region"], json!({ "offset": 1, "length": 1 }));
+        assert_eq!(batch[0]["values"], json!([1.0]));
+        assert_eq!(batch[0]["sequenceIds"], json!(["sequence"]));
+
+        let (_, osre) = send(&app, "GET", "/api/engine/osre-history", None).await;
+        let steps: Vec<i64> = osre["history"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|e| e["stepNumber"].as_i64().unwrap())
+            .collect();
+        assert_eq!(steps, [0, 1]);
+        let (_, window) = send(&app, "GET", "/api/engine/isre-history?from=1&limit=5", None).await;
+        assert_eq!(window["history"].as_array().unwrap().len(), 1);
+
+        let (status, pair) = send(&app, "GET", "/api/engine/steps/1/pair", None).await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(pair["stepNumber"], 1);
+        assert_eq!(pair["isre"]["nonZero"], json!([]));
+        let cell = &pair["osre"]["nonZero"][0];
+        assert_eq!(cell["index"].as_u64(), Some(1));
+        assert_eq!(cell["value"].as_f64(), Some(1.0));
+        assert_eq!(pair["osre"]["length"].as_u64(), Some(8));
+
+        // A reset restarts the numbering: step 0 is unresolved again.
+        let (_, reset) = send(&app, "POST", "/api/engine/reset", None).await;
+        assert_eq!(reset, json!({ "success": true, "auditCleared": false }));
+        let (status, _) = send(&app, "GET", "/api/engine/steps/0/pair?timeoutMs=0", None).await;
+        assert_eq!(status, StatusCode::REQUEST_TIMEOUT);
+        let (_, osre) = send(&app, "GET", "/api/engine/osre-history", None).await;
+        assert_eq!(osre["history"], json!([]));
+        let (_, again) = send(&app, "POST", "/api/perceive", Some(universal(1.0))).await;
+        assert_eq!(again["stepNumber"], 0);
+    }
+
+    /// SURFACE_SPEC.md, "Step completion": a waiter is woken by the step it
+    /// waits for, and the window and step are validated.
+    #[tokio::test]
+    async fn step_pair_waits_for_the_step_and_validates_its_arguments() {
+        let (app, _) = loaded_app();
+        let waiter = {
+            let app = app.clone();
+            tokio::spawn(async move {
+                send(
+                    &app,
+                    "GET",
+                    "/api/engine/steps/0/pair?timeoutMs=10000",
+                    None,
+                )
+                .await
+            })
+        };
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        assert!(!waiter.is_finished(), "answered before the step ran");
+        send(&app, "POST", "/api/perceive", Some(universal(1.0))).await;
+        let (status, pair) = waiter.await.unwrap();
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(pair["stepNumber"], 0);
+
+        let (status, r) = send(&app, "GET", "/api/engine/steps/3/pair?timeoutMs=10", None).await;
+        assert_eq!(status, StatusCode::REQUEST_TIMEOUT);
+        assert_eq!(r["error"], "step 3 not resolved within 10 ms");
+        for uri in [
+            "/api/engine/steps/-1/pair",
+            "/api/engine/steps/x/pair",
+            "/api/engine/steps/0/pair?timeoutMs=60001",
+            "/api/engine/steps/0/pair?timeoutMs=-1",
+        ] {
+            let (status, _) = send(&app, "GET", uri, None).await;
+            assert_eq!(status, StatusCode::BAD_REQUEST, "{uri}");
+        }
+    }
+
+    /// A resolved step past the 1024-entry history answers 410, not 408.
+    #[tokio::test]
+    async fn step_pair_is_gone_once_the_history_drops_it() {
+        let (app, _) = loaded_app();
+        for _ in 0..=step::TRAJECTORY_LIMIT {
+            send(&app, "POST", "/api/perceive", Some(universal(0.0))).await;
+        }
+        let (status, _) = send(&app, "GET", "/api/engine/steps/0/pair?timeoutMs=0", None).await;
+        assert_eq!(status, StatusCode::GONE);
+        let (status, _) = send(&app, "GET", "/api/engine/steps/1/pair?timeoutMs=0", None).await;
+        assert_eq!(status, StatusCode::OK);
+    }
+
     /// SURFACE_SPEC.md, "`/api/engine/config`": the five-field shape, sorted by
     /// name, with only the controls this engine acts on.
     #[tokio::test]
@@ -2157,12 +2600,11 @@ mod tests {
                 "missing `{line}` in\n{text}"
             );
         }
+        // Paging is measured by the step path: its family is declared even
+        // before a decision is issued.
+        assert!(text.contains("# TYPE ces_paging_decisions_total counter"));
         // Not measured here, so absent rather than zero.
-        for absent in [
-            "re_step_phase",
-            "ces_paging_decisions_total",
-            "ces_deprecated_fires_total",
-        ] {
+        for absent in ["re_step_phase", "ces_deprecated_fires_total"] {
             assert!(!text.contains(absent), "{absent} present");
         }
     }
@@ -2457,6 +2899,7 @@ mod tests {
             next_ids: Vec::new(),
             was_just_matched: false,
             predecessor_chain: Vec::new(),
+            metadata: Value::Null,
         }
     }
 
@@ -2488,7 +2931,7 @@ mod tests {
         for (comparator, value, threshold, input, accepts) in cases {
             let event = event_with(comparator, value, threshold);
             assert_eq!(
-                event.matches(&[input], "gte"),
+                event.matches(&[input], "gte", None),
                 accepts,
                 "{comparator} value {value} threshold {threshold:?} input {input}"
             );
@@ -2499,11 +2942,11 @@ mod tests {
     fn comparator_precedence_is_element_then_machine_then_gte() {
         // No element comparator: the machine's matchAlgorithm applies.
         let event = event_with("", 1.0, None);
-        assert!(!event.matches(&[0.95], "equals"));
-        assert!(event.matches(&[0.95], "gte"));
+        assert!(!event.matches(&[0.95], "equals", None));
+        assert!(event.matches(&[0.95], "gte", None));
         // The element's own comparatorType wins over the machine's.
         let event = event_with("gte", 1.0, None);
-        assert!(event.matches(&[0.95], "equals"));
+        assert!(event.matches(&[0.95], "equals", None));
 
         // A matchAlgorithm on the event itself is not read, as in every engine.
         let mut definition = machine_definition();
