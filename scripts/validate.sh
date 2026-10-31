@@ -9,8 +9,12 @@
 #                    router against what the corpus declares (tests/conformance.rs),
 #                    and every SURFACE_SPEC route probed for its implementation
 #                    status (tests/surface.rs)
-#   R2  follower     beside a live 3-of-3 universe, as a non-voting follower;
-#                    local only, needs sibling checkouts (RealityEngine_CI#607)
+#   R2  follower     against live reference engines. With RE_REFERENCE_URL set,
+#                    this checkout's release build is started on the corpus in
+#                    RE_DIFF_CORPUS (default conformance/corpus) and compared with
+#                    that reference by scripts/differential.py; the reference must
+#                    be running on the same corpus. Without it, R2 delegates to
+#                    RealityEngine_CI/scripts/rust-conformance.sh (CI#607).
 #
 # R3, the full regression-test.sh with Rust as a follower, is run from
 # RealityEngine_CI, never from here.
@@ -111,8 +115,38 @@ tier_r1() {
   cargo test --locked --test surface -- --nocapture || return 1
 }
 
+r2_differential() {
+  local corpus="${RE_DIFF_CORPUS:-$repo_root/conformance/corpus}"
+  local port pid status=0
+  port="$(python3 -I -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])')" || return 1
+  cargo build --locked --release || return 1
+  say "R2 differential: Rust on :$port vs $RE_REFERENCE_URL, corpus $corpus"
+  MACHINES_DIR="$corpus" REALITY_ENGINE_PORT="$port" target/release/reality-engine &
+  pid=$!
+  local ready=false
+  for _ in $(seq 1 120); do
+    if curl -sf "http://127.0.0.1:$port/api/health" >/dev/null 2>&1; then ready=true; break; fi
+    sleep 1
+  done
+  if [ "$ready" = true ]; then
+    python3 -I scripts/differential.py --candidate "http://127.0.0.1:$port" \
+      --reference "$RE_REFERENCE_URL" --corpus "$corpus" \
+      --out "$repo_root/target/conformance/differential-report.json" || status=$?
+  else
+    echo "Rust did not answer on :$port within 120s"
+    status=1
+  fi
+  kill "$pid" 2>/dev/null || true
+  wait "$pid" 2>/dev/null || true
+  return "$status"
+}
+
 tier_r2() {
   say "R2 follower"
+  if [ -n "${RE_REFERENCE_URL:-}" ]; then
+    r2_differential || return $?
+    return 0
+  fi
   local ci_repo="${RE_CI_REPO:-$repo_root/../RealityEngine_CI}"
   local runner="$ci_repo/scripts/rust-conformance.sh"
   if [ ! -x "$runner" ]; then

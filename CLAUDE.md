@@ -34,7 +34,9 @@ either here.
 scripts/validate.sh          # fast: R0 + R1, what every PR runs
 scripts/validate.sh r0       # fmt, clippy -D warnings, unit tests, release build
 scripts/validate.sh r1       # corpus snapshot check + corpus replay
-scripts/validate.sh r2       # beside a live universe; local only
+RE_REFERENCE_URL=http://127.0.0.1:5301 scripts/validate.sh r2
+                             # live: this build vs a running reference RE on the same corpus
+                             # (RE_DIFF_CORPUS, default conformance/corpus); local only
 scripts/refresh-corpus.sh    # re-vendor from a clean RealityEngine_Machines
 scripts/refresh-surface.sh   # re-vendor SURFACE_SPEC.md's route tables
 ```
@@ -62,6 +64,14 @@ Rules that bite:
   `SURFACE_RECORD=1 cargo test --test surface`, then name the issue for any new
   non-implemented entry. Re-vendor the spec with `scripts/refresh-surface.sh`
   when it changes. Status says a route exists, not that it behaves.
+- **R2 compares against a live engine, and no engine is the oracle.**
+  `scripts/differential.py` resets both, drives every corpus input sequence
+  through `POST /api/machines/:id/process` (`{"inputEvent": ...}`, as the
+  engines take it) and compares each step's `machineOutput.vector` and
+  `mergedOutput`. A difference carries both emissions. Run it against each of
+  C++, LSP and Scala; agreement with all three is the claim. Check the
+  reference's build provenance first
+  (`RealityEngine_CI/scripts/verify-build-provenance.py --repos cpp`).
 - **Read canonical keys first.** R1 reads `eventDimension`, `outputs[].vector`,
   `events`; where Rust answers otherwise it falls back so the rest still
   measures, and records the key as a failing check.

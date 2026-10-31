@@ -1206,20 +1206,22 @@ async fn delete_machine(
     }
 }
 
-fn input_from_body(body: &Value) -> Result<Vec<f64>, EngineError> {
+/// Reads the input under the one key the route takes, as C++, LSP and Scala
+/// do: `inputEvent` on the single-machine transition routes, `vector` on
+/// `POST /api/engine/process`.
+fn input_from_body(body: &Value, key: &str) -> Result<Vec<f64>, EngineError> {
     let vector = body
-        .get("vector")
-        .or_else(|| body.get("input"))
-        .ok_or_else(|| EngineError::bad_request("request must include vector"))?;
+        .get(key)
+        .ok_or_else(|| EngineError::bad_request(format!("request must include {key}")))?;
     let values = vector
         .as_array()
-        .ok_or_else(|| EngineError::bad_request("vector must be an array"))?;
+        .ok_or_else(|| EngineError::bad_request(format!("{key} must be an array")))?;
     values
         .iter()
         .map(|value| {
-            value
-                .as_f64()
-                .ok_or_else(|| EngineError::bad_request("vector values must be finite numbers"))
+            value.as_f64().ok_or_else(|| {
+                EngineError::bad_request(format!("{key} values must be finite numbers"))
+            })
         })
         .collect()
 }
@@ -1230,11 +1232,12 @@ async fn process_machine(
     body: Result<Json<Value>, JsonRejection>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     let Json(body) = body.map_err(json_rejection)?;
-    let input = input_from_body(&body).map_err(error_response)?;
+    let input = input_from_body(&body, "inputEvent").map_err(error_response)?;
     let mut state = engine.write().map_err(|_| error_response(lock_error()))?;
+    // The transition result itself, at the top level, as all three engines answer.
     state
         .process_machine(&id, &input)
-        .map(|result| Json(json!({ "success": true, "result": result })))
+        .map(Json)
         .map_err(error_response)
 }
 
@@ -1243,7 +1246,7 @@ async fn process_all(
     body: Result<Json<Value>, JsonRejection>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     let Json(body) = body.map_err(json_rejection)?;
-    let input = input_from_body(&body).map_err(error_response)?;
+    let input = input_from_body(&body, "vector").map_err(error_response)?;
     let mut state = engine.write().map_err(|_| error_response(lock_error()))?;
     Ok(Json(json!({ "result": state.process_all(&input) })))
 }
@@ -1677,18 +1680,22 @@ mod tests {
                         .method("POST")
                         .uri(format!("/api/machines/{machine_id}/process"))
                         .header("content-type", "application/json")
-                        .body(Body::from(json!({ "vector": vector.clone() }).to_string()))
+                        .body(Body::from(
+                            json!({ "inputEvent": vector.clone() }).to_string(),
+                        ))
                         .unwrap(),
                 )
                 .await
                 .unwrap();
             assert_eq!(response.status(), StatusCode::OK);
             let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+            // The transition result itself, at the top level, as the engines answer.
             let result: Value = serde_json::from_slice(&body).unwrap();
+            assert_eq!(result["inputEvent"], vector);
             if expecting_output {
-                assert_eq!(result["result"]["machineOutput"]["vector"][0], 1.0);
+                assert_eq!(result["machineOutput"]["vector"][0], 1.0);
             } else {
-                assert!(result["result"]["machineOutput"].is_null());
+                assert!(result["machineOutput"].is_null());
             }
         }
 
