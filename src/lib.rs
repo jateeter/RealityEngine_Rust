@@ -804,17 +804,12 @@ impl Engine {
                 if machine.input_length != 0 && machine_input.len() != machine.input_length {
                     return None;
                 }
-                let result = machine.transition(machine_input);
-                result
-                    .get("machineOutput")
-                    .filter(|output| !output.is_null())
-                    .map(|output| {
-                        json!({
-                            "machineId": machine.id,
-                            "machineOutput": output,
-                            "mergedOutput": result["mergedOutput"],
-                        })
-                    })
+                // SURFACE_SPEC.md, "POST /api/engine/process": outputs =
+                // [r.machineOutput for r in results if r.machineOutput]. One
+                // arbitrated output per machine that fired, the output itself;
+                // the per-machine detail stays on POST /api/machines/:id/process.
+                let mut result = machine.transition(machine_input);
+                Some(result.get_mut("machineOutput")?.take()).filter(|output| !output.is_null())
             })
             .collect();
         let result = json!({
@@ -1177,6 +1172,65 @@ mod tests {
             .unwrap()
             .remove("name");
         assert!(Engine::new(1).load_machine(missing_name).is_err());
+    }
+
+    /// SURFACE_SPEC.md, "POST /api/engine/process": outputs[] holds each firing
+    /// machine's arbitrated output itself, and nothing for a machine that did not fire.
+    #[tokio::test]
+    async fn engine_process_outputs_are_the_arbitrated_outputs() {
+        let app = app(Engine::new(8));
+        let post = |uri: &str, body: Value| {
+            Request::builder()
+                .method("POST")
+                .uri(uri)
+                .header("content-type", "application/json")
+                .body(Body::from(body.to_string()))
+                .unwrap()
+        };
+        let response = app
+            .clone()
+            .oneshot(post("/api/machines", machine_definition()))
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let mut outputs = Vec::new();
+        for first_cell in [1.0, 0.0] {
+            let mut universal = vec![0.0; 8];
+            universal[0] = first_cell;
+            let response = app
+                .clone()
+                .oneshot(post("/api/engine/process", json!({ "vector": universal })))
+                .await
+                .unwrap();
+            assert_eq!(response.status(), StatusCode::OK);
+            let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+            let body: Value = serde_json::from_slice(&body).unwrap();
+            outputs.push(body["result"]["outputs"].clone());
+        }
+
+        assert_eq!(
+            outputs[0],
+            json!([]),
+            "a machine that did not fire contributes nothing"
+        );
+        let fired = outputs[1].as_array().unwrap();
+        assert_eq!(fired.len(), 1);
+        let output = &fired[0];
+        assert_eq!(output["vector"], json!([1.0]));
+        assert_eq!(output["metadata"]["sources"], json!(["out"]));
+        assert!(output["provenance"].is_array(), "{output}");
+        for wrapper_key in [
+            "machineId",
+            "machineOutput",
+            "mergedOutput",
+            "sequenceResults",
+        ] {
+            assert!(
+                output.get(wrapper_key).is_none(),
+                "{wrapper_key} in {output}"
+            );
+        }
     }
 
     #[tokio::test]
