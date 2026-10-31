@@ -363,7 +363,6 @@
       "tracking": "jateeter/RealityEngine_Rust#10"
     },
     "RE POST /api/engine/process": {
-      "notes": "outputs[] is the per-machine result, not the arbitrated output: jateeter/RealityEngine_Rust#5",
       "status": "implemented"
     },
     "RE POST /api/engine/reset": {
@@ -519,9 +518,9 @@
   },
   "schema": 1,
   "spec": {
-    "commit": "fc60831f9123fc6328a34ec6b0e648f10c7b3f4e",
+    "commit": "9a32bc5ce8742c5943b5d29fe8fecb4031800981",
     "path": "SURFACE_SPEC.md",
     "repository": "jateeter/RealityEngine_CI",
-    "sha256": "16c52b5ec597dec523db13c79c725d1249666d62ef467c3d193911d10aaa35ae"
+    "sha256": "d2d2c5777a5b5ebda7b7aa34f2ca2c2085c28d8703f54183bad9d2b82b68b707"
   }
 }
