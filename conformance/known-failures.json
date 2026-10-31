@@ -1,47 +1,12 @@
 {
   "entries": {
     "key:config.eventDimension": {
-      "issue": "jateeter/RealityEngine_Rust#6",
-      "detail": "GET /api/config must report eventDimension"
-    },
-    "seq:domains/built-space/BSX118_community-and-hr-emergency-preparedness-wellness.json#0": {
-      "issue": "jateeter/RealityEngine_Rust#4",
-      "note": "comparator: passes under the three engines' semantics (verified 2026-10-30 by a scratch run); waits on the owner's ruling, RealityEngine_CI#606",
-      "detail": "Verify WELL conformance: emitted 2 outputs, declared 1"
-    },
-    "seq:domains/built-space/BSX118_community-and-hr-emergency-preparedness-wellness.json#4": {
-      "issue": "jateeter/RealityEngine_Rust#4",
-      "note": "comparator: passes under the three engines' semantics (verified 2026-10-30 by a scratch run); waits on the owner's ruling, RealityEngine_CI#606",
-      "detail": "24-hour predictive optimization: emitted 2 outputs, declared 1"
-    },
-    "seq:domains/built-space/BSX118_community-and-hr-emergency-preparedness-wellness.json#5": {
-      "issue": "jateeter/RealityEngine_Rust#4",
-      "note": "comparator: passes under the three engines' semantics (verified 2026-10-30 by a scratch run); waits on the owner's ruling, RealityEngine_CI#606",
-      "detail": "Baseline without output: emitted 1 outputs, declared 0"
-    },
-    "seq:domains/community-services/CSX022_behavioral-health-and-crisis-mobile-crisis-co-response.json#0": {
-      "issue": "jateeter/RealityEngine_Rust#4",
-      "note": "comparator: passes under the three engines' semantics (verified 2026-10-30 by a scratch run); waits on the owner's ruling, RealityEngine_CI#606",
-      "detail": "Urgent response sequence: emitted 2 outputs, declared 1"
-    },
-    "seq:domains/community-services/CSX022_behavioral-health-and-crisis-mobile-crisis-co-response.json#4": {
-      "issue": "jateeter/RealityEngine_Rust#4",
-      "note": "comparator: passes under the three engines' semantics (verified 2026-10-30 by a scratch run); waits on the owner's ruling, RealityEngine_CI#606",
-      "detail": "Baseline without output: emitted 1 outputs, declared 0"
-    },
-    "seq:domains/transportation/TFX047_security-and-safety-emergency-detour-safety.json#0": {
-      "issue": "jateeter/RealityEngine_Rust#4",
-      "note": "comparator: passes under the three engines' semantics (verified 2026-10-30 by a scratch run); waits on the owner's ruling, RealityEngine_CI#606",
-      "detail": "Critical event sequence: emitted 2 outputs, declared 1"
-    },
-    "seq:domains/transportation/TFX047_security-and-safety-emergency-detour-safety.json#4": {
-      "issue": "jateeter/RealityEngine_Rust#4",
-      "note": "comparator: passes under the three engines' semantics (verified 2026-10-30 by a scratch run); waits on the owner's ruling, RealityEngine_CI#606",
-      "detail": "Baseline without output: emitted 1 outputs, declared 0"
+      "detail": "GET /api/config must report eventDimension",
+      "issue": "jateeter/RealityEngine_Rust#6"
     },
     "shape:engine-process.outputs": {
-      "issue": "jateeter/RealityEngine_Rust#5",
-      "detail": "outputs[] entries must be the arbitrated output ({vector, ...}), not a per-machine result"
+      "detail": "outputs[] entries must be the arbitrated output ({vector, ...}), not a per-machine result",
+      "issue": "jateeter/RealityEngine_Rust#5"
     }
   },
   "purpose": "R1 ratchet: every entry is a failure with an issue. Rewrite with R1_RECORD_KNOWN=1, then classify each UNCLASSIFIED entry by hand.",
