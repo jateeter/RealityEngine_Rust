@@ -227,7 +227,7 @@
       "tracking": "jateeter/RealityEngine_Rust#13"
     },
     "RE GET /api/config": {
-      "notes": "reports dimension/threshold, not eventDimension/matchThreshold: jateeter/RealityEngine_Rust#6",
+      "notes": "reports eventDimension and matchThreshold; qdrantUrl and collectionName (a Qdrant store this engine does not have) are omitted pending the owner's decision: jateeter/RealityEngine_Rust#6",
       "status": "implemented"
     },
     "RE GET /api/demo/data-center": {
@@ -376,7 +376,6 @@
       "tracking": "jateeter/RealityEngine_Rust#13"
     },
     "RE POST /api/machines/:id/process": {
-      "notes": "answers inputVector, not inputEvent: jateeter/RealityEngine_Rust#6",
       "status": "implemented"
     },
     "RE POST /api/machines/:id/process-universal": {
@@ -476,12 +475,11 @@
       "tracking": "jateeter/RealityEngine_Rust#13"
     },
     "RE PUT /api/config/dimension": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#10"
+      "status": "implemented"
     },
     "RE PUT /api/config/threshold": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#10"
+      "notes": "the three engines disagree on what the write does; provisionally follows C++: RealityEngine_CI#674",
+      "status": "implemented"
     },
     "RE PUT /api/engine/config/:control": {
       "status": "missing",

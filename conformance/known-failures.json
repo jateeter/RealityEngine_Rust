@@ -1,10 +1,5 @@
 {
-  "entries": {
-    "key:config.eventDimension": {
-      "detail": "GET /api/config must report eventDimension",
-      "issue": "jateeter/RealityEngine_Rust#6"
-    }
-  },
+  "entries": {},
   "purpose": "R1 ratchet: every entry is a failure with an issue. Rewrite with R1_RECORD_KNOWN=1, then classify each UNCLASSIFIED entry by hand.",
   "schema": 1
 }

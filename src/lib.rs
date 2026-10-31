@@ -4,7 +4,7 @@ use axum::{
     extract::Query,
     extract::{Path, State, rejection::JsonRejection},
     http::StatusCode,
-    routing::{get, post},
+    routing::{get, post, put},
 };
 use serde_json::{Value, json};
 use std::{
@@ -505,7 +505,7 @@ impl Machine {
         };
         json!({
             "machineId": self.id,
-            "inputVector": input,
+            "inputEvent": input,
             "timestamp": timestamp,
             "sequenceResults": sequence_results,
             "machineOutput": picked,
@@ -748,6 +748,50 @@ impl Engine {
         self.machines.remove(id).is_some()
     }
 
+    /// `max(offset + length)` over the input and output regions of every
+    /// resident machine: the floor `PUT /api/config/dimension` may not go below.
+    fn required_dimension(&self) -> usize {
+        self.machines
+            .values()
+            .map(|machine| {
+                let output = machine
+                    .raw
+                    .get("perceptualMapping")
+                    .and_then(|m| m.get("output"));
+                let output_end = integer(output.and_then(|r| r.get("offset")), 0)
+                    .saturating_add(integer(output.and_then(|r| r.get("length")), 0));
+                machine
+                    .input_offset
+                    .saturating_add(machine.input_length)
+                    .max(output_end)
+            })
+            .max()
+            .unwrap_or(0)
+    }
+
+    /// SURFACE_SPEC.md, "PUT /api/config/dimension is read-only downward":
+    /// refused below either bound, naming which one; never clamped.
+    fn widen_to(&mut self, requested: usize) -> Result<Value, EngineError> {
+        let required = self.required_dimension();
+        let current = self.dimension;
+        if requested < required.max(current) {
+            let why = if requested < required {
+                format!("the {required} the resident corpus requires")
+            } else {
+                format!("the {current} this engine already holds")
+            };
+            return Err(EngineError::bad_request(format!(
+                "dimension {requested} is below {why}; the perceptual space is read-only downward"
+            )));
+        }
+        self.dimension = requested;
+        Ok(json!({
+            "success": true,
+            "dimension": self.dimension,
+            "requiredDimension": required,
+        }))
+    }
+
     fn stats(&self) -> Value {
         json!({
             "machineCount": self.machines.len(),
@@ -876,11 +920,60 @@ async fn config(
     State(engine): State<SharedEngine>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     let state = engine.read().map_err(|_| error_response(lock_error()))?;
+    // The keys C++, LSP and Scala report, less the two that describe a Qdrant
+    // store this engine does not have (`qdrantUrl`, `collectionName`): whether
+    // they are omitted or declared unsupported waits on the owner
+    // (RealityEngine_Rust#6). `eventDimension` is the width actually held.
     Ok(Json(json!({
-        "dimension": state.dimension,
-        "threshold": state.threshold,
-        "version": VERSION,
+        "eventDimension": state.dimension,
+        "matchThreshold": state.threshold,
     })))
+}
+
+async fn put_dimension(
+    State(engine): State<SharedEngine>,
+    Query(query): Query<HashMap<String, String>>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let requested = query
+        .get("dimension")
+        .filter(|raw| !raw.is_empty())
+        .ok_or_else(|| {
+            error_response(EngineError::bad_request(
+                "dimension query parameter is required",
+            ))
+        })?
+        .parse::<usize>()
+        .map_err(|_| error_response(EngineError::bad_request("dimension must be an integer")))?;
+    let mut state = engine.write().map_err(|_| error_response(lock_error()))?;
+    state.widen_to(requested).map(Json).map_err(error_response)
+}
+
+/// All three engines answer `{success, threshold}`. They disagree on whether
+/// the write changes what `GET /api/config` reports and on a missing parameter
+/// (RealityEngine_CI#674); this follows C++, the one internally consistent
+/// behaviour, provisionally. No engine uses the value when matching.
+async fn put_threshold(
+    State(engine): State<SharedEngine>,
+    Query(query): Query<HashMap<String, String>>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let requested = match query.get("threshold").filter(|raw| !raw.is_empty()) {
+        Some(raw) => Some(
+            raw.parse::<f64>()
+                .ok()
+                .filter(|t| t.is_finite())
+                .ok_or_else(|| {
+                    error_response(EngineError::bad_request("threshold must be a number"))
+                })?,
+        ),
+        None => None,
+    };
+    let mut state = engine.write().map_err(|_| error_response(lock_error()))?;
+    if let Some(threshold) = requested {
+        state.threshold = threshold;
+    }
+    Ok(Json(
+        json!({ "success": true, "threshold": state.threshold }),
+    ))
 }
 
 async fn engine_stats(
@@ -1016,6 +1109,8 @@ pub fn app(engine: Engine) -> Router {
         .route("/api", get(root))
         .route("/api/health", get(health))
         .route("/api/config", get(config))
+        .route("/api/config/dimension", put(put_dimension))
+        .route("/api/config/threshold", put(put_threshold))
         .route("/api/machines", get(list_machines).post(add_machine))
         .route("/api/machines/json/list", get(list_machines))
         .route(
@@ -1231,6 +1326,122 @@ mod tests {
                 "{wrapper_key} in {output}"
             );
         }
+    }
+
+    async fn send(
+        app: &Router,
+        method: &str,
+        uri: &str,
+        body: Option<Value>,
+    ) -> (StatusCode, Value) {
+        let request = Request::builder()
+            .method(method)
+            .uri(uri)
+            .header("content-type", "application/json")
+            .body(body.map_or_else(Body::empty, |b| Body::from(b.to_string())))
+            .unwrap();
+        let response = app.clone().oneshot(request).await.unwrap();
+        let status = response.status();
+        let bytes = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        (
+            status,
+            serde_json::from_slice(&bytes).unwrap_or(Value::Null),
+        )
+    }
+
+    #[tokio::test]
+    async fn config_reports_the_canonical_keys() {
+        let app = app(Engine::new(8));
+        let (status, config) = send(&app, "GET", "/api/config", None).await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(
+            config,
+            json!({ "eventDimension": 8, "matchThreshold": 0.5 })
+        );
+    }
+
+    /// SURFACE_SPEC.md, "PUT /api/config/dimension is read-only downward".
+    #[tokio::test]
+    async fn put_dimension_is_read_only_downward() {
+        // machine_definition() maps input [0:1] and output [1:2]: it requires 2.
+        let mut engine = Engine::new(4);
+        engine.load_machine(machine_definition()).unwrap();
+        let app = app(engine);
+        let width = |app: Router| async move {
+            send(&app, "GET", "/api/config", None).await.1["eventDimension"].clone()
+        };
+
+        for (uri, wanted) in [
+            (
+                "/api/config/dimension",
+                "dimension query parameter is required",
+            ),
+            (
+                "/api/config/dimension?dimension=wide",
+                "dimension must be an integer",
+            ),
+            (
+                "/api/config/dimension?dimension=1",
+                "below the 2 the resident corpus requires",
+            ),
+            (
+                "/api/config/dimension?dimension=3",
+                "below the 4 this engine already holds",
+            ),
+        ] {
+            let (status, body) = send(&app, "PUT", uri, None).await;
+            assert_eq!(status, StatusCode::BAD_REQUEST, "{uri}");
+            let error = body["error"].as_str().unwrap();
+            assert!(error.contains(wanted), "{uri}: {error}");
+            assert_eq!(width(app.clone()).await, 4, "{uri} must not mutate");
+        }
+
+        let (status, body) = send(&app, "PUT", "/api/config/dimension?dimension=16", None).await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(
+            body,
+            json!({ "success": true, "dimension": 16, "requiredDimension": 2 })
+        );
+        assert_eq!(width(app.clone()).await, 16);
+
+        // At the width already held: applied, nothing changes.
+        let (status, body) = send(&app, "PUT", "/api/config/dimension?dimension=16", None).await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(body["dimension"], 16);
+    }
+
+    #[tokio::test]
+    async fn put_threshold_is_stored_and_reported() {
+        let app = app(Engine::new(8));
+        let (status, body) = send(&app, "PUT", "/api/config/threshold?threshold=0.7", None).await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(body, json!({ "success": true, "threshold": 0.7 }));
+        assert_eq!(
+            send(&app, "GET", "/api/config", None).await.1["matchThreshold"],
+            0.7
+        );
+
+        // No parameter changes nothing; an unparseable one is refused.
+        let (_, body) = send(&app, "PUT", "/api/config/threshold", None).await;
+        assert_eq!(body["threshold"], 0.7);
+        let (status, _) = send(&app, "PUT", "/api/config/threshold?threshold=high", None).await;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(
+            send(&app, "GET", "/api/config", None).await.1["matchThreshold"],
+            0.7
+        );
+    }
+
+    #[tokio::test]
+    async fn transition_responses_use_the_canonical_input_key() {
+        let mut engine = Engine::new(8);
+        let id = engine.load_machine(machine_definition()).unwrap()["id"]
+            .as_str()
+            .unwrap()
+            .to_owned();
+        let result = engine.process_machine(&id, &[1.0]).unwrap();
+        assert_eq!(result["inputEvent"], json!([1.0]));
+        assert!(result.get("inputVector").is_none());
     }
 
     #[tokio::test]
