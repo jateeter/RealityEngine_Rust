@@ -1,0 +1,40 @@
+version: 2
+
+# Dependency currency for the Rust runtime.
+#
+# House policy across this workspace: weekly, and **majors are proposed too** —
+# Dependabot opens the PR, a human still merges it, and `validate.yml` (R0 + R1)
+# gates it.
+#
+# Not covered: `rust-toolchain.toml`. Dependabot does not advance the toolchain
+# pin; bump it by hand as `CLAUDE.md` ("Toolchain") describes.
+
+updates:
+
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Chicago
+    groups:
+      # axum, hyper, tower and tokio move together; one PR, one R1 run.
+      http-stack:
+        patterns:
+          - "axum*"
+          - "hyper*"
+          - "tower*"
+          - "tokio*"
+    open-pull-requests-limit: 5
+
+  # validate.yml pins action majors; a pinned major nobody advances is how a
+  # lane quietly keeps running on a deprecated runner image.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Chicago
+    open-pull-requests-limit: 5

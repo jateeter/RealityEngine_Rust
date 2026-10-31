@@ -78,6 +78,24 @@ Rules that bite:
 - **A green R0/R1 is not a parity claim.** It says this checkout conforms to the
   snapshot it carries. Agreement with the reference engines is R2 and R3.
 
+## Toolchain
+
+`rust-toolchain.toml` pins one Rust release for every lane. The hosted
+workflow installs exactly that release through rustup. Homebrew's cargo ignores
+the file, so `scripts/validate.sh` compares `rustc --version` with the pin: a
+mismatch fails the hosted lane and warns locally. Dependabot advances the crates
+and the workflow's actions (`.github/dependabot.yml`), but not this pin.
+
+To bump it:
+
+1. On a branch from `origin/main`, set `channel` in `rust-toolchain.toml` to the
+   new stable release.
+2. Move the local compiler to the same release (`brew upgrade rust`, or
+   `rustup toolchain install <version>`), so the local R0 is not a warning.
+3. Run `scripts/validate.sh`. A new release's clippy may add lints; fix them in
+   the same PR rather than allowing them.
+4. Open the PR. The hosted `validate` run is the proof that the pin installs.
+
 ## Runtime Contract
 
 The HTTP contract is `RealityEngine_CI/SURFACE_SPEC.md`; quorum is
