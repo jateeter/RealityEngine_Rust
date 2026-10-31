@@ -227,7 +227,6 @@
       "tracking": "jateeter/RealityEngine_Rust#13"
     },
     "RE GET /api/config": {
-      "notes": "reports eventDimension and matchThreshold; qdrantUrl and collectionName (a Qdrant store this engine does not have) are omitted pending the owner's decision: jateeter/RealityEngine_Rust#6",
       "status": "implemented"
     },
     "RE GET /api/demo/data-center": {
@@ -478,7 +477,6 @@
       "status": "implemented"
     },
     "RE PUT /api/config/threshold": {
-      "notes": "the three engines disagree on what the write does; provisionally follows C++: RealityEngine_CI#674",
       "status": "implemented"
     },
     "RE PUT /api/engine/config/:control": {

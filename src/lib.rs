@@ -100,6 +100,8 @@ pub struct Engine {
     threshold: f64,
     step: u64,
     history: VecDeque<Value>,
+    qdrant_url: String,
+    collection_name: String,
 }
 
 fn now_ms() -> u128 {
@@ -601,6 +603,8 @@ impl Engine {
         Self {
             dimension,
             threshold: 0.5,
+            qdrant_url: "http://localhost:4333".to_owned(),
+            collection_name: "reality-events".to_owned(),
             ..Self::default()
         }
     }
@@ -920,13 +924,14 @@ async fn config(
     State(engine): State<SharedEngine>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     let state = engine.read().map_err(|_| error_response(lock_error()))?;
-    // The keys C++, LSP and Scala report, less the two that describe a Qdrant
-    // store this engine does not have (`qdrantUrl`, `collectionName`): whether
-    // they are omitted or declared unsupported waits on the owner
-    // (RealityEngine_Rust#6). `eventDimension` is the width actually held.
+    // SURFACE_SPEC.md, "GET /api/config": exactly these four keys.
+    // `eventDimension` is the width actually held. The Qdrant keys name the
+    // store this engine will use (owner decision, RealityEngine_Rust#6).
     Ok(Json(json!({
         "eventDimension": state.dimension,
         "matchThreshold": state.threshold,
+        "qdrantUrl": state.qdrant_url,
+        "collectionName": state.collection_name,
     })))
 }
 
@@ -948,10 +953,11 @@ async fn put_dimension(
     state.widen_to(requested).map(Json).map_err(error_response)
 }
 
-/// All three engines answer `{success, threshold}`. They disagree on whether
-/// the write changes what `GET /api/config` reports and on a missing parameter
-/// (RealityEngine_CI#674); this follows C++, the one internally consistent
-/// behaviour, provisionally. No engine uses the value when matching.
+/// SURFACE_SPEC.md, "PUT /api/config/threshold" (owner ruling on
+/// RealityEngine_CI#674): a finite number is stored and reported by
+/// `GET /api/config`; an absent parameter changes nothing; anything else is a
+/// 400. No engine uses the value when matching; it is held to become a learning
+/// knob (RealityEngine_CI#675).
 async fn put_threshold(
     State(engine): State<SharedEngine>,
     Query(query): Query<HashMap<String, String>>,
@@ -1131,6 +1137,14 @@ pub fn engine_from_environment() -> Result<Engine, EngineError> {
         .and_then(|value| value.parse::<usize>().ok())
         .unwrap_or(7680);
     let mut engine = Engine::new(dimension);
+    // SURFACE_SPEC.md, "GET /api/config": the Qdrant store's address and
+    // collection, as C++, LSP and Scala report them.
+    if let Ok(url) = std::env::var("QDRANT_URL") {
+        engine.qdrant_url = url;
+    }
+    if let Ok(name) = std::env::var("COLLECTION_NAME") {
+        engine.collection_name = name;
+    }
     let machine_directory = std::env::var("MACHINES_DIR")
         .unwrap_or_else(|_| "../RealityEngine_Machines/machines".to_owned());
     let loaded = engine.load_directory(FsPath::new(&machine_directory))?;
@@ -1356,7 +1370,12 @@ mod tests {
         assert_eq!(status, StatusCode::OK);
         assert_eq!(
             config,
-            json!({ "eventDimension": 8, "matchThreshold": 0.5 })
+            json!({
+                "eventDimension": 8,
+                "matchThreshold": 0.5,
+                "qdrantUrl": "http://localhost:4333",
+                "collectionName": "reality-events",
+            })
         );
     }
 
@@ -1424,8 +1443,13 @@ mod tests {
         // No parameter changes nothing; an unparseable one is refused.
         let (_, body) = send(&app, "PUT", "/api/config/threshold", None).await;
         assert_eq!(body["threshold"], 0.7);
-        let (status, _) = send(&app, "PUT", "/api/config/threshold?threshold=high", None).await;
-        assert_eq!(status, StatusCode::BAD_REQUEST);
+        // SURFACE_SPEC.md: present but not a whole finite number is a 400.
+        for invalid in ["high", "0.7abc", "nan", "inf"] {
+            let uri = format!("/api/config/threshold?threshold={invalid}");
+            let (status, body) = send(&app, "PUT", &uri, None).await;
+            assert_eq!(status, StatusCode::BAD_REQUEST, "{invalid}");
+            assert!(body["error"].is_string(), "{invalid}: {body}");
+        }
         assert_eq!(
             send(&app, "GET", "/api/config", None).await.1["matchThreshold"],
             0.7

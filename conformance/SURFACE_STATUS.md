@@ -25,9 +25,9 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `9a32bc5ce874`.
 
 | method | path | status | tracking | notes |
 |---|---|---|---|---|
-| GET | `/api/config` | implemented |  | reports eventDimension and matchThreshold; qdrantUrl and collectionName (a Qdrant store this engine does not have) are omitted pending the owner's decision: jateeter/RealityEngine_Rust#6 |
+| GET | `/api/config` | implemented |  |  |
 | PUT | `/api/config/dimension` | implemented |  |  |
-| PUT | `/api/config/threshold` | implemented |  | the three engines disagree on what the write does; provisionally follows C++: RealityEngine_CI#674 |
+| PUT | `/api/config/threshold` | implemented |  |  |
 | GET | `/api/engine/config` | missing | jateeter/RealityEngine_Rust#10 |  |
 | GET | `/api/engine/config/:control` | missing | jateeter/RealityEngine_Rust#10 |  |
 | PUT | `/api/engine/config/:control` | missing | jateeter/RealityEngine_Rust#10 |  |
