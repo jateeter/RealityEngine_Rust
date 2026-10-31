@@ -102,6 +102,80 @@ pub struct Engine {
     history: VecDeque<Value>,
     qdrant_url: String,
     collection_name: String,
+    /// The corpus directory machines are loaded from; the on-disk catalog
+    /// (`GET /api/machines/json/list`) and load-by-name read it.
+    machines_dir: Option<std::path::PathBuf>,
+}
+
+/// The id a corpus file's machine gets, on every engine: `machine-` and the
+/// file stem lowercased, each character that is not an ASCII letter or digit
+/// replaced by `-` (C++ `reality_engine_server.cpp`, LSP
+/// `canonical-machine-id-fragment`). Load-by-name replaces the machine holding
+/// it rather than adding a second one.
+fn canonical_machine_id(stem: &str) -> String {
+    let fragment: String = stem
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() {
+                c.to_ascii_lowercase()
+            } else {
+                '-'
+            }
+        })
+        .collect();
+    format!("machine-{fragment}")
+}
+
+fn collect_json_files(
+    directory: &FsPath,
+    paths: &mut Vec<std::path::PathBuf>,
+) -> Result<(), EngineError> {
+    let unreadable = |what: String| EngineError {
+        status: StatusCode::INTERNAL_SERVER_ERROR,
+        message: what,
+    };
+    let entries = fs::read_dir(directory)
+        .map_err(|error| unreadable(format!("could not read {}: {error}", directory.display())))?;
+    for entry in entries {
+        let entry = entry.map_err(|error| {
+            unreadable(format!(
+                "could not read entry in {}: {error}",
+                directory.display()
+            ))
+        })?;
+        let path = entry.path();
+        let file_type = entry.file_type().map_err(|error| {
+            unreadable(format!("could not inspect {}: {error}", path.display()))
+        })?;
+        if file_type.is_dir() {
+            collect_json_files(&path, paths)?;
+        } else if file_type.is_file()
+            && path.extension().and_then(|extension| extension.to_str()) == Some("json")
+        {
+            paths.push(path);
+        }
+    }
+    Ok(())
+}
+
+/// The corpus OWL semantics manifest: `SEMANTICS_MANIFEST`, else the first
+/// `semantics/abox-manifest.json` found walking up to six levels from the
+/// machines directory, as C++ and LSP find it.
+fn semantics_manifest(machines_dir: &FsPath) -> Option<Value> {
+    let path = match std::env::var("SEMANTICS_MANIFEST") {
+        Ok(explicit) if !explicit.is_empty() => std::path::PathBuf::from(explicit),
+        _ => {
+            let start = fs::canonicalize(machines_dir).ok()?;
+            start
+                .ancestors()
+                .take(6)
+                .map(|dir| dir.join("semantics").join("abox-manifest.json"))
+                .find(|candidate| candidate.is_file())?
+        }
+    };
+    let manifest: Value = serde_json::from_str(&fs::read_to_string(path).ok()?).ok()?;
+    manifest.get("machines").filter(|m| m.is_object())?;
+    Some(manifest)
 }
 
 fn now_ms() -> u128 {
@@ -668,35 +742,7 @@ impl Engine {
         if !directory.exists() {
             return Ok(0);
         }
-
-        fn collect_json_files(
-            directory: &FsPath,
-            paths: &mut Vec<std::path::PathBuf>,
-        ) -> Result<(), EngineError> {
-            let entries = fs::read_dir(directory).map_err(|error| EngineError {
-                status: StatusCode::INTERNAL_SERVER_ERROR,
-                message: format!("could not read {}: {error}", directory.display()),
-            })?;
-            for entry in entries {
-                let entry = entry.map_err(|error| EngineError {
-                    status: StatusCode::INTERNAL_SERVER_ERROR,
-                    message: format!("could not read entry in {}: {error}", directory.display()),
-                })?;
-                let path = entry.path();
-                let file_type = entry.file_type().map_err(|error| EngineError {
-                    status: StatusCode::INTERNAL_SERVER_ERROR,
-                    message: format!("could not inspect {}: {error}", path.display()),
-                })?;
-                if file_type.is_dir() {
-                    collect_json_files(&path, paths)?;
-                } else if file_type.is_file()
-                    && path.extension().and_then(|extension| extension.to_str()) == Some("json")
-                {
-                    paths.push(path);
-                }
-            }
-            Ok(())
-        }
+        self.machines_dir = Some(directory.to_path_buf());
 
         let mut paths = Vec::new();
         collect_json_files(directory, &mut paths)?;
@@ -722,7 +768,7 @@ impl Engine {
                     ))
                 })?;
             if let Some(object) = definition.as_object_mut() {
-                object.insert("id".to_owned(), json!(format!("machine-{file_id}")));
+                object.insert("id".to_owned(), json!(canonical_machine_id(file_id)));
             }
             self.load_machine(definition).map_err(|error| EngineError {
                 status: error.status,
@@ -731,6 +777,101 @@ impl Engine {
             loaded += 1;
         }
         Ok(loaded)
+    }
+
+    /// `GET /api/machines/json/list`: the corpus as it lies on disk, recursively,
+    /// never the resident machines (that is `GET /api/machines`).
+    ///
+    /// The keys are the three engines'. For `name`, `description`, `version`,
+    /// `metadata` and `sequenceCount` this follows C++ and LSP (the file stem
+    /// and fixed placeholders); Scala reads them from the file. That split is
+    /// RealityEngine_CI#677, and this follows C++ provisionally. No consumer
+    /// reads those five; `relFile` is what the corpus-addressing contract and
+    /// the OpenClaw corpus check read.
+    fn machine_catalog(&self) -> Result<Vec<Value>, EngineError> {
+        let Some(directory) = self.machines_dir.as_deref().filter(|d| d.exists()) else {
+            return Ok(Vec::new());
+        };
+        let mut paths = Vec::new();
+        collect_json_files(directory, &mut paths)?;
+        paths.sort();
+        let manifest = semantics_manifest(directory);
+        let semantics = manifest.as_ref().and_then(|m| m.get("machines"));
+        Ok(paths
+            .iter()
+            .filter_map(|path| {
+                let rel_file = path
+                    .strip_prefix(directory)
+                    .ok()?
+                    .to_str()?
+                    .replace('\\', "/");
+                let stem = path.file_stem()?.to_str()?;
+                let mut row = json!({
+                    "filename": path.file_name()?.to_str()?,
+                    "relFile": rel_file,
+                    "name": stem,
+                    "description": "",
+                    "version": "1.0.0",
+                    "metadata": {},
+                    "sequenceCount": 0,
+                });
+                // Manifest keys are "<domain>/<stem>": domains/<d>/X.json is d/X, else core/X.
+                let key = rel_file
+                    .strip_prefix("domains/")
+                    .map(str::to_owned)
+                    .unwrap_or_else(|| format!("core/{rel_file}"));
+                let key = key.strip_suffix(".json").unwrap_or(&key);
+                if let Some(entry) = semantics.and_then(|s| s.get(key)) {
+                    row["semanticsIri"] = entry.get("iri").cloned().unwrap_or(Value::Null);
+                    row["semanticsHash"] = entry.get("sha256").cloned().unwrap_or(Value::Null);
+                }
+                Some(row)
+            })
+            .collect())
+    }
+
+    /// `GET /api/machines/json/:name`: load a corpus file by basename, the flat
+    /// path first and then a recursive search (corpus stems are globally
+    /// unique). The machine takes its canonical id and replaces any machine
+    /// already holding it, as the startup load would have.
+    fn load_by_name(&mut self, name: &str) -> Result<Value, EngineError> {
+        if name.contains("..") || name.contains('/') || name.contains('\\') {
+            return Err(EngineError::bad_request(format!(
+                "Invalid machine name: {name}"
+            )));
+        }
+        let filename = if name.ends_with(".json") {
+            name.to_owned()
+        } else {
+            format!("{name}.json")
+        };
+        let not_found = || EngineError::not_found(format!("Machine file not found: {name}"));
+        let directory = self.machines_dir.clone().ok_or_else(not_found)?;
+        let flat = directory.join(&filename);
+        let path = if flat.is_file() {
+            flat
+        } else {
+            let mut paths = Vec::new();
+            collect_json_files(&directory, &mut paths)?;
+            paths.sort();
+            paths
+                .into_iter()
+                .find(|p| p.file_name().and_then(|f| f.to_str()) == Some(filename.as_str()))
+                .ok_or_else(not_found)?
+        };
+        let contents = fs::read_to_string(&path).map_err(|_| not_found())?;
+        let mut definition: Value = serde_json::from_str(&contents).map_err(|error| {
+            EngineError::bad_request(format!("invalid machine JSON in {filename}: {error}"))
+        })?;
+        let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or(name);
+        let id = canonical_machine_id(stem);
+        if let Some(object) = definition.as_object_mut() {
+            object.insert("id".to_owned(), json!(id));
+        }
+        // Validate before replacing, so a bad file leaves the resident machine.
+        Machine::from_json(definition.clone())?;
+        self.machines.remove(&id);
+        self.load_machine(definition)
     }
 
     pub fn list_machines(&self) -> Vec<Value> {
@@ -1003,6 +1144,31 @@ async fn list_machines(
     Ok(Json(json!({ "machines": state.list_machines() })))
 }
 
+async fn machine_catalog(
+    State(engine): State<SharedEngine>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let state = engine.read().map_err(|_| error_response(lock_error()))?;
+    let machines = state.machine_catalog().map_err(error_response)?;
+    Ok(Json(json!({ "machines": machines })))
+}
+
+async fn load_machine_by_name(
+    State(engine): State<SharedEngine>,
+    Path(name): Path<String>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let mut state = engine.write().map_err(|_| error_response(lock_error()))?;
+    state
+        .load_by_name(&name)
+        .map(|machine| {
+            Json(json!({
+                "success": true,
+                "machine": machine,
+                "message": "Machine loaded successfully",
+            }))
+        })
+        .map_err(error_response)
+}
+
 async fn add_machine(
     State(engine): State<SharedEngine>,
     input: Result<Json<Value>, JsonRejection>,
@@ -1118,7 +1284,8 @@ pub fn app(engine: Engine) -> Router {
         .route("/api/config/dimension", put(put_dimension))
         .route("/api/config/threshold", put(put_threshold))
         .route("/api/machines", get(list_machines).post(add_machine))
-        .route("/api/machines/json/list", get(list_machines))
+        .route("/api/machines/json/list", get(machine_catalog))
+        .route("/api/machines/json/{name}", get(load_machine_by_name))
         .route(
             "/api/machines/{id}",
             get(get_machine).delete(delete_machine),
@@ -1740,5 +1907,106 @@ mod tests {
         assert_eq!(engine.load_directory(&directory).unwrap(), 1);
         assert!(engine.machine("machine-fixture").is_some());
         fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[test]
+    fn canonical_machine_ids_match_the_engines() {
+        assert_eq!(
+            canonical_machine_id("AGX001_aquaculture-water-quality-stability"),
+            "machine-agx001-aquaculture-water-quality-stability"
+        );
+        assert_eq!(canonical_machine_id("RS2"), "machine-rs2");
+    }
+
+    /// A corpus at `<root>/machines` with a nested and a top-level file, and a
+    /// semantics manifest at `<root>/semantics` naming only the nested one.
+    fn corpus_fixture() -> std::path::PathBuf {
+        let root = std::env::temp_dir().join(new_machine_id());
+        let nested = root.join("machines").join("domains").join("energy");
+        fs::create_dir_all(&nested).unwrap();
+        fs::create_dir_all(root.join("semantics")).unwrap();
+        fs::write(
+            nested.join("EGX_Test-One.json"),
+            machine_definition().to_string(),
+        )
+        .unwrap();
+        let mut top = machine_definition();
+        top["machine"]["name"] = json!("top-level");
+        fs::write(root.join("machines").join("Top.json"), top.to_string()).unwrap();
+        fs::write(
+            root.join("semantics").join("abox-manifest.json"),
+            json!({ "machines": { "energy/EGX_Test-One": {
+                "iri": "https://realityengine.example.org/machines/energy/EGX_Test-One#machine",
+                "sha256": "abc123",
+            } } })
+            .to_string(),
+        )
+        .unwrap();
+        root
+    }
+
+    #[tokio::test]
+    async fn json_list_is_the_corpus_on_disk() {
+        let root = corpus_fixture();
+        let mut engine = Engine::new(8);
+        engine.load_directory(&root.join("machines")).unwrap();
+        let app = app(engine);
+        let (status, body) = send(&app, "GET", "/api/machines/json/list", None).await;
+        fs::remove_dir_all(&root).unwrap();
+        assert_eq!(status, StatusCode::OK);
+        let rows = body["machines"].as_array().unwrap();
+        assert_eq!(rows.len(), 2);
+        let nested = rows
+            .iter()
+            .find(|r| r["filename"] == "EGX_Test-One.json")
+            .unwrap();
+        assert_eq!(nested["relFile"], "domains/energy/EGX_Test-One.json");
+        assert_eq!(nested["name"], "EGX_Test-One");
+        assert_eq!(nested["version"], "1.0.0");
+        assert_eq!(nested["sequenceCount"], 0);
+        assert_eq!(
+            nested["semanticsIri"],
+            "https://realityengine.example.org/machines/energy/EGX_Test-One#machine"
+        );
+        assert_eq!(nested["semanticsHash"], "abc123");
+        let top = rows.iter().find(|r| r["filename"] == "Top.json").unwrap();
+        assert_eq!(top["relFile"], "Top.json");
+        assert!(
+            top.get("semanticsHash").is_none(),
+            "no manifest entry, no key: {top}"
+        );
+    }
+
+    #[tokio::test]
+    async fn json_name_loads_by_basename_and_replaces() {
+        let root = corpus_fixture();
+        let mut engine = Engine::new(8);
+        engine.load_directory(&root.join("machines")).unwrap();
+        let app = app(engine);
+
+        let (status, body) = send(&app, "GET", "/api/machines/json/EGX_Test-One", None).await;
+        assert_eq!(status, StatusCode::OK, "{body}");
+        assert_eq!(body["success"], true);
+        assert_eq!(body["machine"]["id"], "machine-egx-test-one");
+        assert_eq!(body["machine"]["name"], "two-step");
+
+        // Loading it again replaces the machine; it does not add a second.
+        let (status, _) = send(&app, "GET", "/api/machines/json/EGX_Test-One.json", None).await;
+        assert_eq!(status, StatusCode::OK);
+        let (_, listed) = send(&app, "GET", "/api/machines", None).await;
+        let ids: Vec<_> = listed["machines"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|m| m["id"].as_str().unwrap().to_owned())
+            .collect();
+        assert_eq!(ids.len(), 2, "{ids:?}");
+        assert!(ids.contains(&"machine-egx-test-one".to_owned()), "{ids:?}");
+
+        let (status, _) = send(&app, "GET", "/api/machines/json/Absent", None).await;
+        assert_eq!(status, StatusCode::NOT_FOUND);
+        let (status, _) = send(&app, "GET", "/api/machines/json/..%2Fsecret", None).await;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        fs::remove_dir_all(&root).unwrap();
     }
 }

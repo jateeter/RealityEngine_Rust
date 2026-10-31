@@ -4,8 +4,8 @@
   "source": {
     "repository": "jateeter/RealityEngine_CI",
     "path": "SURFACE_SPEC.md",
-    "commit": "9a32bc5ce8742c5943b5d29fe8fecb4031800981",
-    "sha256": "d2d2c5777a5b5ebda7b7aa34f2ca2c2085c28d8703f54183bad9d2b82b68b707"
+    "commit": "84b2a658cb73a35e7c0e9860c3f8319985cdd3a7",
+    "sha256": "75568299943fdd5d924ed341fcebe9d807dda6619dbaa510d76031265e398497"
   },
   "excluded": [
     "Manager (Visualizer) Surface: Manager's surface, not an engine's"
@@ -111,7 +111,7 @@
       "group": "Runtime Introspection",
       "method": "GET",
       "path": "/api/runtime/metrics",
-      "specLine": 906
+      "specLine": 945
     },
     {
       "id": "RE GET /api/runtime/vector-space",
@@ -119,7 +119,7 @@
       "group": "Runtime Introspection",
       "method": "GET",
       "path": "/api/runtime/vector-space",
-      "specLine": 907
+      "specLine": 946
     },
     {
       "id": "RE GET /api/runtime/storage-footprint",
@@ -127,7 +127,7 @@
       "group": "Runtime Introspection",
       "method": "GET",
       "path": "/api/runtime/storage-footprint",
-      "specLine": 908
+      "specLine": 947
     },
     {
       "id": "RE GET /api/runtime/options",
@@ -135,7 +135,7 @@
       "group": "Runtime Introspection",
       "method": "GET",
       "path": "/api/runtime/options",
-      "specLine": 909
+      "specLine": 948
     },
     {
       "id": "RE PATCH /api/runtime/options",
@@ -143,7 +143,7 @@
       "group": "Runtime Introspection",
       "method": "PATCH",
       "path": "/api/runtime/options",
-      "specLine": 910
+      "specLine": 949
     },
     {
       "id": "RE POST /api/vectors/search",
@@ -151,7 +151,7 @@
       "group": "Vectors",
       "method": "POST",
       "path": "/api/vectors/search",
-      "specLine": 916
+      "specLine": 955
     },
     {
       "id": "RE POST /api/vectors",
@@ -159,7 +159,7 @@
       "group": "Vectors",
       "method": "POST",
       "path": "/api/vectors",
-      "specLine": 917
+      "specLine": 956
     },
     {
       "id": "RE GET /api/vectors/:id",
@@ -167,7 +167,7 @@
       "group": "Vectors",
       "method": "GET",
       "path": "/api/vectors/:id",
-      "specLine": 918
+      "specLine": 957
     },
     {
       "id": "RE DELETE /api/vectors/:id",
@@ -175,7 +175,7 @@
       "group": "Vectors",
       "method": "DELETE",
       "path": "/api/vectors/:id",
-      "specLine": 919
+      "specLine": 958
     },
     {
       "id": "RE GET /api/sequences",
@@ -183,7 +183,7 @@
       "group": "Sequences",
       "method": "GET",
       "path": "/api/sequences",
-      "specLine": 925
+      "specLine": 964
     },
     {
       "id": "RE POST /api/sequences",
@@ -191,7 +191,7 @@
       "group": "Sequences",
       "method": "POST",
       "path": "/api/sequences",
-      "specLine": 926
+      "specLine": 965
     },
     {
       "id": "RE GET /api/sequences/:id",
@@ -199,7 +199,7 @@
       "group": "Sequences",
       "method": "GET",
       "path": "/api/sequences/:id",
-      "specLine": 927
+      "specLine": 966
     },
     {
       "id": "RE DELETE /api/sequences/:id",
@@ -207,7 +207,7 @@
       "group": "Sequences",
       "method": "DELETE",
       "path": "/api/sequences/:id",
-      "specLine": 928
+      "specLine": 967
     },
     {
       "id": "RE POST /api/sequences/:id/reset",
@@ -215,7 +215,7 @@
       "group": "Sequences",
       "method": "POST",
       "path": "/api/sequences/:id/reset",
-      "specLine": 929
+      "specLine": 968
     },
     {
       "id": "RE POST /api/sequences/:id/vectors",
@@ -223,7 +223,7 @@
       "group": "Sequences",
       "method": "POST",
       "path": "/api/sequences/:id/vectors",
-      "specLine": 930
+      "specLine": 969
     },
     {
       "id": "RE POST /api/sequences/persist",
@@ -231,7 +231,7 @@
       "group": "Sequences",
       "method": "POST",
       "path": "/api/sequences/persist",
-      "specLine": 931
+      "specLine": 970
     },
     {
       "id": "RE GET /api/engine/stats",
@@ -239,7 +239,7 @@
       "group": "Engine",
       "method": "GET",
       "path": "/api/engine/stats",
-      "specLine": 937
+      "specLine": 976
     },
     {
       "id": "RE GET /api/engine/active",
@@ -247,7 +247,7 @@
       "group": "Engine",
       "method": "GET",
       "path": "/api/engine/active",
-      "specLine": 938
+      "specLine": 977
     },
     {
       "id": "RE GET /api/engine/history",
@@ -255,7 +255,7 @@
       "group": "Engine",
       "method": "GET",
       "path": "/api/engine/history",
-      "specLine": 939
+      "specLine": 978
     },
     {
       "id": "RE GET /api/engine/osre-history",
@@ -263,7 +263,7 @@
       "group": "Engine",
       "method": "GET",
       "path": "/api/engine/osre-history",
-      "specLine": 940
+      "specLine": 979
     },
     {
       "id": "RE GET /api/engine/isre-history",
@@ -271,7 +271,7 @@
       "group": "Engine",
       "method": "GET",
       "path": "/api/engine/isre-history",
-      "specLine": 941
+      "specLine": 980
     },
     {
       "id": "RE GET /api/engine/steps/:n/pair",
@@ -279,7 +279,7 @@
       "group": "Engine",
       "method": "GET",
       "path": "/api/engine/steps/:n/pair",
-      "specLine": 942
+      "specLine": 981
     },
     {
       "id": "RE GET /api/engine/clock",
@@ -287,7 +287,7 @@
       "group": "Engine",
       "method": "GET",
       "path": "/api/engine/clock",
-      "specLine": 943
+      "specLine": 982
     },
     {
       "id": "RE GET /api/arbitration",
@@ -295,7 +295,7 @@
       "group": "Engine",
       "method": "GET",
       "path": "/api/arbitration",
-      "specLine": 944
+      "specLine": 983
     },
     {
       "id": "RE POST /api/engine/process",
@@ -303,7 +303,7 @@
       "group": "Engine",
       "method": "POST",
       "path": "/api/engine/process",
-      "specLine": 945
+      "specLine": 984
     },
     {
       "id": "RE POST /api/engine/reset",
@@ -311,7 +311,7 @@
       "group": "Engine",
       "method": "POST",
       "path": "/api/engine/reset",
-      "specLine": 946
+      "specLine": 985
     },
     {
       "id": "RE GET /api/machines",
@@ -319,7 +319,7 @@
       "group": "Machines",
       "method": "GET",
       "path": "/api/machines",
-      "specLine": 1452
+      "specLine": 1491
     },
     {
       "id": "RE POST /api/machines",
@@ -327,7 +327,7 @@
       "group": "Machines",
       "method": "POST",
       "path": "/api/machines",
-      "specLine": 1453
+      "specLine": 1492
     },
     {
       "id": "RE GET /api/machines/:id",
@@ -335,7 +335,7 @@
       "group": "Machines",
       "method": "GET",
       "path": "/api/machines/:id",
-      "specLine": 1454
+      "specLine": 1493
     },
     {
       "id": "RE PUT /api/machines/:id",
@@ -343,7 +343,7 @@
       "group": "Machines",
       "method": "PUT",
       "path": "/api/machines/:id",
-      "specLine": 1455
+      "specLine": 1494
     },
     {
       "id": "RE PATCH /api/machines/:id",
@@ -351,7 +351,7 @@
       "group": "Machines",
       "method": "PATCH",
       "path": "/api/machines/:id",
-      "specLine": 1456
+      "specLine": 1495
     },
     {
       "id": "RE DELETE /api/machines/:id",
@@ -359,7 +359,7 @@
       "group": "Machines",
       "method": "DELETE",
       "path": "/api/machines/:id",
-      "specLine": 1457
+      "specLine": 1496
     },
     {
       "id": "RE POST /api/machines/:id/process",
@@ -367,7 +367,7 @@
       "group": "Machines",
       "method": "POST",
       "path": "/api/machines/:id/process",
-      "specLine": 1458
+      "specLine": 1497
     },
     {
       "id": "RE POST /api/machines/:id/process-universal",
@@ -375,7 +375,7 @@
       "group": "Machines",
       "method": "POST",
       "path": "/api/machines/:id/process-universal",
-      "specLine": 1459
+      "specLine": 1498
     },
     {
       "id": "RE POST /api/machines/:id/whatif",
@@ -383,7 +383,7 @@
       "group": "Machines",
       "method": "POST",
       "path": "/api/machines/:id/whatif",
-      "specLine": 1460
+      "specLine": 1499
     },
     {
       "id": "RE POST /api/machines/:id/whatif-universal",
@@ -391,7 +391,7 @@
       "group": "Machines",
       "method": "POST",
       "path": "/api/machines/:id/whatif-universal",
-      "specLine": 1461
+      "specLine": 1500
     },
     {
       "id": "RE POST /api/machines/process-universal/all",
@@ -399,7 +399,7 @@
       "group": "Machines",
       "method": "POST",
       "path": "/api/machines/process-universal/all",
-      "specLine": 1462
+      "specLine": 1501
     },
     {
       "id": "RE GET /api/machines/json/list",
@@ -407,7 +407,7 @@
       "group": "Machines",
       "method": "GET",
       "path": "/api/machines/json/list",
-      "specLine": 1463
+      "specLine": 1502
     },
     {
       "id": "RE GET /api/machines/json/:name",
@@ -415,7 +415,7 @@
       "group": "Machines",
       "method": "GET",
       "path": "/api/machines/json/:name",
-      "specLine": 1464
+      "specLine": 1503
     },
     {
       "id": "RE POST /api/machines/json/import",
@@ -423,7 +423,7 @@
       "group": "Machines",
       "method": "POST",
       "path": "/api/machines/json/import",
-      "specLine": 1465
+      "specLine": 1504
     },
     {
       "id": "RE GET /api/machines/:id/export",
@@ -431,7 +431,7 @@
       "group": "Machines",
       "method": "GET",
       "path": "/api/machines/:id/export",
-      "specLine": 1466
+      "specLine": 1505
     },
     {
       "id": "RE GET /api/machines/:id/checkpoints",
@@ -439,7 +439,7 @@
       "group": "Machines",
       "method": "GET",
       "path": "/api/machines/:id/checkpoints",
-      "specLine": 1467
+      "specLine": 1506
     },
     {
       "id": "RE POST /api/machines/:id/checkpoints",
@@ -447,7 +447,7 @@
       "group": "Machines",
       "method": "POST",
       "path": "/api/machines/:id/checkpoints",
-      "specLine": 1468
+      "specLine": 1507
     },
     {
       "id": "RE POST /api/machines/:machineId/checkpoints/:cpId/restore",
@@ -455,7 +455,7 @@
       "group": "Machines",
       "method": "POST",
       "path": "/api/machines/:machineId/checkpoints/:cpId/restore",
-      "specLine": 1469
+      "specLine": 1508
     },
     {
       "id": "RE DELETE /api/machines/:machineId/checkpoints/:cpId",
@@ -463,7 +463,7 @@
       "group": "Machines",
       "method": "DELETE",
       "path": "/api/machines/:machineId/checkpoints/:cpId",
-      "specLine": 1470
+      "specLine": 1509
     },
     {
       "id": "RE GET /api/buses/semantic",
@@ -471,7 +471,7 @@
       "group": "Machines",
       "method": "GET",
       "path": "/api/buses/semantic",
-      "specLine": 1471
+      "specLine": 1510
     },
     {
       "id": "RE GET /api/buses/semantic/:id",
@@ -479,7 +479,7 @@
       "group": "Machines",
       "method": "GET",
       "path": "/api/buses/semantic/:id",
-      "specLine": 1472
+      "specLine": 1511
     },
     {
       "id": "RE GET /api/machine-graph",
@@ -487,7 +487,7 @@
       "group": "Machine Graph",
       "method": "GET",
       "path": "/api/machine-graph",
-      "specLine": 1478
+      "specLine": 1517
     },
     {
       "id": "RE POST /api/perceptual-simulation/configure/chunk",
@@ -495,7 +495,7 @@
       "group": "Perceptual Simulation",
       "method": "POST",
       "path": "/api/perceptual-simulation/configure/chunk",
-      "specLine": 1484
+      "specLine": 1523
     },
     {
       "id": "RE POST /api/perceptual-simulation/configure/commit",
@@ -503,7 +503,7 @@
       "group": "Perceptual Simulation",
       "method": "POST",
       "path": "/api/perceptual-simulation/configure/commit",
-      "specLine": 1485
+      "specLine": 1524
     },
     {
       "id": "RE POST /api/perceptual-simulation/start",
@@ -511,7 +511,7 @@
       "group": "Perceptual Simulation",
       "method": "POST",
       "path": "/api/perceptual-simulation/start",
-      "specLine": 1486
+      "specLine": 1525
     },
     {
       "id": "RE POST /api/perceptual-simulation/stop",
@@ -519,7 +519,7 @@
       "group": "Perceptual Simulation",
       "method": "POST",
       "path": "/api/perceptual-simulation/stop",
-      "specLine": 1487
+      "specLine": 1526
     },
     {
       "id": "RE POST /api/perceptual-simulation/step",
@@ -527,7 +527,7 @@
       "group": "Perceptual Simulation",
       "method": "POST",
       "path": "/api/perceptual-simulation/step",
-      "specLine": 1488
+      "specLine": 1527
     },
     {
       "id": "RE POST /api/perceptual-simulation/reset",
@@ -535,7 +535,7 @@
       "group": "Perceptual Simulation",
       "method": "POST",
       "path": "/api/perceptual-simulation/reset",
-      "specLine": 1489
+      "specLine": 1528
     },
     {
       "id": "RE GET /api/perceptual-simulation/state",
@@ -543,7 +543,7 @@
       "group": "Perceptual Simulation",
       "method": "GET",
       "path": "/api/perceptual-simulation/state",
-      "specLine": 1490
+      "specLine": 1529
     },
     {
       "id": "RE GET /api/perceptual-simulation/history",
@@ -551,7 +551,7 @@
       "group": "Perceptual Simulation",
       "method": "GET",
       "path": "/api/perceptual-simulation/history",
-      "specLine": 1491
+      "specLine": 1530
     },
     {
       "id": "RE POST /api/sampler/start",
@@ -559,7 +559,7 @@
       "group": "Sampler",
       "method": "POST",
       "path": "/api/sampler/start",
-      "specLine": 1668
+      "specLine": 1707
     },
     {
       "id": "RE POST /api/sampler/stop",
@@ -567,7 +567,7 @@
       "group": "Sampler",
       "method": "POST",
       "path": "/api/sampler/stop",
-      "specLine": 1669
+      "specLine": 1708
     },
     {
       "id": "RE POST /api/sampler/sample",
@@ -575,7 +575,7 @@
       "group": "Sampler",
       "method": "POST",
       "path": "/api/sampler/sample",
-      "specLine": 1670
+      "specLine": 1709
     },
     {
       "id": "RE GET /api/sampler/stats",
@@ -583,7 +583,7 @@
       "group": "Sampler",
       "method": "GET",
       "path": "/api/sampler/stats",
-      "specLine": 1671
+      "specLine": 1710
     },
     {
       "id": "RE POST /api/perception/observe",
@@ -591,7 +591,7 @@
       "group": "Perception",
       "method": "POST",
       "path": "/api/perception/observe",
-      "specLine": 1677
+      "specLine": 1716
     },
     {
       "id": "RE POST /api/perception/diagnostic",
@@ -599,7 +599,7 @@
       "group": "Perception",
       "method": "POST",
       "path": "/api/perception/diagnostic",
-      "specLine": 1678
+      "specLine": 1717
     },
     {
       "id": "RE POST /api/perceive",
@@ -607,7 +607,7 @@
       "group": "Perception",
       "method": "POST",
       "path": "/api/perceive",
-      "specLine": 1679
+      "specLine": 1718
     },
     {
       "id": "RE GET /api/governance/route",
@@ -615,7 +615,7 @@
       "group": "Governance",
       "method": "GET",
       "path": "/api/governance/route",
-      "specLine": 1685
+      "specLine": 1724
     },
     {
       "id": "RE GET /api/demo/multi-step",
@@ -623,7 +623,7 @@
       "group": "Demos",
       "method": "GET",
       "path": "/api/demo/multi-step",
-      "specLine": 1691
+      "specLine": 1730
     },
     {
       "id": "RE GET /api/demo/data-center",
@@ -631,7 +631,7 @@
       "group": "Demos",
       "method": "GET",
       "path": "/api/demo/data-center",
-      "specLine": 1692
+      "specLine": 1731
     },
     {
       "id": "RE GET /api/demo/kleene-star",
@@ -639,7 +639,7 @@
       "group": "Demos",
       "method": "GET",
       "path": "/api/demo/kleene-star",
-      "specLine": 1693
+      "specLine": 1732
     },
     {
       "id": "RE SSE /api/engine/stream",
@@ -647,7 +647,7 @@
       "group": "Streaming",
       "method": "SSE",
       "path": "/api/engine/stream",
-      "specLine": 1699
+      "specLine": 1738
     },
     {
       "id": "PE GET /",
@@ -655,7 +655,7 @@
       "group": "Info & Health",
       "method": "GET",
       "path": "/",
-      "specLine": 1790
+      "specLine": 1829
     },
     {
       "id": "PE GET /api/health",
@@ -663,7 +663,7 @@
       "group": "Info & Health",
       "method": "GET",
       "path": "/api/health",
-      "specLine": 1791
+      "specLine": 1830
     },
     {
       "id": "PE GET /api/state",
@@ -671,7 +671,7 @@
       "group": "Info & Health",
       "method": "GET",
       "path": "/api/state",
-      "specLine": 1792
+      "specLine": 1831
     },
     {
       "id": "PE POST /api/push",
@@ -679,7 +679,7 @@
       "group": "Push Cycle",
       "method": "POST",
       "path": "/api/push",
-      "specLine": 1933
+      "specLine": 1972
     },
     {
       "id": "PE GET /api/push/:id",
@@ -687,7 +687,7 @@
       "group": "Push Cycle",
       "method": "GET",
       "path": "/api/push/:id",
-      "specLine": 1934
+      "specLine": 1973
     },
     {
       "id": "PE POST /api/auto/start",
@@ -695,7 +695,7 @@
       "group": "Push Cycle",
       "method": "POST",
       "path": "/api/auto/start",
-      "specLine": 1935
+      "specLine": 1974
     },
     {
       "id": "PE POST /api/auto/stop",
@@ -703,7 +703,7 @@
       "group": "Push Cycle",
       "method": "POST",
       "path": "/api/auto/stop",
-      "specLine": 1936
+      "specLine": 1975
     },
     {
       "id": "PE PATCH /api/config",
@@ -711,7 +711,7 @@
       "group": "Configuration & Reset",
       "method": "PATCH",
       "path": "/api/config",
-      "specLine": 2017
+      "specLine": 2056
     },
     {
       "id": "PE POST /api/reset",
@@ -719,7 +719,7 @@
       "group": "Configuration & Reset",
       "method": "POST",
       "path": "/api/reset",
-      "specLine": 2018
+      "specLine": 2057
     },
     {
       "id": "PE GET /api/sources",
@@ -727,7 +727,7 @@
       "group": "Sources & Sensors",
       "method": "GET",
       "path": "/api/sources",
-      "specLine": 2079
+      "specLine": 2118
     },
     {
       "id": "PE POST /api/sources",
@@ -735,7 +735,7 @@
       "group": "Sources & Sensors",
       "method": "POST",
       "path": "/api/sources",
-      "specLine": 2080
+      "specLine": 2119
     },
     {
       "id": "PE PATCH /api/sources/:id",
@@ -743,7 +743,7 @@
       "group": "Sources & Sensors",
       "method": "PATCH",
       "path": "/api/sources/:id",
-      "specLine": 2081
+      "specLine": 2120
     },
     {
       "id": "PE DELETE /api/sources/:id",
@@ -751,7 +751,7 @@
       "group": "Sources & Sensors",
       "method": "DELETE",
       "path": "/api/sources/:id",
-      "specLine": 2082
+      "specLine": 2121
     },
     {
       "id": "PE POST /api/sources/bootstrap-from-machines",
@@ -759,7 +759,7 @@
       "group": "Sources & Sensors",
       "method": "POST",
       "path": "/api/sources/bootstrap-from-machines",
-      "specLine": 2083
+      "specLine": 2122
     },
     {
       "id": "PE GET /api/sources/contention",
@@ -767,7 +767,7 @@
       "group": "Sources & Sensors",
       "method": "GET",
       "path": "/api/sources/contention",
-      "specLine": 2084
+      "specLine": 2123
     },
     {
       "id": "PE POST /api/sensors/:sensorId",
@@ -775,7 +775,7 @@
       "group": "Sources & Sensors",
       "method": "POST",
       "path": "/api/sensors/:sensorId",
-      "specLine": 2085
+      "specLine": 2124
     },
     {
       "id": "PE POST /api/signals",
@@ -783,7 +783,7 @@
       "group": "Signals",
       "method": "POST",
       "path": "/api/signals",
-      "specLine": 2251
+      "specLine": 2290
     },
     {
       "id": "PE GET /api/machines",
@@ -791,7 +791,7 @@
       "group": "Machines Proxy",
       "method": "GET",
       "path": "/api/machines",
-      "specLine": 2257
+      "specLine": 2296
     },
     {
       "id": "PE GET /api/integrations/status",
@@ -799,7 +799,7 @@
       "group": "Integrations",
       "method": "GET",
       "path": "/api/integrations/status",
-      "specLine": 2263
+      "specLine": 2302
     },
     {
       "id": "PE POST /api/integrations/completions",
@@ -807,7 +807,7 @@
       "group": "Integrations",
       "method": "POST",
       "path": "/api/integrations/completions",
-      "specLine": 2264
+      "specLine": 2303
     },
     {
       "id": "PE GET /api/integrations/ollama/status",
@@ -815,7 +815,7 @@
       "group": "Integrations",
       "method": "GET",
       "path": "/api/integrations/ollama/status",
-      "specLine": 2265
+      "specLine": 2304
     },
     {
       "id": "PE POST /api/integrations/ollama/dispatch",
@@ -823,7 +823,7 @@
       "group": "Integrations",
       "method": "POST",
       "path": "/api/integrations/ollama/dispatch",
-      "specLine": 2266
+      "specLine": 2305
     },
     {
       "id": "PE GET /api/integrations/openai/status",
@@ -831,7 +831,7 @@
       "group": "Integrations",
       "method": "GET",
       "path": "/api/integrations/openai/status",
-      "specLine": 2267
+      "specLine": 2306
     },
     {
       "id": "PE POST /api/integrations/openai/dispatch",
@@ -839,7 +839,7 @@
       "group": "Integrations",
       "method": "POST",
       "path": "/api/integrations/openai/dispatch",
-      "specLine": 2268
+      "specLine": 2307
     },
     {
       "id": "PE GET /api/integrations/acp/status",
@@ -847,7 +847,7 @@
       "group": "Integrations",
       "method": "GET",
       "path": "/api/integrations/acp/status",
-      "specLine": 2269
+      "specLine": 2308
     },
     {
       "id": "PE POST /api/integrations/acp/dispatch",
@@ -855,7 +855,7 @@
       "group": "Integrations",
       "method": "POST",
       "path": "/api/integrations/acp/dispatch",
-      "specLine": 2270
+      "specLine": 2309
     },
     {
       "id": "PE GET /api/integrations/healthkit/status",
@@ -863,7 +863,7 @@
       "group": "Integrations",
       "method": "GET",
       "path": "/api/integrations/healthkit/status",
-      "specLine": 2271
+      "specLine": 2310
     },
     {
       "id": "PE POST /api/integrations/healthkit/ingest",
@@ -871,7 +871,7 @@
       "group": "Integrations",
       "method": "POST",
       "path": "/api/integrations/healthkit/ingest",
-      "specLine": 2272
+      "specLine": 2311
     },
     {
       "id": "PE GET /api/integrations/carekit/status",
@@ -879,7 +879,7 @@
       "group": "Integrations",
       "method": "GET",
       "path": "/api/integrations/carekit/status",
-      "specLine": 2273
+      "specLine": 2312
     },
     {
       "id": "PE POST /api/integrations/carekit/ingest",
@@ -887,7 +887,7 @@
       "group": "Integrations",
       "method": "POST",
       "path": "/api/integrations/carekit/ingest",
-      "specLine": 2274
+      "specLine": 2313
     },
     {
       "id": "PE GET /api/integrations/localai/status",
@@ -895,7 +895,7 @@
       "group": "Integrations",
       "method": "GET",
       "path": "/api/integrations/localai/status",
-      "specLine": 2275
+      "specLine": 2314
     },
     {
       "id": "PE GET /api/integrations/localai/catalog",
@@ -903,7 +903,7 @@
       "group": "Integrations",
       "method": "GET",
       "path": "/api/integrations/localai/catalog",
-      "specLine": 2276
+      "specLine": 2315
     },
     {
       "id": "PE POST /api/integrations/localai/bootstrap",
@@ -911,7 +911,7 @@
       "group": "Integrations",
       "method": "POST",
       "path": "/api/integrations/localai/bootstrap",
-      "specLine": 2277
+      "specLine": 2316
     },
     {
       "id": "PE POST /api/integrations/localai/invoke",
@@ -919,7 +919,7 @@
       "group": "Integrations",
       "method": "POST",
       "path": "/api/integrations/localai/invoke",
-      "specLine": 2278
+      "specLine": 2317
     },
     {
       "id": "PE GET /api/integrations/localai/ledger",
@@ -927,7 +927,7 @@
       "group": "Integrations",
       "method": "GET",
       "path": "/api/integrations/localai/ledger",
-      "specLine": 2279
+      "specLine": 2318
     },
     {
       "id": "PE GET /api/dispatch/ledger",
@@ -935,7 +935,7 @@
       "group": "Dispatch & Triggers",
       "method": "GET",
       "path": "/api/dispatch/ledger",
-      "specLine": 2336
+      "specLine": 2375
     },
     {
       "id": "PE GET /api/dispatch/records/:id",
@@ -943,7 +943,7 @@
       "group": "Dispatch & Triggers",
       "method": "GET",
       "path": "/api/dispatch/records/:id",
-      "specLine": 2337
+      "specLine": 2376
     },
     {
       "id": "PE PATCH /api/dispatch/records/:id",
@@ -951,7 +951,7 @@
       "group": "Dispatch & Triggers",
       "method": "PATCH",
       "path": "/api/dispatch/records/:id",
-      "specLine": 2338
+      "specLine": 2377
     },
     {
       "id": "PE POST /api/dispatch/records/:id/replay",
@@ -959,7 +959,7 @@
       "group": "Dispatch & Triggers",
       "method": "POST",
       "path": "/api/dispatch/records/:id/replay",
-      "specLine": 2339
+      "specLine": 2378
     },
     {
       "id": "PE GET /api/triggers/status",
@@ -967,7 +967,7 @@
       "group": "Dispatch & Triggers",
       "method": "GET",
       "path": "/api/triggers/status",
-      "specLine": 2340
+      "specLine": 2379
     },
     {
       "id": "PE GET /api/mqtt/status",
@@ -975,7 +975,7 @@
       "group": "MQTT Bridge",
       "method": "GET",
       "path": "/api/mqtt/status",
-      "specLine": 2454
+      "specLine": 2493
     },
     {
       "id": "PE GET /api/mqtt/mappings",
@@ -983,7 +983,7 @@
       "group": "MQTT Bridge",
       "method": "GET",
       "path": "/api/mqtt/mappings",
-      "specLine": 2455
+      "specLine": 2494
     },
     {
       "id": "PE PUT /api/mqtt/mappings",
@@ -991,7 +991,7 @@
       "group": "MQTT Bridge",
       "method": "PUT",
       "path": "/api/mqtt/mappings",
-      "specLine": 2456
+      "specLine": 2495
     },
     {
       "id": "PE POST /api/mqtt/enable",
@@ -999,7 +999,7 @@
       "group": "MQTT Bridge",
       "method": "POST",
       "path": "/api/mqtt/enable",
-      "specLine": 2457
+      "specLine": 2496
     },
     {
       "id": "PE POST /api/mqtt/disable",
@@ -1007,7 +1007,7 @@
       "group": "MQTT Bridge",
       "method": "POST",
       "path": "/api/mqtt/disable",
-      "specLine": 2458
+      "specLine": 2497
     },
     {
       "id": "PE SSE /api/events",
@@ -1015,7 +1015,7 @@
       "group": "Streaming",
       "method": "SSE",
       "path": "/api/events",
-      "specLine": 2464
+      "specLine": 2503
     },
     {
       "id": "PE WS /ws",
@@ -1023,7 +1023,7 @@
       "group": "Streaming",
       "method": "WS",
       "path": "/ws",
-      "specLine": 2465
+      "specLine": 2504
     },
     {
       "id": "RE-phase2 POST /api/runtime/snapshot",
@@ -1031,7 +1031,7 @@
       "group": "Routes",
       "method": "POST",
       "path": "/api/runtime/snapshot",
-      "specLine": 2927
+      "specLine": 2966
     },
     {
       "id": "RE-phase2 GET /api/runtime/snapshots",
@@ -1039,7 +1039,7 @@
       "group": "Routes",
       "method": "GET",
       "path": "/api/runtime/snapshots",
-      "specLine": 2928
+      "specLine": 2967
     },
     {
       "id": "RE-phase2 GET /api/runtime/snapshot/:id",
@@ -1047,7 +1047,7 @@
       "group": "Routes",
       "method": "GET",
       "path": "/api/runtime/snapshot/:id",
-      "specLine": 2929
+      "specLine": 2968
     },
     {
       "id": "RE-phase2 POST /api/runtime/restore",
@@ -1055,7 +1055,7 @@
       "group": "Routes",
       "method": "POST",
       "path": "/api/runtime/restore",
-      "specLine": 2930
+      "specLine": 2969
     },
     {
       "id": "RE-phase2 DELETE /api/runtime/snapshot/:id",
@@ -1063,7 +1063,7 @@
       "group": "Routes",
       "method": "DELETE",
       "path": "/api/runtime/snapshot/:id",
-      "specLine": 2931
+      "specLine": 2970
     }
   ]
 }
