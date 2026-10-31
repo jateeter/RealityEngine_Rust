@@ -6,7 +6,7 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 
 | layer | implemented | routes |
 |---|---|---|
-| RE | 23 | 79 |
+| RE | 27 | 79 |
 | PE | 0 | 47 |
 | RE-phase2 | 0 | 5 |
 
@@ -71,9 +71,9 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 | GET | `/api/engine/stats` | implemented |  |  |
 | GET | `/api/engine/active` | declared-unsupported | jateeter/RealityEngine_Rust#11 |  |
 | GET | `/api/engine/history` | implemented |  |  |
-| GET | `/api/engine/osre-history` | declared-unsupported | jateeter/RealityEngine_Rust#11 |  |
-| GET | `/api/engine/isre-history` | declared-unsupported | jateeter/RealityEngine_Rust#11 |  |
-| GET | `/api/engine/steps/:n/pair` | declared-unsupported | jateeter/RealityEngine_Rust#11 |  |
+| GET | `/api/engine/osre-history` | implemented |  |  |
+| GET | `/api/engine/isre-history` | implemented |  |  |
+| GET | `/api/engine/steps/:n/pair` | implemented |  |  |
 | GET | `/api/engine/clock` | implemented |  | instance and lamport per RealityEngine_CI#296 (allocated UUID, persisted reservation, fcntl instance lock); only the space-runtime step path commits a step, which this engine lacks, so step is -1 and the clock does not tick until #11 |
 | GET | `/api/arbitration` | declared-unsupported | jateeter/RealityEngine_Rust#12 |  |
 | POST | `/api/engine/process` | implemented |  |  |
@@ -139,7 +139,7 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 |---|---|---|---|---|
 | POST | `/api/perception/observe` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
 | POST | `/api/perception/diagnostic` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
-| POST | `/api/perceive` | declared-unsupported | jateeter/RealityEngine_Rust#11 |  |
+| POST | `/api/perceive` | implemented |  | slice 1 of #11: 40 full-corpus steps identical to C++ on machineResults and activeRegions; mergeBatch lacks governance/deprecation, eventBus is [], so the 2 SEVERITY cells resolve by value (slice 2); only and matchAlgorithmOverride are refused (slice 4) |
 
 ## RE: Governance
 
