@@ -70,7 +70,6 @@ struct Event {
     elements: Vec<Element>,
     outputs: Vec<Output>,
     next_ids: Vec<String>,
-    algorithm: String,
     was_just_matched: bool,
     predecessor_chain: Vec<String>,
 }
@@ -262,7 +261,7 @@ impl Machine {
                     .flatten()
                     .map(|element| Element {
                         value: number(element.get("value"), 0.0),
-                        comparator: string(element.get("comparatorType"), ""),
+                        comparator: string(element.get("comparatorType"), "").to_lowercase(),
                         threshold: element.get("threshold").and_then(Value::as_f64),
                     })
                     .collect();
@@ -299,7 +298,6 @@ impl Machine {
                         .filter_map(Value::as_str)
                         .map(str::to_owned)
                         .collect(),
-                    algorithm: string(event_json.get("matchAlgorithm"), ""),
                     was_just_matched: false,
                     predecessor_chain: Vec::new(),
                 };
@@ -523,25 +521,29 @@ impl Machine {
 }
 
 impl Event {
+    /// SURFACE_SPEC.md § "Comparators" (owner ruling on RealityEngine_CI#606):
+    /// the element's `comparatorType`, else the machine's `matchAlgorithm`,
+    /// else `gte`; `t` is the element's `threshold`, else the comparator's
+    /// default. `gte` binarizes both sides at `t`: a `0` means "must be off".
     fn matches(&self, input: &[f64], machine_algorithm: &str) -> bool {
         if input.len() != self.elements.len() {
             return false;
         }
-        self.elements.iter().zip(input).all(|(element, actual)| {
-            let algorithm = if element.comparator.is_empty() {
-                if self.algorithm.is_empty() {
-                    machine_algorithm
-                } else {
-                    &self.algorithm
-                }
+        self.elements.iter().zip(input).all(|(element, &actual)| {
+            let comparator = if element.comparator.is_empty() {
+                machine_algorithm
             } else {
                 &element.comparator
             };
-            match algorithm {
-                "equals" | "custom" => *actual == element.value,
-                "threshold" => *actual >= element.threshold.unwrap_or(element.value),
-                "pattern" => (*actual - element.value).abs() <= element.threshold.unwrap_or(0.5),
-                _ => *actual >= element.value,
+            let value = element.value;
+            match comparator {
+                "equals" | "custom" => actual == value,
+                "threshold" => (value - actual).abs() <= element.threshold.unwrap_or(0.1),
+                "pattern" => 1.0 - (value - actual).abs() >= element.threshold.unwrap_or(0.5),
+                _ => {
+                    let t = element.threshold.unwrap_or(0.5);
+                    (actual >= t) == (value >= t)
+                }
             }
         })
     }
@@ -1342,6 +1344,88 @@ mod tests {
         let error = Engine::new(8).load_directory(&directory).err().unwrap();
         fs::remove_dir_all(&directory).unwrap();
         assert!(error.message.contains("broken.json"), "{}", error.message);
+    }
+
+    fn event_with(comparator: &str, value: f64, threshold: Option<f64>) -> Event {
+        Event {
+            id: "e".to_owned(),
+            initial: true,
+            active: true,
+            elements: vec![Element {
+                value,
+                comparator: comparator.to_owned(),
+                threshold,
+            }],
+            outputs: Vec::new(),
+            next_ids: Vec::new(),
+            was_just_matched: false,
+            predecessor_chain: Vec::new(),
+        }
+    }
+
+    /// SURFACE_SPEC.md § "Comparators", one non-binary input per rule.
+    #[test]
+    fn comparators_follow_the_engines() {
+        // (comparator, value, threshold, input, accepts)
+        let cases = [
+            // gte binarizes both sides at t (default 0.5)
+            ("gte", 1.0, None, 0.95, true),
+            ("gte", 1.0, None, 0.4, false),
+            ("gte", 0.0, None, 0.4, true),
+            ("gte", 0.0, None, 1.0, false), // a 0 means "must be off", not "any input"
+            ("gte", 1.0, Some(0.8), 0.7, false),
+            ("gte", 1.0, Some(0.8), 0.85, true),
+            // threshold: abs(value - input) <= t (default 0.1)
+            ("threshold", 0.5, None, 0.55, true),
+            ("threshold", 0.5, None, 0.7, false),
+            ("threshold", 0.5, Some(0.3), 0.7, true),
+            // pattern: 1 - abs(value - input) >= t (default 0.5)
+            ("pattern", 1.0, None, 0.6, true),
+            ("pattern", 1.0, None, 0.4, false),
+            ("pattern", 1.0, Some(0.9), 0.85, false),
+            // equals is exact; custom is its alias
+            ("equals", 1.0, None, 1.0, true),
+            ("equals", 1.0, None, 0.99, false),
+            ("custom", 1.0, None, 0.99, false),
+        ];
+        for (comparator, value, threshold, input, accepts) in cases {
+            let event = event_with(comparator, value, threshold);
+            assert_eq!(
+                event.matches(&[input], "gte"),
+                accepts,
+                "{comparator} value {value} threshold {threshold:?} input {input}"
+            );
+        }
+    }
+
+    #[test]
+    fn comparator_precedence_is_element_then_machine_then_gte() {
+        // No element comparator: the machine's matchAlgorithm applies.
+        let event = event_with("", 1.0, None);
+        assert!(!event.matches(&[0.95], "equals"));
+        assert!(event.matches(&[0.95], "gte"));
+        // The element's own comparatorType wins over the machine's.
+        let event = event_with("gte", 1.0, None);
+        assert!(event.matches(&[0.95], "equals"));
+
+        // A matchAlgorithm on the event itself is not read, as in every engine.
+        let mut definition = machine_definition();
+        definition["machine"]["matchAlgorithm"] = json!("equals");
+        let start = &mut definition["machine"]["sequences"][0]["events"][0];
+        start["elements"] = json!([{ "value": 1 }]);
+        start["matchAlgorithm"] = json!("gte");
+        let mut engine = Engine::new(8);
+        let id = engine.load_machine(definition).unwrap()["id"]
+            .as_str()
+            .unwrap()
+            .to_owned();
+        let result = engine.process_machine(&id, &[0.95]).unwrap();
+        assert!(
+            result["sequenceResults"]["sequence"]["matchedEvents"]
+                .as_array()
+                .is_none_or(Vec::is_empty),
+            "machine-level equals applies, not the event's gte: {result}"
+        );
     }
 
     #[test]
