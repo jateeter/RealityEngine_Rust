@@ -302,11 +302,10 @@
       "tracking": "jateeter/RealityEngine_Rust#13"
     },
     "RE GET /api/machines/json/:name": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#13"
+      "status": "implemented"
     },
     "RE GET /api/machines/json/list": {
-      "notes": "aliased to the /api/machines list, lacks relFile/filename/semanticsHash/semanticsIri/version: jateeter/RealityEngine_Rust#7",
+      "notes": "the on-disk corpus with relFile and semantics; name, description, version, metadata and sequenceCount follow C++/LSP provisionally (the engines split 2-1): RealityEngine_CI#677",
       "status": "implemented"
     },
     "RE GET /api/metrics": {
@@ -514,9 +513,9 @@
   },
   "schema": 1,
   "spec": {
-    "commit": "9a32bc5ce8742c5943b5d29fe8fecb4031800981",
+    "commit": "84b2a658cb73a35e7c0e9860c3f8319985cdd3a7",
     "path": "SURFACE_SPEC.md",
     "repository": "jateeter/RealityEngine_CI",
-    "sha256": "d2d2c5777a5b5ebda7b7aa34f2ca2c2085c28d8703f54183bad9d2b82b68b707"
+    "sha256": "75568299943fdd5d924ed341fcebe9d807dda6619dbaa510d76031265e398497"
   }
 }
