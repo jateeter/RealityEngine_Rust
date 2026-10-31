@@ -10,7 +10,7 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 | PE | 0 | 47 |
 | RE-phase2 | 0 | 5 |
 
-`RE` and `PE` are the specification's implemented-contract tables; `RE-phase2` is the K-line snapshot routes it specifies outside them. A `missing` route answers silently, which the specification forbids ("Participation States"); declaring each one `unsupported` is jateeter/RealityEngine_Rust#15. Status says a route exists, not that it conforms: the notes name known shape defects.
+`RE` and `PE` are the specification's implemented-contract tables; `RE-phase2` is the K-line snapshot routes it specifies outside them. An RE route this engine does not implement is `declared-unsupported`: it answers `501` with the participation state, as the specification rules ("An unimplemented route answers `unsupported`"). A `missing` route answers silently, which the specification forbids; the PE's are missing because this repo has no Perception Engine. Status says a route exists, not that it conforms: the notes name known shape defects.
 
 ## RE: Info & Health
 
@@ -37,45 +37,45 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 
 | method | path | status | tracking | notes |
 |---|---|---|---|---|
-| GET | `/api/runtime/metrics` | missing | jateeter/RealityEngine_Rust#10 |  |
-| GET | `/api/runtime/vector-space` | missing | jateeter/RealityEngine_Rust#10 |  |
-| GET | `/api/runtime/storage-footprint` | missing | jateeter/RealityEngine_Rust#10 |  |
-| GET | `/api/runtime/options` | missing | jateeter/RealityEngine_Rust#10 |  |
-| PATCH | `/api/runtime/options` | missing | jateeter/RealityEngine_Rust#10 |  |
+| GET | `/api/runtime/metrics` | declared-unsupported | jateeter/RealityEngine_Rust#10 |  |
+| GET | `/api/runtime/vector-space` | declared-unsupported | jateeter/RealityEngine_Rust#10 |  |
+| GET | `/api/runtime/storage-footprint` | declared-unsupported | jateeter/RealityEngine_Rust#10 |  |
+| GET | `/api/runtime/options` | declared-unsupported | jateeter/RealityEngine_Rust#10 |  |
+| PATCH | `/api/runtime/options` | declared-unsupported | jateeter/RealityEngine_Rust#10 |  |
 
 ## RE: Vectors
 
 | method | path | status | tracking | notes |
 |---|---|---|---|---|
-| POST | `/api/vectors/search` | missing | jateeter/RealityEngine_Rust#13 |  |
-| POST | `/api/vectors` | missing | jateeter/RealityEngine_Rust#13 |  |
-| GET | `/api/vectors/:id` | missing | jateeter/RealityEngine_Rust#13 |  |
-| DELETE | `/api/vectors/:id` | missing | jateeter/RealityEngine_Rust#13 |  |
+| POST | `/api/vectors/search` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
+| POST | `/api/vectors` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
+| GET | `/api/vectors/:id` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
+| DELETE | `/api/vectors/:id` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
 
 ## RE: Sequences
 
 | method | path | status | tracking | notes |
 |---|---|---|---|---|
-| GET | `/api/sequences` | missing | jateeter/RealityEngine_Rust#13 |  |
-| POST | `/api/sequences` | missing | jateeter/RealityEngine_Rust#13 |  |
-| GET | `/api/sequences/:id` | missing | jateeter/RealityEngine_Rust#13 |  |
-| DELETE | `/api/sequences/:id` | missing | jateeter/RealityEngine_Rust#13 |  |
-| POST | `/api/sequences/:id/reset` | missing | jateeter/RealityEngine_Rust#13 |  |
-| POST | `/api/sequences/:id/vectors` | missing | jateeter/RealityEngine_Rust#13 |  |
-| POST | `/api/sequences/persist` | missing | jateeter/RealityEngine_Rust#13 |  |
+| GET | `/api/sequences` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
+| POST | `/api/sequences` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
+| GET | `/api/sequences/:id` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
+| DELETE | `/api/sequences/:id` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
+| POST | `/api/sequences/:id/reset` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
+| POST | `/api/sequences/:id/vectors` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
+| POST | `/api/sequences/persist` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
 
 ## RE: Engine
 
 | method | path | status | tracking | notes |
 |---|---|---|---|---|
 | GET | `/api/engine/stats` | implemented |  |  |
-| GET | `/api/engine/active` | missing | jateeter/RealityEngine_Rust#11 |  |
+| GET | `/api/engine/active` | declared-unsupported | jateeter/RealityEngine_Rust#11 |  |
 | GET | `/api/engine/history` | implemented |  |  |
-| GET | `/api/engine/osre-history` | missing | jateeter/RealityEngine_Rust#11 |  |
-| GET | `/api/engine/isre-history` | missing | jateeter/RealityEngine_Rust#11 |  |
-| GET | `/api/engine/steps/:n/pair` | missing | jateeter/RealityEngine_Rust#11 |  |
+| GET | `/api/engine/osre-history` | declared-unsupported | jateeter/RealityEngine_Rust#11 |  |
+| GET | `/api/engine/isre-history` | declared-unsupported | jateeter/RealityEngine_Rust#11 |  |
+| GET | `/api/engine/steps/:n/pair` | declared-unsupported | jateeter/RealityEngine_Rust#11 |  |
 | GET | `/api/engine/clock` | implemented |  | instance and lamport per RealityEngine_CI#296 (allocated UUID, persisted reservation, fcntl instance lock); only the space-runtime step path commits a step, which this engine lacks, so step is -1 and the clock does not tick until #11 |
-| GET | `/api/arbitration` | missing | jateeter/RealityEngine_Rust#12 |  |
+| GET | `/api/arbitration` | declared-unsupported | jateeter/RealityEngine_Rust#12 |  |
 | POST | `/api/engine/process` | implemented |  |  |
 | POST | `/api/engine/reset` | implemented |  |  |
 
@@ -86,80 +86,80 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 | GET | `/api/machines` | implemented |  |  |
 | POST | `/api/machines` | implemented |  |  |
 | GET | `/api/machines/:id` | implemented |  |  |
-| PUT | `/api/machines/:id` | missing | jateeter/RealityEngine_Rust#13 |  |
-| PATCH | `/api/machines/:id` | missing | jateeter/RealityEngine_Rust#13 |  |
+| PUT | `/api/machines/:id` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
+| PATCH | `/api/machines/:id` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
 | DELETE | `/api/machines/:id` | implemented |  |  |
 | POST | `/api/machines/:id/process` | implemented |  |  |
-| POST | `/api/machines/:id/process-universal` | missing | jateeter/RealityEngine_Rust#13 |  |
-| POST | `/api/machines/:id/whatif` | missing | jateeter/RealityEngine_Rust#13 |  |
-| POST | `/api/machines/:id/whatif-universal` | missing | jateeter/RealityEngine_Rust#13 |  |
-| POST | `/api/machines/process-universal/all` | missing | jateeter/RealityEngine_Rust#13 |  |
+| POST | `/api/machines/:id/process-universal` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
+| POST | `/api/machines/:id/whatif` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
+| POST | `/api/machines/:id/whatif-universal` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
+| POST | `/api/machines/process-universal/all` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
 | GET | `/api/machines/json/list` | implemented |  | the on-disk corpus with relFile and semantics; name, description, version, metadata and sequenceCount follow C++/LSP provisionally (the engines split 2-1): RealityEngine_CI#677 |
 | GET | `/api/machines/json/:name` | implemented |  |  |
-| POST | `/api/machines/json/import` | missing | jateeter/RealityEngine_Rust#13 |  |
-| GET | `/api/machines/:id/export` | missing | jateeter/RealityEngine_Rust#13 |  |
-| GET | `/api/machines/:id/checkpoints` | missing | jateeter/RealityEngine_Rust#13 |  |
-| POST | `/api/machines/:id/checkpoints` | missing | jateeter/RealityEngine_Rust#13 |  |
-| POST | `/api/machines/:machineId/checkpoints/:cpId/restore` | missing | jateeter/RealityEngine_Rust#13 |  |
-| DELETE | `/api/machines/:machineId/checkpoints/:cpId` | missing | jateeter/RealityEngine_Rust#13 |  |
-| GET | `/api/buses/semantic` | missing | jateeter/RealityEngine_Rust#13 |  |
-| GET | `/api/buses/semantic/:id` | missing | jateeter/RealityEngine_Rust#13 |  |
+| POST | `/api/machines/json/import` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
+| GET | `/api/machines/:id/export` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
+| GET | `/api/machines/:id/checkpoints` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
+| POST | `/api/machines/:id/checkpoints` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
+| POST | `/api/machines/:machineId/checkpoints/:cpId/restore` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
+| DELETE | `/api/machines/:machineId/checkpoints/:cpId` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
+| GET | `/api/buses/semantic` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
+| GET | `/api/buses/semantic/:id` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
 
 ## RE: Machine Graph
 
 | method | path | status | tracking | notes |
 |---|---|---|---|---|
-| GET | `/api/machine-graph` | missing | jateeter/RealityEngine_Rust#13 |  |
+| GET | `/api/machine-graph` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
 
 ## RE: Perceptual Simulation
 
 | method | path | status | tracking | notes |
 |---|---|---|---|---|
-| POST | `/api/perceptual-simulation/configure/chunk` | missing | jateeter/RealityEngine_Rust#11 |  |
-| POST | `/api/perceptual-simulation/configure/commit` | missing | jateeter/RealityEngine_Rust#11 |  |
-| POST | `/api/perceptual-simulation/start` | missing | jateeter/RealityEngine_Rust#11 |  |
-| POST | `/api/perceptual-simulation/stop` | missing | jateeter/RealityEngine_Rust#11 |  |
-| POST | `/api/perceptual-simulation/step` | missing | jateeter/RealityEngine_Rust#11 |  |
-| POST | `/api/perceptual-simulation/reset` | missing | jateeter/RealityEngine_Rust#11 |  |
-| GET | `/api/perceptual-simulation/state` | missing | jateeter/RealityEngine_Rust#11 |  |
-| GET | `/api/perceptual-simulation/history` | missing | jateeter/RealityEngine_Rust#11 |  |
+| POST | `/api/perceptual-simulation/configure/chunk` | declared-unsupported | jateeter/RealityEngine_Rust#11 |  |
+| POST | `/api/perceptual-simulation/configure/commit` | declared-unsupported | jateeter/RealityEngine_Rust#11 |  |
+| POST | `/api/perceptual-simulation/start` | declared-unsupported | jateeter/RealityEngine_Rust#11 |  |
+| POST | `/api/perceptual-simulation/stop` | declared-unsupported | jateeter/RealityEngine_Rust#11 |  |
+| POST | `/api/perceptual-simulation/step` | declared-unsupported | jateeter/RealityEngine_Rust#11 |  |
+| POST | `/api/perceptual-simulation/reset` | declared-unsupported | jateeter/RealityEngine_Rust#11 |  |
+| GET | `/api/perceptual-simulation/state` | declared-unsupported | jateeter/RealityEngine_Rust#11 |  |
+| GET | `/api/perceptual-simulation/history` | declared-unsupported | jateeter/RealityEngine_Rust#11 |  |
 
 ## RE: Sampler
 
 | method | path | status | tracking | notes |
 |---|---|---|---|---|
-| POST | `/api/sampler/start` | missing | jateeter/RealityEngine_Rust#13 |  |
-| POST | `/api/sampler/stop` | missing | jateeter/RealityEngine_Rust#13 |  |
-| POST | `/api/sampler/sample` | missing | jateeter/RealityEngine_Rust#13 |  |
-| GET | `/api/sampler/stats` | missing | jateeter/RealityEngine_Rust#13 |  |
+| POST | `/api/sampler/start` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
+| POST | `/api/sampler/stop` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
+| POST | `/api/sampler/sample` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
+| GET | `/api/sampler/stats` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
 
 ## RE: Perception
 
 | method | path | status | tracking | notes |
 |---|---|---|---|---|
-| POST | `/api/perception/observe` | missing | jateeter/RealityEngine_Rust#13 |  |
-| POST | `/api/perception/diagnostic` | missing | jateeter/RealityEngine_Rust#13 |  |
-| POST | `/api/perceive` | missing | jateeter/RealityEngine_Rust#11 |  |
+| POST | `/api/perception/observe` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
+| POST | `/api/perception/diagnostic` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
+| POST | `/api/perceive` | declared-unsupported | jateeter/RealityEngine_Rust#11 |  |
 
 ## RE: Governance
 
 | method | path | status | tracking | notes |
 |---|---|---|---|---|
-| GET | `/api/governance/route` | missing | jateeter/RealityEngine_Rust#13 |  |
+| GET | `/api/governance/route` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
 
 ## RE: Demos
 
 | method | path | status | tracking | notes |
 |---|---|---|---|---|
-| GET | `/api/demo/multi-step` | missing | jateeter/RealityEngine_Rust#13 |  |
-| GET | `/api/demo/data-center` | missing | jateeter/RealityEngine_Rust#13 |  |
-| GET | `/api/demo/kleene-star` | missing | jateeter/RealityEngine_Rust#13 |  |
+| GET | `/api/demo/multi-step` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
+| GET | `/api/demo/data-center` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
+| GET | `/api/demo/kleene-star` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
 
 ## RE: Streaming
 
 | method | path | status | tracking | notes |
 |---|---|---|---|---|
-| SSE | `/api/engine/stream` | missing | jateeter/RealityEngine_Rust#11 |  |
+| SSE | `/api/engine/stream` | declared-unsupported | jateeter/RealityEngine_Rust#11 |  |
 
 ## PE: Info & Health
 
@@ -262,8 +262,8 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 
 | method | path | status | tracking | notes |
 |---|---|---|---|---|
-| POST | `/api/runtime/snapshot` | missing | jateeter/RealityEngine_Rust#2 (K-line snapshots, spec phase 2; no item yet) |  |
-| GET | `/api/runtime/snapshots` | missing | jateeter/RealityEngine_Rust#2 (K-line snapshots, spec phase 2; no item yet) |  |
-| GET | `/api/runtime/snapshot/:id` | missing | jateeter/RealityEngine_Rust#2 (K-line snapshots, spec phase 2; no item yet) |  |
-| POST | `/api/runtime/restore` | missing | jateeter/RealityEngine_Rust#2 (K-line snapshots, spec phase 2; no item yet) |  |
-| DELETE | `/api/runtime/snapshot/:id` | missing | jateeter/RealityEngine_Rust#2 (K-line snapshots, spec phase 2; no item yet) |  |
+| POST | `/api/runtime/snapshot` | declared-unsupported | jateeter/RealityEngine_Rust#2 (K-line snapshots, spec phase 2; no item yet) |  |
+| GET | `/api/runtime/snapshots` | declared-unsupported | jateeter/RealityEngine_Rust#2 (K-line snapshots, spec phase 2; no item yet) |  |
+| GET | `/api/runtime/snapshot/:id` | declared-unsupported | jateeter/RealityEngine_Rust#2 (K-line snapshots, spec phase 2; no item yet) |  |
+| POST | `/api/runtime/restore` | declared-unsupported | jateeter/RealityEngine_Rust#2 (K-line snapshots, spec phase 2; no item yet) |  |
+| DELETE | `/api/runtime/snapshot/:id` | declared-unsupported | jateeter/RealityEngine_Rust#2 (K-line snapshots, spec phase 2; no item yet) |  |

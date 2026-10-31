@@ -66,6 +66,13 @@ Rules that bite:
   `SURFACE_RECORD=1 cargo test --test surface`, then name the issue for any new
   non-implemented entry. Re-vendor the spec with `scripts/refresh-surface.sh`
   when it changes. Status says a route exists, not that it behaves.
+- **An unimplemented RE route declares itself (#15).** The router's fallbacks
+  answer any specified RE route it does not serve with `501` and
+  `{error, participation: "unsupported", surface}` (SURFACE_SPEC.md, "An
+  unimplemented route answers `unsupported`"), matched against the vendored
+  `spec-routes.json`; anything else is a plain 404/405. So re-vendoring the spec
+  changes what the engine declares, and implementing a route needs nothing
+  removed.
 - **R2 compares against a live engine, and no engine is the oracle.**
   `scripts/differential.py` resets both, drives every corpus input sequence
   through `POST /api/machines/:id/process` (`{"inputEvent": ...}`, as the

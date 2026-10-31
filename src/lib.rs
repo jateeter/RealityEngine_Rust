@@ -3,7 +3,8 @@ use axum::{
     body::Bytes,
     extract::Query,
     extract::{Path, State, rejection::JsonRejection},
-    http::StatusCode,
+    http::{Method, StatusCode, Uri},
+    response::{IntoResponse, Response},
     routing::{get, post, put},
 };
 use serde_json::{Value, json};
@@ -1758,7 +1759,82 @@ pub fn app(engine: Engine) -> Router {
         .route("/api/engine/history", get(engine_history))
         .route("/api/engine/clock", get(engine_clock))
         .route("/api/engine/reset", post(reset))
+        .fallback(|method: Method, uri: Uri| async move {
+            unsupported_or(&method, &uri, StatusCode::NOT_FOUND)
+        })
+        .method_not_allowed_fallback(|method: Method, uri: Uri| async move {
+            unsupported_or(&method, &uri, StatusCode::METHOD_NOT_ALLOWED)
+        })
         .with_state(state)
+}
+
+/// SURFACE_SPEC.md's route tables, vendored by `scripts/refresh-surface.sh` and
+/// pinned to the spec's commit: the routes this engine is answerable for.
+const SPEC_ROUTES: &str = include_str!("../conformance/surface/spec-routes.json");
+
+/// The Reality Engine's specified routes as `(method, path)`, the path in the
+/// spec's own form (`:param` placeholders). The PE's are not this process's to
+/// answer.
+fn specified_re_routes() -> &'static [(String, String)] {
+    static ROUTES: std::sync::OnceLock<Vec<(String, String)>> = std::sync::OnceLock::new();
+    ROUTES.get_or_init(|| {
+        let spec: Value = serde_json::from_str(SPEC_ROUTES).expect("vendored spec-routes.json");
+        spec["routes"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter(|route| matches!(route["layer"].as_str(), Some("RE" | "RE-phase2")))
+            .filter_map(|route| {
+                Some((
+                    route["method"].as_str()?.to_owned(),
+                    route["path"].as_str()?.to_owned(),
+                ))
+            })
+            .collect()
+    })
+}
+
+/// The specified route a request this router does not serve was addressed to,
+/// as `"<METHOD> <path>"`; the most literal one when several templates match.
+/// `SSE` and `WS` routes are reached with `GET`.
+fn specified_surface(method: &Method, path: &str) -> Option<String> {
+    let requested: Vec<&str> = path.split('/').collect();
+    specified_re_routes()
+        .iter()
+        .filter(|(spec_method, _)| {
+            spec_method == method.as_str()
+                || (method == Method::GET && matches!(spec_method.as_str(), "SSE" | "WS"))
+        })
+        .filter_map(|(spec_method, template)| {
+            let segments: Vec<&str> = template.split('/').collect();
+            let matches = segments.len() == requested.len()
+                && segments
+                    .iter()
+                    .zip(&requested)
+                    .all(|(t, r)| (t.starts_with(':') && !r.is_empty()) || t == r);
+            let literal = segments.iter().filter(|t| !t.starts_with(':')).count();
+            matches.then(|| (literal, format!("{spec_method} {template}")))
+        })
+        .max_by_key(|(literal, _)| *literal)
+        .map(|(_, surface)| surface)
+}
+
+/// SURFACE_SPEC.md, "An unimplemented route answers `unsupported`": a specified
+/// route this engine does not implement answers 501 with the participation
+/// state, never silence. Anything else keeps the router's own `otherwise`.
+fn unsupported_or(method: &Method, uri: &Uri, otherwise: StatusCode) -> Response {
+    match specified_surface(method, uri.path()) {
+        Some(surface) => (
+            StatusCode::NOT_IMPLEMENTED,
+            Json(json!({
+                "error": format!("{surface} is not implemented by this runtime"),
+                "participation": "unsupported",
+                "surface": surface,
+            })),
+        )
+            .into_response(),
+        None => otherwise.into_response(),
+    }
 }
 
 pub fn engine_from_environment() -> Result<Engine, EngineError> {
@@ -2145,6 +2221,61 @@ mod tests {
         )
         .await;
         assert_eq!(r["machineOutput"]["vector"], json!([1.0]));
+    }
+
+    #[tokio::test]
+    async fn an_unimplemented_specified_route_declares_unsupported() {
+        let (app, id) = loaded_app();
+        let unsupported = |surface: &str| {
+            json!({
+                "error": format!("{surface} is not implemented by this runtime"),
+                "participation": "unsupported",
+                "surface": surface,
+            })
+        };
+        // A literal route, a template filled in, a path this engine serves
+        // under another method, and a phase-2 route.
+        for (method, uri, surface) in [
+            ("GET", "/api/arbitration", "GET /api/arbitration"),
+            (
+                "GET",
+                "/api/engine/steps/7/pair",
+                "GET /api/engine/steps/:n/pair",
+            ),
+            (
+                "POST",
+                "/api/machines/m/checkpoints/c/restore",
+                "POST /api/machines/:machineId/checkpoints/:cpId/restore",
+            ),
+            (
+                "PUT",
+                &format!("/api/machines/{id}"),
+                "PUT /api/machines/:id",
+            ),
+            (
+                "DELETE",
+                "/api/runtime/snapshot/s",
+                "DELETE /api/runtime/snapshot/:id",
+            ),
+        ] {
+            let (status, body) = send(&app, method, uri, Some(json!({}))).await;
+            assert_eq!(status, StatusCode::NOT_IMPLEMENTED, "{method} {uri}");
+            assert_eq!(body, unsupported(surface), "{method} {uri}");
+        }
+        // A served route still answers, and anything the spec does not define
+        // is the router's own 404 or 405, not a declaration.
+        let (status, _) = send(&app, "GET", &format!("/api/machines/{id}"), None).await;
+        assert_eq!(status, StatusCode::OK);
+        let (status, body) = send(&app, "GET", "/api/not-in-the-spec", None).await;
+        assert_eq!((status, body), (StatusCode::NOT_FOUND, Value::Null));
+        let (status, body) = send(&app, "PATCH", "/api/engine/reset", None).await;
+        assert_eq!(
+            (status, body),
+            (StatusCode::METHOD_NOT_ALLOWED, Value::Null)
+        );
+        // The engine answers for its own routes only, not the PE's.
+        let (status, _) = send(&app, "GET", "/api/sources", None).await;
+        assert_eq!(status, StatusCode::NOT_FOUND);
     }
 
     #[tokio::test]

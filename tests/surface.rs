@@ -10,10 +10,11 @@
 //!   5xx, and any 4xx carries the `{"error": "..."}` envelope.
 //! - `implemented-bad-envelope`: served, but a 4xx without that envelope.
 //! - `implemented-error`: served, but the probe got a 5xx.
-//! - `declared-unsupported`: answers with the participation state
-//!   `unsupported`. The wire shape for that is not specified yet
-//!   (RealityEngine_CI#607); a top-level `state` or `participation` of
-//!   `"unsupported"` is accepted until it is.
+//! - `declared-unsupported`: declares the participation state `unsupported` in
+//!   the shape SURFACE_SPEC.md rules ("An unimplemented route answers
+//!   `unsupported`"): `501` with `error`, `participation: "unsupported"` and
+//!   `surface` naming this route as the spec writes it. A declaration in any
+//!   other shape is `implemented-bad-envelope`.
 //! - `missing`: nothing answers. The router's own 404/405 with an empty body,
 //!   or no service at all (this repo has no Perception Engine). The spec calls
 //!   this silence, and it is the state every route must leave.
@@ -173,15 +174,28 @@ async fn probe_router(router: axum::Router, route: &Value) -> Observation {
             detail: format!("{status}, empty body"),
         };
     }
-    let declared = parsed.as_ref().is_some_and(|v| {
-        ["state", "participation"]
-            .iter()
-            .any(|key| v.get(*key).and_then(Value::as_str) == Some("unsupported"))
-    });
+    let surface = format!("{method} {}", route["path"].as_str().unwrap_or_default());
+    let declared = status == StatusCode::NOT_IMPLEMENTED
+        && parsed.as_ref().is_some_and(|v| {
+            v.get("participation").and_then(Value::as_str) == Some("unsupported")
+                && v.get("surface").and_then(Value::as_str) == Some(surface.as_str())
+                && v.get("error").and_then(Value::as_str).is_some()
+        });
     if declared {
         return Observation {
             status: "declared-unsupported",
             detail: format!("{status}, participation state unsupported"),
+        };
+    }
+    if parsed
+        .as_ref()
+        .and_then(|v| v.get("participation"))
+        .and_then(Value::as_str)
+        == Some("unsupported")
+    {
+        return Observation {
+            status: "implemented-bad-envelope",
+            detail: format!("{status} declares unsupported outside the ruled 501 shape"),
         };
     }
     if status.is_server_error() {
@@ -244,10 +258,12 @@ fn render_markdown(spec: &Value, routes: &[Value], record: &Map<String, Value>) 
     out.push_str(
         "\n`RE` and `PE` are the specification's implemented-contract tables; \
          `RE-phase2` is the K-line snapshot routes it specifies outside them. \
-         A `missing` route answers silently, which the specification forbids \
-         (\"Participation States\"); declaring each one `unsupported` is \
-         jateeter/RealityEngine_Rust#15. Status says a route exists, not that it \
-         conforms: the notes name known shape defects.\n",
+         An RE route this engine does not implement is `declared-unsupported`: \
+         it answers `501` with the participation state, as the specification \
+         rules (\"An unimplemented route answers `unsupported`\"). A `missing` \
+         route answers silently, which the specification forbids; the PE's are \
+         missing because this repo has no Perception Engine. Status says a route \
+         exists, not that it conforms: the notes name known shape defects.\n",
     );
     let mut current = (String::new(), String::new());
     for route in routes {
@@ -441,7 +457,29 @@ async fn classifier_distinguishes_every_state() {
             get(|| async {
                 (
                     StatusCode::NOT_IMPLEMENTED,
-                    Json(json!({ "state": "unsupported" })),
+                    Json(json!({
+                        "error": "GET /declared is not implemented by this runtime",
+                        "participation": "unsupported",
+                        "surface": "GET /declared",
+                    })),
+                )
+            }),
+        )
+        .route(
+            "/misdeclared",
+            get(|| async {
+                (
+                    StatusCode::NOT_IMPLEMENTED,
+                    Json(json!({ "error": "no", "participation": "unsupported", "surface": "GET /elsewhere" })),
+                )
+            }),
+        )
+        .route(
+            "/declared-as-404",
+            get(|| async {
+                (
+                    StatusCode::NOT_FOUND,
+                    Json(json!({ "error": "no", "participation": "unsupported", "surface": "GET /declared-as-404" })),
                 )
             }),
         )
@@ -462,6 +500,8 @@ async fn classifier_distinguishes_every_state() {
         ("GET", "/bad", "implemented-bad-envelope"),
         ("GET", "/boom", "implemented-error"),
         ("GET", "/declared", "declared-unsupported"),
+        ("GET", "/misdeclared", "implemented-bad-envelope"),
+        ("GET", "/declared-as-404", "implemented-bad-envelope"),
         ("SSE", "/stream", "implemented"),
         ("GET", "/nothing", "missing"),
         ("POST", "/ok", "missing"),
