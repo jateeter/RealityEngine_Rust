@@ -1157,6 +1157,6 @@ mod tests {
         );
         assert_eq!(explicit["text"], openai_text_format(&mapping));
         assert!(!supports_structured_output("nemotron-3-nano:4b-mlx"));
-        assert!(supports_structured_output("llama3.1:8b"));
+        assert!(supports_structured_output("gemma3:4b"));
     }
 }
