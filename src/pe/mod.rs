@@ -23,6 +23,7 @@ use super::*;
 use axum::routing::patch;
 use std::sync::atomic::AtomicU64;
 
+mod adapters;
 mod client;
 mod dispatch;
 mod ingest;
@@ -260,6 +261,9 @@ fn router(pe: SharedPe) -> Router {
             get(localai::ledger_route),
         )
         .route("/api/integrations/completions", post(ingest::completion))
+        .route("/api/integrations/ollama/dispatch", post(adapters::ollama))
+        .route("/api/integrations/openai/dispatch", post(adapters::openai))
+        .route("/api/integrations/acp/dispatch", post(adapters::acp))
         .route(
             "/api/integrations/healthkit/ingest",
             post(ingest::healthkit),
