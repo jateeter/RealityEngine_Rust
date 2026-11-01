@@ -1,24 +1,29 @@
-//! The Perception Engine (#20), workstream 1 (#46): its binary, router, health,
-//! state, configuration and reset.
+//! The Perception Engine (#20): its binary, router, health, state,
+//! configuration and reset (workstream 1, #46), and its sources, sensors and
+//! machine ingestion (workstream 2, `sources.rs`).
 //!
 //! Every engine instance is an RE and a PE. The PE assembles the universal
-//! Reality Event from its active sources and drives its RE with it; this first
-//! slice carries the run state that needs no source model. C++'s
+//! Reality Event from its active sources and drives its RE with it. C++'s
 //! `perception_engine_server.cpp` and `PerceptionEngine` are the concrete form
 //! this follows.
 //!
-//! - `GET /api/state` is C++ `state_json`. No source can be registered yet
-//!   (`/api/sources` declares itself unsupported), so `sources` is empty and
-//!   `assembledVector` is the zeroed persistent vector: what C++ reports with
-//!   nothing registered (`PE_SOURCE_BOOTSTRAP=off`).
+//! - `GET /api/state` is C++ `state_json`: the sources in `(name, id)` order and
+//!   the vector they assemble now.
 //! - `POST /api/reset` is layer-local (SURFACE_SPEC.md, "Reset is layer-local"):
-//!   it clears this PE's run state and never touches the RE.
+//!   it clears this PE's run state, validates each source's activity, and never
+//!   touches the RE or the source set.
 //! - `GET /api/health` is the specification's `{status, timestamp, version}`
 //!   (owner ruling, 2026-10-31), as the RE answers it.
+//! - At boot the PE interns its RE's machines as test sources unless
+//!   `PE_SOURCE_BOOTSTRAP` says not to (SURFACE_SPEC.md, "Machine ingestion").
 //! - Every other specified PE route answers 501 `unsupported`.
 
 use super::*;
 use axum::routing::patch;
+use std::sync::atomic::AtomicU64;
+
+mod client;
+mod sources;
 
 /// The auto-push interval C++ reports before any `POST /api/auto/start`.
 const AUTO_INTERVAL_MS: u64 = 1000;
@@ -31,6 +36,16 @@ pub struct PerceptionEngine {
     match_algorithm: &'static str,
     /// `null` before any push, then the step the last push produced.
     last_push: Value,
+    /// The RE this PE reads machines from and will drive.
+    re_url: String,
+    sources: BTreeMap<String, sources::Source>,
+    /// Each test source's cursor into its interned inputs.
+    test_step: BTreeMap<String, usize>,
+    contention: sources::Contention,
+    /// `PE_SOURCE_MERGE`: skip a machine that already has a source (the
+    /// default, skip-if-present), or rebuild one whose definition changed.
+    merge_only: bool,
+    rng: AtomicU64,
 }
 
 impl PerceptionEngine {
@@ -41,13 +56,25 @@ impl PerceptionEngine {
             persistent_vector: vec![0.0; dimension],
             match_algorithm: "gte",
             last_push: Value::Null,
+            re_url: "http://localhost:5801".to_owned(),
+            sources: BTreeMap::new(),
+            test_step: BTreeMap::new(),
+            contention: sources::Contention::default(),
+            merge_only: true,
+            rng: sources::new_rng(),
         }
+    }
+
+    /// The RE this PE reads its machines from.
+    pub fn with_re_url(mut self, re_url: impl Into<String>) -> Self {
+        self.re_url = re_url.into();
+        self
     }
 
     fn state(&self) -> Value {
         json!({
-            "sources": [],
-            "assembledVector": self.persistent_vector,
+            "sources": self.sources_json(),
+            "assembledVector": self.assemble(),
             "globalStep": self.global_step,
             "auto": { "running": false, "intervalMs": AUTO_INTERVAL_MS },
             "lastPush": self.last_push,
@@ -78,6 +105,7 @@ impl PerceptionEngine {
         self.global_step = 0;
         self.persistent_vector = vec![0.0; self.dimension];
         self.last_push = Value::Null;
+        self.reset_sources();
     }
 }
 
@@ -96,6 +124,17 @@ fn write(
     pe.write().map_err(|_| error_response(lock_error()))
 }
 
+fn body_of(bytes: &Bytes) -> Result<Value, (StatusCode, Json<Value>)> {
+    if bytes.is_empty() {
+        return Ok(json!({}));
+    }
+    serde_json::from_slice(bytes).map_err(|error| {
+        error_response(EngineError::bad_request(format!(
+            "invalid JSON body: {error}"
+        )))
+    })
+}
+
 async fn root() -> Json<Value> {
     Json(json!({ "service": "Perception Engine (Rust)", "status": "running" }))
 }
@@ -109,15 +148,7 @@ async fn state(State(pe): State<SharedPe>) -> Answer {
 }
 
 async fn config(State(pe): State<SharedPe>, body: Bytes) -> Answer {
-    let body = if body.is_empty() {
-        json!({})
-    } else {
-        serde_json::from_slice(&body).map_err(|error| {
-            error_response(EngineError::bad_request(format!(
-                "invalid JSON body: {error}"
-            )))
-        })?
-    };
+    let body = body_of(&body)?;
     write(&pe)?
         .configure(&body)
         .map(Json)
@@ -129,13 +160,25 @@ async fn reset(State(pe): State<SharedPe>) -> Answer {
     Ok(Json(json!({ "success": true })))
 }
 
-pub fn pe_app(pe: PerceptionEngine) -> Router {
+fn router(pe: SharedPe) -> Router {
     Router::new()
         .route("/", get(root))
         .route("/api/health", get(health))
         .route("/api/state", get(state))
         .route("/api/config", patch(config))
         .route("/api/reset", post(reset))
+        .route("/api/sources", get(sources::list).post(sources::create))
+        .route(
+            "/api/sources/{id}",
+            patch(sources::update).delete(sources::remove),
+        )
+        .route(
+            "/api/sources/bootstrap-from-machines",
+            post(sources::bootstrap),
+        )
+        .route("/api/sources/contention", get(sources::contention))
+        .route("/api/sensors/{sensor_id}", post(sources::sensor))
+        .route("/api/machines", get(sources::machines))
         .fallback(|method: Method, uri: Uri| async move {
             unsupported_or(Layer::Pe, &method, &uri, StatusCode::NOT_FOUND)
         })
@@ -143,12 +186,27 @@ pub fn pe_app(pe: PerceptionEngine) -> Router {
             unsupported_or(Layer::Pe, &method, &uri, StatusCode::METHOD_NOT_ALLOWED)
         })
         .layer(axum::middleware::map_response(ecmascript_numbers))
-        .with_state(Arc::new(RwLock::new(pe)))
+        .with_state(pe)
+}
+
+pub fn pe_app(pe: PerceptionEngine) -> Router {
+    router(Arc::new(RwLock::new(pe)))
+}
+
+/// A flag as SURFACE_SPEC.md, "Machine ingestion", reads `PE_SOURCE_BOOTSTRAP`:
+/// unset, `auto`, `on`, `1`, `true` and `yes` are on; `off`, `0`, `false` and
+/// `no` are off.
+fn flag_on(value: Option<&str>) -> bool {
+    !matches!(
+        value,
+        Some("off" | "OFF" | "0" | "false" | "FALSE" | "no" | "NO")
+    )
 }
 
 /// `PERCEPTION_ENGINE_PORT` (default 5800), `VECTOR_DIMENSION` (default
-/// 7680), and `RE_URL`, the RE this PE will drive (default
-/// `http://localhost:5801`, the Rust RE's port).
+/// 7680), `RE_URL`, the RE this PE reads and drives (default
+/// `http://localhost:5801`, the Rust RE's port), `PE_SOURCE_BOOTSTRAP` and
+/// `PE_SOURCE_MERGE`.
 pub async fn serve() -> Result<(), Box<dyn std::error::Error>> {
     let port = std::env::var("PERCEPTION_ENGINE_PORT")
         .ok()
@@ -160,7 +218,16 @@ pub async fn serve() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap_or(7680);
     let re_url = std::env::var("RE_URL").unwrap_or_else(|_| "http://localhost:5801".to_owned());
     eprintln!("perception-engine: port {port}, perceptionDimension {dimension}, RE {re_url}");
+    let mut engine = PerceptionEngine::new(dimension).with_re_url(re_url.clone());
+    if let Ok(merge) = std::env::var("PE_SOURCE_MERGE") {
+        engine.merge_only = flag_on(Some(&merge));
+    }
+    let pe = Arc::new(RwLock::new(engine));
+    if flag_on(std::env::var("PE_SOURCE_BOOTSTRAP").ok().as_deref()) {
+        let summary = sources::bootstrap_from_re(&pe, &re_url).await.to_json();
+        eprintln!("perception-engine: boot bootstrap {summary}");
+    }
     let listener = tokio::net::TcpListener::bind(("0.0.0.0", port)).await?;
-    axum::serve(listener, pe_app(PerceptionEngine::new(dimension))).await?;
+    axum::serve(listener, router(pe)).await?;
     Ok(())
 }

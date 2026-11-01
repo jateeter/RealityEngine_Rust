@@ -2,8 +2,7 @@
   "purpose": "Implementation status of every SURFACE_SPEC route in this repo. Rewrite with SURFACE_RECORD=1 cargo test --test surface; then give every UNCLASSIFIED entry its issue.",
   "routes": {
     "PE DELETE /api/sources/:id": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#20"
+      "status": "implemented"
     },
     "PE GET /": {
       "status": "implemented"
@@ -56,7 +55,8 @@
       "tracking": "jateeter/RealityEngine_Rust#20"
     },
     "PE GET /api/machines": {
-      "status": "declared-unsupported",
+      "notes": "#20 workstream 2: served. The surface probe has no RE behind it, so it answers the proxy's 502; beside an RE it returns the RE's GET /api/machines as answered, identical to the C++ PE on the regression corpus",
+      "status": "implemented-error",
       "tracking": "jateeter/RealityEngine_Rust#20"
     },
     "PE GET /api/mqtt/mappings": {
@@ -72,12 +72,10 @@
       "tracking": "jateeter/RealityEngine_Rust#20"
     },
     "PE GET /api/sources": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#20"
+      "status": "implemented"
     },
     "PE GET /api/sources/contention": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#20"
+      "status": "implemented"
     },
     "PE GET /api/state": {
       "status": "implemented"
@@ -94,8 +92,7 @@
       "tracking": "jateeter/RealityEngine_Rust#20"
     },
     "PE PATCH /api/sources/:id": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#20"
+      "status": "implemented"
     },
     "PE POST /api/auto/start": {
       "status": "declared-unsupported",
@@ -157,20 +154,17 @@
       "status": "implemented"
     },
     "PE POST /api/sensors/:sensorId": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#20"
+      "status": "implemented"
     },
     "PE POST /api/signals": {
       "status": "declared-unsupported",
       "tracking": "jateeter/RealityEngine_Rust#20"
     },
     "PE POST /api/sources": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#20"
+      "status": "implemented"
     },
     "PE POST /api/sources/bootstrap-from-machines": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#20"
+      "status": "implemented"
     },
     "PE PUT /api/mqtt/mappings": {
       "status": "declared-unsupported",
