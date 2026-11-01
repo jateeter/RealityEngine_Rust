@@ -6,7 +6,7 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 
 | layer | implemented | routes |
 |---|---|---|
-| RE | 27 | 79 |
+| RE | 37 | 79 |
 | PE | 0 | 47 |
 | RE-phase2 | 0 | 5 |
 
@@ -69,12 +69,12 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 | method | path | status | tracking | notes |
 |---|---|---|---|---|
 | GET | `/api/engine/stats` | implemented |  |  |
-| GET | `/api/engine/active` | declared-unsupported | jateeter/RealityEngine_Rust#11 |  |
+| GET | `/api/engine/active` | implemented |  |  |
 | GET | `/api/engine/history` | implemented |  |  |
 | GET | `/api/engine/osre-history` | implemented |  |  |
 | GET | `/api/engine/isre-history` | implemented |  |  |
 | GET | `/api/engine/steps/:n/pair` | implemented |  |  |
-| GET | `/api/engine/clock` | implemented |  | instance and lamport per RealityEngine_CI#296 (allocated UUID, persisted reservation, fcntl instance lock); only the space-runtime step path commits a step, which this engine lacks, so step is -1 and the clock does not tick until #11 |
+| GET | `/api/engine/clock` | implemented |  | instance and lamport per RealityEngine_CI#296 (allocated UUID, persisted reservation, fcntl instance lock); the clock ticks once per committed step, pushed or simulated (#11) |
 | GET | `/api/arbitration` | declared-unsupported | jateeter/RealityEngine_Rust#12 |  |
 | POST | `/api/engine/process` | implemented |  |  |
 | POST | `/api/engine/reset` | implemented |  |  |
@@ -115,14 +115,14 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 
 | method | path | status | tracking | notes |
 |---|---|---|---|---|
-| POST | `/api/perceptual-simulation/configure/chunk` | declared-unsupported | jateeter/RealityEngine_Rust#11 |  |
-| POST | `/api/perceptual-simulation/configure/commit` | declared-unsupported | jateeter/RealityEngine_Rust#11 |  |
-| POST | `/api/perceptual-simulation/start` | declared-unsupported | jateeter/RealityEngine_Rust#11 |  |
-| POST | `/api/perceptual-simulation/stop` | declared-unsupported | jateeter/RealityEngine_Rust#11 |  |
-| POST | `/api/perceptual-simulation/step` | declared-unsupported | jateeter/RealityEngine_Rust#11 |  |
-| POST | `/api/perceptual-simulation/reset` | declared-unsupported | jateeter/RealityEngine_Rust#11 |  |
-| GET | `/api/perceptual-simulation/state` | declared-unsupported | jateeter/RealityEngine_Rust#11 |  |
-| GET | `/api/perceptual-simulation/history` | declared-unsupported | jateeter/RealityEngine_Rust#11 |  |
+| POST | `/api/perceptual-simulation/configure/chunk` | implemented |  |  |
+| POST | `/api/perceptual-simulation/configure/commit` | implemented |  |  |
+| POST | `/api/perceptual-simulation/start` | implemented |  |  |
+| POST | `/api/perceptual-simulation/stop` | implemented |  |  |
+| POST | `/api/perceptual-simulation/step` | implemented |  |  |
+| POST | `/api/perceptual-simulation/reset` | implemented |  |  |
+| GET | `/api/perceptual-simulation/state` | implemented |  | slice 3 of #11: identical to C++ over 30 regression-corpus steps except machines, which carries this runtime's GET /api/machines summary (C++ serves the full machine; #13) |
+| GET | `/api/perceptual-simulation/history` | implemented |  |  |
 
 ## RE: Sampler
 
@@ -139,7 +139,7 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 |---|---|---|---|---|
 | POST | `/api/perception/observe` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
 | POST | `/api/perception/diagnostic` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
-| POST | `/api/perceive` | implemented |  | slices 1-2 of #11: 60 full-corpus steps identical to C++ on the (ISRE, OSRE) pairs, mergeBatch with governance, activeRegions, eventBus and machineResults; only and matchAlgorithmOverride are refused (slice 4) |
+| POST | `/api/perceive` | implemented |  | slices 1-3 of #11: 60 full-corpus and 60 regression-corpus steps identical to C++ on the (ISRE, OSRE) pairs, mergeBatch with governance, activeRegions, eventBus and machineResults; only and matchAlgorithmOverride are refused (slice 4) |
 
 ## RE: Governance
 
@@ -159,7 +159,7 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 
 | method | path | status | tracking | notes |
 |---|---|---|---|---|
-| SSE | `/api/engine/stream` | declared-unsupported | jateeter/RealityEngine_Rust#11 |  |
+| SSE | `/api/engine/stream` | implemented |  | slice 3 of #11: the bare step, as C++ and Scala send it; LSP and SURFACE_SPEC wrap it as {type: step-result, step}, a split for the owner |
 
 ## PE: Info & Health
 

@@ -242,11 +242,10 @@
       "tracking": "jateeter/RealityEngine_Rust#13"
     },
     "RE GET /api/engine/active": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#11"
+      "status": "implemented"
     },
     "RE GET /api/engine/clock": {
-      "notes": "instance and lamport per RealityEngine_CI#296 (allocated UUID, persisted reservation, fcntl instance lock); only the space-runtime step path commits a step, which this engine lacks, so step is -1 and the clock does not tick until #11",
+      "notes": "instance and lamport per RealityEngine_CI#296 (allocated UUID, persisted reservation, fcntl instance lock); the clock ticks once per committed step, pushed or simulated (#11)",
       "status": "implemented"
     },
     "RE GET /api/engine/config": {
@@ -310,12 +309,11 @@
       "status": "implemented"
     },
     "RE GET /api/perceptual-simulation/history": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#11"
+      "status": "implemented"
     },
     "RE GET /api/perceptual-simulation/state": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#11"
+      "notes": "slice 3 of #11: identical to C++ over 30 regression-corpus steps except machines, which carries this runtime's GET /api/machines summary (C++ serves the full machine; #13)",
+      "status": "implemented"
     },
     "RE GET /api/runtime/metrics": {
       "status": "declared-unsupported",
@@ -398,7 +396,7 @@
       "tracking": "jateeter/RealityEngine_Rust#13"
     },
     "RE POST /api/perceive": {
-      "notes": "slices 1-2 of #11: 60 full-corpus steps identical to C++ on the (ISRE, OSRE) pairs, mergeBatch with governance, activeRegions, eventBus and machineResults; only and matchAlgorithmOverride are refused (slice 4)",
+      "notes": "slices 1-3 of #11: 60 full-corpus and 60 regression-corpus steps identical to C++ on the (ISRE, OSRE) pairs, mergeBatch with governance, activeRegions, eventBus and machineResults; only and matchAlgorithmOverride are refused (slice 4)",
       "status": "implemented"
     },
     "RE POST /api/perception/diagnostic": {
@@ -410,28 +408,22 @@
       "tracking": "jateeter/RealityEngine_Rust#13"
     },
     "RE POST /api/perceptual-simulation/configure/chunk": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#11"
+      "status": "implemented"
     },
     "RE POST /api/perceptual-simulation/configure/commit": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#11"
+      "status": "implemented"
     },
     "RE POST /api/perceptual-simulation/reset": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#11"
+      "status": "implemented"
     },
     "RE POST /api/perceptual-simulation/start": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#11"
+      "status": "implemented"
     },
     "RE POST /api/perceptual-simulation/step": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#11"
+      "status": "implemented"
     },
     "RE POST /api/perceptual-simulation/stop": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#11"
+      "status": "implemented"
     },
     "RE POST /api/sampler/sample": {
       "status": "declared-unsupported",
@@ -484,8 +476,8 @@
       "tracking": "jateeter/RealityEngine_Rust#13"
     },
     "RE SSE /api/engine/stream": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#11"
+      "notes": "slice 3 of #11: the bare step, as C++ and Scala send it; LSP and SURFACE_SPEC wrap it as {type: step-result, step}, a split for the owner",
+      "status": "implemented"
     },
     "RE-phase2 DELETE /api/runtime/snapshot/:id": {
       "status": "declared-unsupported",

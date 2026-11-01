@@ -5,6 +5,8 @@ edition = "2024"
 
 [dependencies]
 axum = "0.8.7"
+# `unfold` and `chain`: the step stream (`GET /api/engine/stream`) is a Stream.
+futures-util = { version = "0.3.34", default-features = false }
 # `fcntl`: the instance lock is a POSIX record lock, which `instance_uuids.py live` can see.
 libc = "0.2.191"
 serde = { version = "1.0.228", features = ["derive"] }
