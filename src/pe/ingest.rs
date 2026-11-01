@@ -86,12 +86,19 @@ pub(crate) async fn completion(State(pe): State<SharedPe>, body: Bytes) -> Respo
         Ok(body) => body,
         Err(error) => return error.into_response(),
     };
-    let config = match config(&pe) {
+    let (status, reply) = ingest_completion(&pe, &body).await;
+    (status, Json(reply)).into_response()
+}
+
+/// C++ `ingest_completion`: the route's body once it is an object, and the
+/// path an integration's dispatch commits its result through.
+pub(crate) async fn ingest_completion(pe: &SharedPe, body: &Value) -> (StatusCode, Value) {
+    let config = match config(pe) {
         Ok(config) => config,
-        Err(error) => return error.into_response(),
+        Err((status, Json(reply))) => return (status, reply),
     };
-    let mapping_id = text(&body, "sourceMappingId")
-        .or_else(|| text(&body, "mappingId"))
+    let mapping_id = text(body, "sourceMappingId")
+        .or_else(|| text(body, "mappingId"))
         .unwrap_or_default()
         .to_owned();
     let mut mapping = json!({});
@@ -99,22 +106,22 @@ pub(crate) async fn completion(State(pe): State<SharedPe>, body: Bytes) -> Respo
         match config.source_mappings.get(&mapping_id) {
             Some(found) => mapping = found.clone(),
             None => {
-                return error_response(EngineError::not_found(format!(
+                let (status, Json(reply)) = error_response(EngineError::not_found(format!(
                     "Unknown sourceMappingId \"{mapping_id}\""
-                )))
-                .into_response();
+                )));
+                return (status, reply);
             }
         }
     }
     let mapping = merge(mapping, &body["sourceMapping"]);
-    let provider = text(&body, "provider").unwrap_or("external").to_owned();
-    let agent = text(&body, "agent")
-        .or_else(|| text(&body, "agentId"))
+    let provider = text(body, "provider").unwrap_or("external").to_owned();
+    let agent = text(body, "agent")
+        .or_else(|| text(body, "agentId"))
         .unwrap_or("agent")
         .to_owned();
-    let correlation = text(&body, "correlationId").unwrap_or_default().to_owned();
-    let envelope = text(&body, "envelopeId").unwrap_or_default().to_owned();
-    let mut sensor_id = text(&body, "sensorId")
+    let correlation = text(body, "correlationId").unwrap_or_default().to_owned();
+    let envelope = text(body, "envelopeId").unwrap_or_default().to_owned();
+    let mut sensor_id = text(body, "sensorId")
         .or_else(|| text(&mapping, "sensorId"))
         .unwrap_or_default()
         .to_owned();
@@ -136,7 +143,7 @@ pub(crate) async fn completion(State(pe): State<SharedPe>, body: Bytes) -> Respo
     }
     let mut signal = json!({
         "sensorId": sensor_id,
-        "name": text(&body, "name").or_else(|| text(&mapping, "name")).map_or_else(
+        "name": text(body, "name").or_else(|| text(&mapping, "name")).map_or_else(
             || format!("agent:{provider}/{agent}/completion"),
             str::to_owned,
         ),
@@ -158,9 +165,9 @@ pub(crate) async fn completion(State(pe): State<SharedPe>, body: Bytes) -> Respo
     } else if mapping["region"].is_object() {
         signal["region"] = mapping["region"].clone();
     }
-    let (status, reply) = signal_reply(&pe, &signal).await;
+    let (status, reply) = signal_reply(pe, &signal).await;
     if !status.is_success() {
-        return (status, Json(reply)).into_response();
+        return (status, reply);
     }
     let mut completion = json!({
         "provider": provider,
@@ -169,14 +176,14 @@ pub(crate) async fn completion(State(pe): State<SharedPe>, body: Bytes) -> Respo
         "sourceMappingId": mapping_id,
         "correlationId": correlation,
         "envelopeId": envelope,
-        "completionId": text(&body, "completionId").or_else(|| text(&body, "id")).unwrap_or_default(),
+        "completionId": text(body, "completionId").or_else(|| text(body, "id")).unwrap_or_default(),
         "receivedAt": now_ms(),
     });
     if body["metadata"].is_object() {
         completion["metadata"] = body["metadata"].clone();
     }
     announce(
-        &pe,
+        pe,
         json!({
             "type": "agent.completion.received",
             "provider": provider,
@@ -188,7 +195,10 @@ pub(crate) async fn completion(State(pe): State<SharedPe>, body: Bytes) -> Respo
             "timestamp": now_ms(),
         }),
     );
-    Json(json!({ "success": true, "completion": completion, "signal": reply })).into_response()
+    (
+        StatusCode::OK,
+        json!({ "success": true, "completion": completion, "signal": reply }),
+    )
 }
 
 /// `HKQuantityTypeIdentifierHeartRate` -> `heartrate` (C++

@@ -34,11 +34,11 @@ pub(crate) struct MachineCatalog {
 
 /// The dispatcher's configuration, ledger and counters.
 pub(crate) struct Dispatch {
-    enabled: bool,
+    pub(crate) enabled: bool,
     mode: String,
     graphql_endpoint: String,
     capacity: usize,
-    records: BTreeMap<String, Value>,
+    pub(crate) records: BTreeMap<String, Value>,
     order: VecDeque<String>,
     envelopes_created: u64,
     replays_created: u64,
@@ -72,7 +72,7 @@ fn truthy(value: &str) -> bool {
     matches!(value, "1" | "true" | "TRUE" | "yes" | "YES")
 }
 
-fn mint(prefix: &str) -> String {
+pub(crate) fn mint(prefix: &str) -> String {
     format!(
         "{prefix}-{}",
         new_machine_id().trim_start_matches("machine-")
