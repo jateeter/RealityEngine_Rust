@@ -19,7 +19,7 @@ The Perception Engine listens on `0.0.0.0:5800` by default
 (`PERCEPTION_ENGINE_PORT`), with `VECTOR_DIMENSION` as above and `RE_URL` naming
 the Reality Engine it drives (default `http://localhost:5801`). At boot it interns
 its RE's machines as test sources unless `PE_SOURCE_BOOTSTRAP=off`. It serves its
-health, state, configuration and reset, sources and sensors, the machines
+health, state, configuration and reset, sources, sensors and signals, the machines
 proxy, the push cycle (`POST /api/push`, auto push) that drives its RE, and its
 event streams (SSE `/api/events`, WebSocket `/ws`) today;
 every other PE route answers `501` with the participation state `unsupported`.

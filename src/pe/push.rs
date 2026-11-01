@@ -389,21 +389,26 @@ async fn owed_push(pe: SharedPe, pushes: Arc<Pushes>) {
     pushes.release();
 }
 
-/// C++ `do_push`.
-pub(crate) async fn push(
+/// C++ `do_push`: the status and the body it answers.
+pub(crate) async fn push_json(
     pe: &SharedPe,
     include_machine_results: bool,
     run_async: bool,
     only: Value,
-) -> Response {
+) -> (StatusCode, Value) {
     let pushes = match pe.read() {
         Ok(state) => Arc::clone(&state.pushes),
-        Err(_) => return error_response(lock_error()).into_response(),
+        Err(_) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                json!({ "error": lock_error().message }),
+            );
+        }
     };
     if !pushes.claim() {
         let mut answer = failure(pe, "push already in progress".to_owned());
         answer["coalesced"] = json!(true);
-        return (StatusCode::CONFLICT, Json(answer)).into_response();
+        return (StatusCode::CONFLICT, answer);
     }
     let id = format!("push-{}", new_machine_id().trim_start_matches("machine-"));
     pushes.record(&id, "queued", None);
@@ -423,11 +428,20 @@ pub(crate) async fn push(
         tokio::spawn(job);
         return (
             StatusCode::ACCEPTED,
-            Json(json!({ "success": true, "accepted": true, "jobId": id, "statusEndpoint": format!("/api/push/{id}") })),
-        )
-            .into_response();
+            json!({ "success": true, "accepted": true, "jobId": id, "statusEndpoint": format!("/api/push/{id}") }),
+        );
     }
-    Json(job.await).into_response()
+    (StatusCode::OK, job.await)
+}
+
+pub(crate) async fn push(
+    pe: &SharedPe,
+    include_machine_results: bool,
+    run_async: bool,
+    only: Value,
+) -> Response {
+    let (status, body) = push_json(pe, include_machine_results, run_async, only).await;
+    (status, Json(body)).into_response()
 }
 
 pub(crate) async fn push_route(State(pe): State<SharedPe>, body: Bytes) -> Response {

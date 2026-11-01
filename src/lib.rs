@@ -4669,10 +4669,7 @@ mod tests {
                 "surface": surface,
             })
         };
-        for (method, uri, surface) in [
-            ("POST", "/api/signals", "POST /api/signals"),
-            ("GET", "/api/mqtt/status", "GET /api/mqtt/status"),
-        ] {
+        for (method, uri, surface) in [("GET", "/api/mqtt/status", "GET /api/mqtt/status")] {
             let (status, body) = send(&app, method, uri, None).await;
             assert_eq!(status, StatusCode::NOT_IMPLEMENTED, "{method} {uri}");
             assert_eq!(body, unsupported(surface), "{method} {uri}");
@@ -4820,6 +4817,81 @@ mod tests {
             body,
             json!({ "transition": 0, "cells": [], "folds": [], "counters": [] })
         );
+    }
+
+    /// #20: `POST /api/signals` registers a sensor live from the value it
+    /// arrives with, under a declared `sensorId` or a minted one.
+    #[tokio::test]
+    async fn signals_register_live_sensors_and_feed_them() {
+        let app = pe::pe_app(pe::PerceptionEngine::new(4));
+        for (body, status, error) in [
+            (
+                json!({ "sensorId": "s" }),
+                StatusCode::BAD_REQUEST,
+                "values must be a non-empty array",
+            ),
+            (
+                json!({ "values": [1] }),
+                StatusCode::BAD_REQUEST,
+                "signal requires sensorId or region",
+            ),
+            (
+                json!({ "sensorId": "ghost", "values": [1] }),
+                StatusCode::NOT_FOUND,
+                "No sensor source with sensorId \"ghost\"",
+            ),
+        ] {
+            let (got, body) = send(&app, "POST", "/api/signals", Some(body)).await;
+            assert_eq!((got, body["error"].as_str()), (status, Some(error)));
+        }
+        let (_, body) = send(
+            &app,
+            "POST",
+            "/api/signals",
+            Some(json!({ "sensorId": "healthkit.sleep", "origin": "healthkit", "region": { "offset": 0, "length": 2 }, "values": [0.5, 2] })),
+        )
+        .await;
+        let source = &body["source"];
+        assert_eq!(
+            (
+                &source["id"],
+                &source["name"],
+                &source["active"],
+                &source["ttlMs"],
+                &source["origin"]
+            ),
+            (
+                &json!("healthkit.sleep"),
+                &json!("healthkit.sleep"),
+                &json!(true),
+                &json!(30000),
+                &json!("healthkit")
+            )
+        );
+        let (_, body) = send(
+            &app,
+            "POST",
+            "/api/signals",
+            Some(json!({ "region": { "offset": 2, "length": 1 }, "values": [1] })),
+        )
+        .await;
+        assert_eq!(body["source"]["name"], json!("external/signal"));
+        assert!(
+            body["source"]["sensorId"]
+                .as_str()
+                .unwrap()
+                .starts_with("external-sensor-")
+        );
+        let (_, body) = send(
+            &app,
+            "POST",
+            "/api/signals",
+            Some(json!({ "sensorId": "healthkit.sleep", "values": [0.25] })),
+        )
+        .await;
+        assert_eq!(body["source"]["lastValue"], json!([0.25]));
+        let (_, state) = send(&app, "GET", "/api/state", None).await;
+        assert_eq!(state["assembledVector"], json!([0.25, 0, 1, 0]));
     }
 
     /// #20 workstream 3: a push drives the PE's RE, adopts the space it

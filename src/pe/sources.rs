@@ -1068,6 +1068,103 @@ pub(crate) async fn sensor(
     ))
 }
 
+impl PerceptionEngine {
+    /// The first sensor, in listing order, with that `sensorId` (C++
+    /// `sensor_source_by_id`).
+    fn sensor_by_id(&self, sensor_id: &str) -> Option<Source> {
+        self.sources_in_order()
+            .into_iter()
+            .find(|s| matches!(&s.detail, Detail::Sensor { sensor_id: id, .. } if id == sensor_id))
+            .cloned()
+    }
+
+    /// C++ `ingest_signal`, without the push: a value for a sensor named by
+    /// `sensorId`, or a sensor registered for it. An unknown `sensorId` with a
+    /// `region` registers a sensor under that id; a `region` alone registers
+    /// one under a minted id. Either is live from the value it arrives with.
+    fn ingest_signal(&mut self, body: &Value) -> Result<Option<Source>, EngineError> {
+        let values = numbers(&body["values"]);
+        if values.is_empty() {
+            return Err(EngineError::bad_request("values must be a non-empty array"));
+        }
+        let origin = body["origin"].as_str().unwrap_or("signal").to_owned();
+        let region = &body["region"];
+        let sensor = |id: String, name: String, sensor_id: String| Source {
+            id,
+            name,
+            region: Region {
+                offset: region["offset"].as_f64().unwrap_or(0.0) as i64,
+                length: region["length"].as_f64().unwrap_or(0.0) as i64,
+            },
+            active: true,
+            activated_at: 0,
+            detail: Detail::Sensor {
+                sensor_id,
+                last_value: values.clone(),
+                last_updated: Some(now()),
+                ttl_ms: body["ttlMs"].as_f64().unwrap_or(30000.0) as i64,
+                origin: origin.clone(),
+            },
+        };
+        if let Some(sensor_id) = body["sensorId"].as_str() {
+            if self.update_sensor(sensor_id, values.clone()) {
+                return Ok(self.sensor_by_id(sensor_id));
+            }
+            if !region.is_object() {
+                return Err(EngineError::not_found(format!(
+                    "No sensor source with sensorId \"{sensor_id}\""
+                )));
+            }
+            // A declared sensorId is the source's identity on every runtime
+            // (RealityEngine_CI#518); only undeclared identity is minted.
+            let name = body["name"].as_str().unwrap_or(sensor_id).to_owned();
+            let source = sensor(sensor_id.to_owned(), name, sensor_id.to_owned());
+            return Ok(Some(self.add_source(source)));
+        }
+        if !region.is_object() {
+            return Err(EngineError::bad_request(
+                "signal requires sensorId or region",
+            ));
+        }
+        let name = body["name"]
+            .as_str()
+            .unwrap_or("external/signal")
+            .to_owned();
+        let sensor_id = body["name"].as_str().map_or_else(
+            || {
+                format!(
+                    "external-sensor-{}",
+                    new_machine_id().trim_start_matches("machine-")
+                )
+            },
+            str::to_owned,
+        );
+        Ok(Some(self.add_source(sensor(
+            String::new(),
+            name,
+            sensor_id,
+        ))))
+    }
+}
+
+/// `POST /api/signals`: a value from an integration, and with `triggerPush`
+/// the push it asks for, nested under `push` (`compactPush` trims it).
+pub(crate) async fn signal(State(pe): State<SharedPe>, body: Bytes) -> Answer {
+    let body = body_of(&body)?;
+    let source = write(&pe)?.ingest_signal(&body).map_err(error_response)?;
+    let mut response = json!({
+        "success": true,
+        "timestamp": now_ms(),
+        "source": source.map(|s| s.to_json(now())),
+    });
+    if body["triggerPush"].as_bool().unwrap_or(false) {
+        let include = !body["compactPush"].as_bool().unwrap_or(false);
+        response["push"] = push::push_json(&pe, include, false, Value::Null).await.1;
+    }
+    read(&pe)?.broadcast_state();
+    Ok(Json(response))
+}
+
 /// `GET {re}/api/machines`, then the interning, outside the lock while the
 /// RE answers. A failure is reported in `errors`, never as a failed request.
 pub(crate) async fn bootstrap_from_re(pe: &SharedPe, re_url: &str) -> Bootstrap {
