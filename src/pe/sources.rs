@@ -1069,6 +1069,11 @@ pub(crate) async fn sensor(
 }
 
 impl PerceptionEngine {
+    /// C++ `sensor_exists`.
+    pub(crate) fn has_sensor(&self, sensor_id: &str) -> bool {
+        self.sensor_by_id(sensor_id).is_some()
+    }
+
     /// The first sensor, in listing order, with that `sensorId` (C++
     /// `sensor_source_by_id`).
     fn sensor_by_id(&self, sensor_id: &str) -> Option<Source> {

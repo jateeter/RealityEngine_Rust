@@ -19,16 +19,13 @@
       "status": "implemented"
     },
     "PE GET /api/integrations/acp/status": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#20"
+      "status": "implemented"
     },
     "PE GET /api/integrations/carekit/status": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#20"
+      "status": "implemented"
     },
     "PE GET /api/integrations/healthkit/status": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#20"
+      "status": "implemented"
     },
     "PE GET /api/integrations/localai/catalog": {
       "status": "declared-unsupported",
@@ -39,20 +36,16 @@
       "tracking": "jateeter/RealityEngine_Rust#20"
     },
     "PE GET /api/integrations/localai/status": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#20"
+      "status": "implemented"
     },
     "PE GET /api/integrations/ollama/status": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#20"
+      "status": "implemented"
     },
     "PE GET /api/integrations/openai/status": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#20"
+      "status": "implemented"
     },
     "PE GET /api/integrations/status": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#20"
+      "status": "implemented"
     },
     "PE GET /api/machines": {
       "notes": "#20 workstream 2: served. The surface probe has no RE behind it, so it answers the proxy's 502; beside an RE it returns the RE's GET /api/machines as answered, identical to the C++ PE on the regression corpus",
