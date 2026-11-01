@@ -311,7 +311,7 @@ pub(crate) async fn active(State(engine): State<SharedEngine>) -> Answer {
 }
 
 /// `SSE_HEARTBEAT_MS`, default 15 s (SURFACE_SPEC.md: a keepalive every 15 s).
-fn heartbeat() -> Duration {
+pub(crate) fn heartbeat() -> Duration {
     let ms = std::env::var("SSE_HEARTBEAT_MS")
         .ok()
         .and_then(|raw| raw.parse::<u64>().ok())

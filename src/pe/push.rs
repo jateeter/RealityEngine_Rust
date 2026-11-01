@@ -283,9 +283,22 @@ fn failure(pe: &SharedPe, error: String) -> Value {
     json!({ "success": false, "step": null, "timestamp": now_ms(), "globalStep": global_step, "error": error })
 }
 
+/// One push, and what it tells the streams: the new state when the step
+/// stood, and the reply either way (C++ `execute_push`'s broadcasts).
+async fn execute(pe: &SharedPe, include_machine_results: bool, only: &Value) -> Value {
+    let result = transition(pe, include_machine_results, only).await;
+    if let Ok(state) = pe.read() {
+        if result["success"] == json!(true) {
+            state.broadcast_state();
+        }
+        state.broadcast_push_result(&result);
+    }
+    result
+}
+
 /// C++ `execute_push`: one transition, and the reply trimmed to what the
 /// caller asked to see.
-async fn execute(pe: &SharedPe, include_machine_results: bool, only: &Value) -> Value {
+async fn transition(pe: &SharedPe, include_machine_results: bool, only: &Value) -> Value {
     let (vector, match_algorithm, re_url) = {
         let Ok(mut state) = pe.write() else {
             return failure(pe, lock_error().message);

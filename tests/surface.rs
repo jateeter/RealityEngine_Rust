@@ -95,9 +95,49 @@ async fn probe(route: &Value) -> Observation {
     probe_router(router, route).await
 }
 
+/// A WebSocket upgrade needs a connection to upgrade, which `oneshot` does not
+/// have: the router is served on a loopback socket and sent a real upgrade
+/// request. `true` when it answers `101 Switching Protocols`.
+async fn upgrades(router: axum::Router, path: &str) -> bool {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    let Ok(listener) = tokio::net::TcpListener::bind("127.0.0.1:0").await else {
+        return false;
+    };
+    let Ok(address) = listener.local_addr() else {
+        return false;
+    };
+    let server = tokio::spawn(std::future::IntoFuture::into_future(axum::serve(
+        listener, router,
+    )));
+    let answered = async {
+        let mut stream = tokio::net::TcpStream::connect(address).await.ok()?;
+        let request = format!(
+            "GET {path} HTTP/1.1\r\nHost: {address}\r\nConnection: Upgrade\r\nUpgrade: websocket\r\n\
+             Sec-WebSocket-Version: 13\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n\r\n"
+        );
+        stream.write_all(request.as_bytes()).await.ok()?;
+        let mut head = [0_u8; 12];
+        stream.read_exact(&mut head).await.ok()?;
+        Some(head.ends_with(b" 101"))
+    };
+    let upgraded = tokio::time::timeout(PROBE_TIMEOUT, answered)
+        .await
+        .ok()
+        .flatten()
+        .unwrap_or(false);
+    server.abort();
+    upgraded
+}
+
 async fn probe_router(router: axum::Router, route: &Value) -> Observation {
     let method = route["method"].as_str().unwrap_or_default();
     let path = concrete_path(route["path"].as_str().unwrap_or_default());
+    if method == "WS" && upgrades(router.clone(), &path).await {
+        return Observation {
+            status: "implemented",
+            detail: "101, upgraded".to_owned(),
+        };
+    }
 
     let mut request = Request::builder().uri(&path);
     let mut body = Body::empty();
