@@ -1,5 +1,5 @@
-//! The step path (#11, slice 1): `POST /api/perceive`, the trajectory
-//! histories and step completion.
+//! The step path (#11): `POST /api/perceive`, the trajectory histories, step
+//! completion, governance on merge operations and the event bus.
 //!
 //! SURFACE_SPEC.md, "Trajectory histories" and "Step completion", governs; C++
 //! `PerceptualSpaceRuntime::run_phases` and `to_json(SimulationStep)` are the
@@ -9,21 +9,25 @@
 //! 2. Every machine composes from ISRE(n) in parallel; the scoped threads are
 //!    joined before anything resolves OSRE.
 //! 3. Each machine's completed outputs fold under its declared transformation
-//!    into one merge operation; the batch is ordered by `machineName`, then
-//!    `region.offset`, both corpus-declared.
+//!    into one merge operation, carrying the governance its contributors
+//!    resolve to (the highest severity wins) and any deprecation mark; the
+//!    batch is ordered by `machineName`, then `region.offset`, both
+//!    corpus-declared.
 //! 4. A cell one machine writes is stored as written; a contended cell resolves
 //!    under its `arbitration-registry.json` rule (ARBITER_CONTRACT.md). OSRE(n)
 //!    is observed at that commit.
-//! 5. The (ISRE, OSRE) pair is appended in one action, the instance clock ticks,
+//! 5. The event bus: a firing a meta-machine subscribes to (`metadata.compose`)
+//!    writes 1 at the subscribed bit, which latches into every later step's
+//!    input until a reset.
+//! 6. The (ISRE, OSRE) pair is appended in one action, the instance clock ticks,
 //!    and the completion is published, waking every waiter for step n.
 //!
-//! Not yet (later slices of #11): the event bus (`eventBus` is `[]`), governance
-//! and deprecation on merge operations (so a SEVERITY tie falls through to the
-//! value), the perceptual-simulation routes, the `only` selector and
-//! `matchAlgorithmOverride`.
+//! Not yet (later slices of #11): the perceptual-simulation routes, the `only`
+//! selector, `matchAlgorithmOverride`, and the paging and deprecated-fire
+//! metrics series.
 
 use super::*;
-use std::collections::VecDeque;
+use std::collections::{BTreeSet, VecDeque};
 use std::time::Duration;
 
 /// Entries each trajectory history keeps (SURFACE_SPEC.md: capped at 1024).
@@ -76,6 +80,9 @@ pub(crate) struct StepState {
     osre: VecDeque<TrajectoryEntry>,
     /// The newest committed step, -1 before the first since boot or reset.
     completed: tokio::sync::watch::Sender<i64>,
+    /// Event-bus bits written so far: re-applied over every later input, so
+    /// a caller's vector cannot clobber a milestone, until a reset.
+    latched: BTreeSet<usize>,
 }
 
 impl Default for StepState {
@@ -86,6 +93,7 @@ impl Default for StepState {
             isre: VecDeque::new(),
             osre: VecDeque::new(),
             completed: tokio::sync::watch::channel(-1).0,
+            latched: BTreeSet::new(),
         }
     }
 }
@@ -102,6 +110,7 @@ impl StepState {
         self.next_step = 0;
         self.isre.clear();
         self.osre.clear();
+        self.latched.clear();
         self.completed.send_replace(-1);
     }
 
@@ -287,19 +296,137 @@ struct MergeOperation {
     sequence_ids: Vec<String>,
     values: Vec<f64>,
     provenance: Vec<String>,
+    /// The joined paging decision of the contributors, whole (C++ `to_json(PagingDecision)`).
+    governance: Option<Value>,
+    /// Its `ragStatusCode`, which a SEVERITY cell resolves by.
+    rag_status_code: String,
+    deprecation: Option<Value>,
 }
 
 impl MergeOperation {
     fn to_json(&self) -> Value {
-        json!({
+        let mut out = json!({
             "region": { "offset": self.offset, "length": self.length },
             "machineId": self.machine_id,
             "machineName": self.machine_name,
             "sequenceIds": self.sequence_ids,
             "values": self.values,
             "provenance": self.provenance,
-        })
+        });
+        if let Some(governance) = &self.governance {
+            out["governance"] = governance.clone();
+        }
+        if let Some(deprecation) = &self.deprecation {
+            out["deprecation"] = deprecation.clone();
+        }
+        out
     }
+}
+
+/// C++ `resolve_governance`: the first `metadata.triggerConfig.rules` entry for
+/// `sequence_id` whose `outputMatches` equals `values`, with the rule's
+/// `governance` overriding the machine's `metadata.governance`.
+fn resolve_governance(machine: &Machine, sequence_id: &str, values: &[f64]) -> Option<Value> {
+    let metadata = machine.raw.get("metadata")?;
+    let rule = metadata["triggerConfig"]["rules"]
+        .as_array()?
+        .iter()
+        .filter(|rule| rule.is_object())
+        .find(|rule| {
+            rule["sequenceId"].as_str() == Some(sequence_id)
+                && rule["outputMatches"].as_array().is_some_and(|matches| {
+                    matches.len() == values.len()
+                        && matches
+                            .iter()
+                            .zip(values)
+                            .all(|(m, v)| m.as_f64() == Some(*v))
+                })
+        })?;
+    let machine_gov = &metadata["governance"];
+    let has_machine_gov = machine_gov.is_object();
+    let rule_gov = &rule["governance"];
+    let text = |value: &Value| value.as_str().filter(|s| !s.is_empty()).map(str::to_owned);
+    // Rule override, then the machine's default, then the fallback.
+    let pick = |key: &str, fallback: &str| -> String {
+        rule_gov[key]
+            .as_str()
+            .map(str::to_owned)
+            .unwrap_or_else(|| {
+                if has_machine_gov {
+                    machine_gov[key].as_str().unwrap_or(fallback).to_owned()
+                } else {
+                    fallback.to_owned()
+                }
+            })
+    };
+    let nullable = |s: String| if s.is_empty() { Value::Null } else { json!(s) };
+    let process_status = rule["processStatus"].as_str().unwrap_or("").to_owned();
+    let sla_seconds = if rule_gov.is_object() && rule_gov["slaSeconds"].is_number() {
+        rule_gov["slaSeconds"].as_f64().map(|n| n as i64)
+    } else if has_machine_gov && machine_gov["sla"].is_object() && !process_status.is_empty() {
+        machine_gov["sla"][&process_status]
+            .as_f64()
+            .map(|n| n as i64)
+    } else {
+        None
+    };
+    let mut contact = serde_json::Map::new();
+    for field in ["primary", "secondary"] {
+        let from_rule = rule_gov["contact"][field].as_str();
+        let from_machine = machine_gov["contact"][field]
+            .as_str()
+            .filter(|_| has_machine_gov);
+        if let Some(value) = from_rule.or(from_machine).filter(|v| !v.is_empty()) {
+            contact.insert(field.to_owned(), json!(value));
+        }
+    }
+    let mut decision = json!({
+        "machineId": machine.id,
+        "machineName": machine.name,
+        "sequenceId": sequence_id,
+        "ragStatusCode": nullable(rule["ragStatusCode"].as_str().unwrap_or("").to_owned()),
+        "actionCode": Value::Null,
+        "processStatus": nullable(process_status),
+        "ownerTeam": pick("ownerTeam", "unrouted"),
+        "slaSeconds": sla_seconds,
+        "runbook": nullable(pick("runbook", "")),
+        "escalationPolicy": nullable(pick("escalationPolicy", "")),
+        "contact": contact,
+        "source": if rule_gov.is_object() {
+            "rule-with-override"
+        } else if has_machine_gov {
+            "rule-only"
+        } else {
+            "machine-fallback"
+        },
+        "hasMachineGovernance": has_machine_gov,
+    });
+    if let Some(description) = text(&rule["description"]) {
+        decision["description"] = json!(description);
+    }
+    Some(decision)
+}
+
+/// Whole days since a `YYYY-MM-DD` (or `YYYY-MM-DDT...`) date, 0 when it does
+/// not parse. Midnight UTC; C++ reads it as local midnight.
+fn days_since(date: &str) -> i64 {
+    let mut parts = date
+        .get(..10)
+        .unwrap_or("")
+        .split('-')
+        .map(str::parse::<i64>);
+    let (Some(Ok(y)), Some(Ok(m)), Some(Ok(d))) = (parts.next(), parts.next(), parts.next()) else {
+        return 0;
+    };
+    // Days from 1970-01-01 to y-m-d (proleptic Gregorian).
+    let (y, m) = if m <= 2 { (y - 1, m + 9) } else { (y, m - 3) };
+    let era = y.div_euclid(400);
+    let yoe = y - era * 400;
+    let doy = (153 * m + 2) / 5 + d - 1;
+    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    let epoch_day = era * 146097 + doe - 719468;
+    let today = (now_ms() / 86_400_000) as i64;
+    today - epoch_day
 }
 
 /// A committed step, before the caller's include flags shape it.
@@ -309,6 +436,7 @@ pub(crate) struct Step {
     machine_results: serde_json::Map<String, Value>,
     active_regions: Vec<Value>,
     merge_batch: Vec<Value>,
+    event_bus: Vec<Value>,
     perceptual_space: Vec<f64>,
 }
 
@@ -325,7 +453,7 @@ impl Step {
             "stepNumber": self.step_number,
             "timestamp": self.timestamp,
             "mergeBatch": self.merge_batch,
-            "eventBus": [],
+            "eventBus": self.event_bus,
         });
         if active_regions {
             out["activeRegions"] = json!(self.active_regions);
@@ -350,21 +478,62 @@ fn region(mapping: Option<&Value>) -> (usize, usize) {
 
 impl Engine {
     /// The width of the perceptual space: the seed, grown to every machine's
-    /// mapping and to what has been presented.
+    /// mapping, every subscribed event-bus bit, and what has been presented.
     fn space_width(&self) -> usize {
+        let bits = self
+            .subscriptions()
+            .values()
+            .flatten()
+            .map(|(_, bit)| bit + 1)
+            .max();
         self.dimension
             .max(self.required_dimension())
+            .max(bits.unwrap_or(0))
             .max(self.steps.space.len())
+    }
+
+    /// Every meta-machine's `metadata.compose.subscriptions`, keyed by the
+    /// producer (machine id, sequence id): the subscribers and their bits.
+    fn subscriptions(&self) -> BTreeMap<(String, String), Vec<(String, usize)>> {
+        let mut out: BTreeMap<(String, String), Vec<(String, usize)>> = BTreeMap::new();
+        for machine in self.machines.values() {
+            let subscriptions = machine.raw["metadata"]["compose"]["subscriptions"].as_array();
+            for sub in subscriptions.into_iter().flatten() {
+                let producer = sub["producerMachineId"].as_str().unwrap_or("");
+                let sequence = sub["producerSequenceId"].as_str().unwrap_or("");
+                let Some(bit) = sub["bitOffset"]
+                    .as_u64()
+                    .and_then(|b| usize::try_from(b).ok())
+                else {
+                    continue;
+                };
+                if producer.is_empty() || sequence.is_empty() {
+                    continue;
+                }
+                out.entry((producer.to_owned(), sequence.to_owned()))
+                    .or_default()
+                    .push((machine.id.clone(), bit));
+            }
+        }
+        out
     }
 
     /// One step (`POST /api/perceive`): `input` becomes the space, and the
     /// corpus is presented with it.
     pub(crate) fn perceive(&mut self, input: &[f64]) -> Result<Step, EngineError> {
         let width = self.space_width().max(input.len());
+        let subscriptions = self.subscriptions();
         let space = &mut self.steps.space;
         space.resize(width, 0.0);
         space.iter_mut().for_each(|cell| *cell = 0.0);
         space[..input.len()].copy_from_slice(input);
+        // Latched event-bus bits survive the caller's vector, which zero-fills
+        // past its length.
+        for bit in &self.steps.latched {
+            if let Some(cell) = space.get_mut(*bit) {
+                *cell = 1.0;
+            }
+        }
 
         let step_number = self.steps.next_step;
         self.steps.next_step += 1;
@@ -409,6 +578,9 @@ impl Engine {
         let mut machine_results = serde_json::Map::new();
         let mut merges: Vec<MergeOperation> = Vec::new();
         let mut active_regions: Vec<(usize, usize, String, &'static str)> = Vec::new();
+        // (machine id, sorted sequence ids, provenance) for every machine that
+        // completed a Reality Event, whether or not its fold presented a value.
+        let mut firings: Vec<(String, Vec<String>, Vec<String>)> = Vec::new();
         for Composed {
             id,
             snapshot,
@@ -429,6 +601,9 @@ impl Engine {
 
             // The completed Reality Events and their evidence, recorded whether
             // or not the fold produced a value.
+            // One pending output per completed Reality Event: its sequence,
+            // its own asserted values, and the action its metadata prescribes.
+            let mut pending: Vec<(String, Vec<f64>, Option<String>)> = Vec::new();
             let mut sequence_ids: Vec<String> = Vec::new();
             let mut provenance: Vec<String> = Vec::new();
             if transition["arbiterMetadata"]["shouldOutput"] == json!(true) {
@@ -439,6 +614,12 @@ impl Engine {
                 {
                     for output in result["assertedOutputs"].as_array().into_iter().flatten() {
                         sequence_ids.push(sequence_id.clone());
+                        let values = output["vector"]
+                            .as_array()
+                            .map(|v| v.iter().filter_map(Value::as_f64).collect())
+                            .unwrap_or_default();
+                        let action = output["metadata"]["action"].as_str().map(str::to_owned);
+                        pending.push((sequence_id.clone(), values, action));
                         for vertex in output["provenance"].as_array().into_iter().flatten() {
                             if let Some(vertex) = vertex.as_str()
                                 && !provenance.iter().any(|seen| seen == vertex)
@@ -451,6 +632,9 @@ impl Engine {
             }
             sequence_ids.sort();
             sequence_ids.dedup();
+            if !sequence_ids.is_empty() {
+                firings.push((id.clone(), sequence_ids.clone(), provenance.clone()));
+            }
 
             let has_output = !output_vector.is_null() || merged.is_some();
             active_regions.push((input_offset, input_length, id.clone(), "input"));
@@ -480,6 +664,45 @@ impl Engine {
             );
             // A refused fold presents nothing, and nothing is not zeros.
             if let Some(values) = merged {
+                // The join over the contributors (FOLD_PLACEMENT.md 3): each
+                // resolves against its own asserted values; the highest
+                // severity wins, ties to the smallest sequence id, and the
+                // winning decision travels whole with its own action.
+                let mut governance: Option<(f64, String, Value)> = None;
+                for (sequence_id, values, action) in &pending {
+                    let Some(mut decision) = resolve_governance(machine, sequence_id, values)
+                    else {
+                        continue;
+                    };
+                    let rank = severity_rank(decision["ragStatusCode"].as_str().unwrap_or(""));
+                    let better = governance.as_ref().is_none_or(|(best, best_seq, _)| {
+                        rank > *best || (rank == *best && sequence_id < best_seq)
+                    });
+                    if better {
+                        decision["actionCode"] = action.clone().map_or(Value::Null, Value::from);
+                        governance = Some((rank, sequence_id.clone(), decision));
+                    }
+                }
+                // The mark: the smallest deprecated contributing sequence.
+                let deprecation = sequence_ids.iter().find_map(|sequence_id| {
+                    let sequence = machine.sequences.get(sequence_id)?;
+                    if sequence.deprecated_at.is_empty() {
+                        return None;
+                    }
+                    let mut mark = json!({
+                        "since": sequence.deprecated_at,
+                        "ageDays": days_since(&sequence.deprecated_at),
+                    });
+                    if !sequence.replaced_by.is_empty() {
+                        mark["replacedBy"] = json!(sequence.replaced_by);
+                    }
+                    Some(mark)
+                });
+                let rag_status_code = governance
+                    .as_ref()
+                    .and_then(|(_, _, d)| d["ragStatusCode"].as_str())
+                    .unwrap_or("")
+                    .to_owned();
                 merges.push(MergeOperation {
                     offset: output_offset,
                     length: output_length,
@@ -488,6 +711,9 @@ impl Engine {
                     sequence_ids,
                     values,
                     provenance,
+                    governance: governance.map(|(_, _, decision)| decision),
+                    rag_status_code,
+                    deprecation,
                 });
             }
         }
@@ -524,7 +750,7 @@ impl Engine {
                     Some(_) => contended.entry(cell).or_default().push(Contribution {
                         value,
                         provider: "machine",
-                        rag_status_code: String::new(),
+                        rag_status_code: merge.rag_status_code.clone(),
                     }),
                     None => {}
                 }
@@ -544,6 +770,53 @@ impl Engine {
             non_zero: osre_cells,
         };
 
+        // The event bus, driven by the firings rather than the batch, so a
+        // refused fold withdraws its value and not its subscribers. Written
+        // after OSRE is observed: these bits reach the machines next step.
+        let mut seen = BTreeSet::new();
+        let mut writes: Vec<(String, usize, String, String, Vec<String>)> = Vec::new();
+        for (producer, sequence_ids, provenance) in &firings {
+            for sequence_id in sequence_ids {
+                let key = (producer.clone(), sequence_id.clone());
+                for (subscriber, bit) in subscriptions.get(&key).into_iter().flatten() {
+                    if seen.insert((
+                        subscriber.clone(),
+                        *bit,
+                        producer.clone(),
+                        sequence_id.clone(),
+                    )) {
+                        writes.push((
+                            subscriber.clone(),
+                            *bit,
+                            producer.clone(),
+                            sequence_id.clone(),
+                            provenance.clone(),
+                        ));
+                        self.steps.latched.insert(*bit);
+                    }
+                }
+            }
+        }
+        writes.sort_by(|a, b| (&a.0, a.1, &a.2, &a.3).cmp(&(&b.0, b.1, &b.2, &b.3)));
+        for (_, bit, ..) in &writes {
+            if let Some(cell) = space.get_mut(*bit) {
+                *cell = 1.0;
+            }
+        }
+        let event_bus = writes
+            .into_iter()
+            .map(|(subscriber, bit, producer, sequence_id, provenance)| {
+                json!({
+                    "producerMachineId": producer,
+                    "producerSequenceId": sequence_id,
+                    "subscriberMachineId": subscriber,
+                    "bitOffset": bit,
+                    "value": 1.0,
+                    "provenance": provenance,
+                })
+            })
+            .collect();
+
         active_regions.sort();
         let step = Step {
             step_number,
@@ -556,6 +829,7 @@ impl Engine {
                 })
                 .collect(),
             merge_batch: merges.iter().map(MergeOperation::to_json).collect(),
+            event_bus,
             perceptual_space: space.clone(),
         };
 

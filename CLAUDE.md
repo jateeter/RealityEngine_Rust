@@ -12,7 +12,7 @@ This repo is the Rust Reality Engine. It is a **non-voting conformance follower*
 
 - `src/lib.rs`: the engine (`Engine`, machine transitions, arbitration, output merge) and the axum router (`app`).
 - `src/instance_clock.rs`: the instance's Lamport clock and identity (RealityEngine_CI#296): `INSTANCE_UUID`, `<uuid>.lamport` in `INSTANCE_CLOCK_DIR`, and the `fcntl` lock on `<uuid>.lock` that refuses a second live process with the same UUID. It must stay a POSIX record lock (not `File::try_lock`, which is `flock`): `instance_uuids.py live` probes with `F_GETLK`.
-- `src/step.rs`: the step path (#11): `POST /api/perceive`, the ISRE/OSRE trajectories, step completion (`/api/engine/steps/:n/pair`, a `watch` channel the waiter awaits without the engine lock), and contended-cell resolution under `domains/arbitration-registry.json`. Follows C++ `run_phases` / `to_json(SimulationStep)`; its module doc names what later slices add.
+- `src/step.rs`: the step path (#11): `POST /api/perceive`, the ISRE/OSRE trajectories, step completion (`/api/engine/steps/:n/pair`, a `watch` channel the waiter awaits without the engine lock), contended-cell resolution under `domains/arbitration-registry.json`, governance joined per merge operation (`metadata.triggerConfig` / `metadata.governance`), deprecation marks, and the event bus (`metadata.compose`, bits latched until a reset). Follows C++ `run_phases` / `to_json(SimulationStep)`; its module doc names what later slices add.
 - `src/main.rs`: entrypoint; `serve()` reads `REALITY_ENGINE_PORT`, `VECTOR_DIMENSION`, `MACHINES_DIR`, `INSTANCE_UUID`, `INSTANCE_CLOCK_DIR`.
 - `tests/instance_identity.rs`: a second engine process with a held UUID refuses to boot.
 - `tests/conformance.rs`: tier R1, the corpus replay.

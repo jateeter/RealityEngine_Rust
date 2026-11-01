@@ -83,6 +83,9 @@ struct Event {
 struct Sequence {
     id: String,
     events: BTreeMap<String, Event>,
+    /// `deprecatedAt` and `replacedBy`, as declared; empty when not.
+    deprecated_at: String,
+    replaced_by: String,
 }
 
 struct Machine {
@@ -470,6 +473,8 @@ impl Machine {
                     Sequence {
                         id: sequence_id.clone(),
                         events,
+                        deprecated_at: string(sequence_json.get("deprecatedAt"), ""),
+                        replaced_by: string(sequence_json.get("replacedBy"), ""),
                     },
                 )
                 .is_some()
@@ -2541,6 +2546,161 @@ mod tests {
         )
         .await;
         assert_eq!(step["stepNumber"], 0);
+    }
+
+    /// The test machine with governance: two sequences firing on the same
+    /// step, GREEN and RED, so the join has to choose.
+    fn governed() -> Value {
+        let mut definition = machine_definition();
+        let mut red = definition["machine"]["sequences"][0].clone();
+        red["id"] = json!("alarm");
+        red["deprecatedAt"] = json!("2026-01-01");
+        red["replacedBy"] = json!("sequence");
+        red["events"][1]["outputEvents"][0]["metadata"] = json!({ "action": "page-now" });
+        definition["machine"]["sequences"]
+            .as_array_mut()
+            .unwrap()
+            .push(red);
+        definition["machine"]["metadata"] = json!({
+            "governance": {
+                "ownerTeam": "plant-ops", "runbook": "https://runbooks/x",
+                "contact": { "primary": "ops@example.org" },
+                "sla": { "error": 900, "info": null }
+            },
+            "triggerConfig": { "rules": [
+                { "sequenceId": "sequence", "outputMatches": [1], "ragStatusCode": "GREEN",
+                  "processStatus": "info", "description": "fine" },
+                { "sequenceId": "alarm", "outputMatches": [1], "ragStatusCode": "RED",
+                  "processStatus": "error", "governance": { "ownerTeam": "night-shift" } }
+            ] }
+        });
+        definition
+    }
+
+    #[tokio::test]
+    async fn governance_joins_the_contributors_and_marks_deprecation() {
+        let mut engine = Engine::new(8);
+        engine.load_machine(governed()).unwrap();
+        let app = app(engine);
+        send(
+            &app,
+            "POST",
+            "/api/perceive",
+            Some(json!({ "vector": [1] })),
+        )
+        .await;
+        let (_, step) = send(
+            &app,
+            "POST",
+            "/api/perceive",
+            Some(json!({ "vector": [0] })),
+        )
+        .await;
+        let op = &step["mergeBatch"][0];
+        assert_eq!(op["sequenceIds"], json!(["alarm", "sequence"]));
+        let governance = &op["governance"];
+        // RED beats GREEN; the decision travels whole, with the winner's action.
+        assert_eq!(governance["sequenceId"], "alarm");
+        assert_eq!(governance["ragStatusCode"], "RED");
+        assert_eq!(governance["actionCode"], "page-now");
+        assert_eq!(
+            governance["ownerTeam"], "night-shift",
+            "the rule override wins"
+        );
+        assert_eq!(
+            governance["runbook"], "https://runbooks/x",
+            "the machine default fills the rest"
+        );
+        assert_eq!(governance["slaSeconds"], 900);
+        assert_eq!(
+            governance["contact"],
+            json!({ "primary": "ops@example.org" })
+        );
+        assert_eq!(governance["escalationPolicy"], Value::Null);
+        assert_eq!(governance["source"], "rule-with-override");
+        assert_eq!(governance["hasMachineGovernance"], true);
+        assert!(
+            governance.get("description").is_none(),
+            "absent when the rule has none"
+        );
+        assert_eq!(op["deprecation"]["since"], "2026-01-01");
+        assert_eq!(op["deprecation"]["replacedBy"], "sequence");
+        assert!(op["deprecation"]["ageDays"].as_i64().unwrap() > 0);
+    }
+
+    #[tokio::test]
+    async fn an_event_bus_write_latches_into_later_steps() {
+        let mut engine = Engine::new(8);
+        let producer = engine.load_machine(machine_definition()).unwrap()["id"]
+            .as_str()
+            .unwrap()
+            .to_owned();
+        let mut meta = rival("meta", 1.0);
+        meta["machine"]["perceptualMapping"] = json!({
+            "input": { "offset": 6, "length": 1 }, "output": { "offset": 7, "length": 1 } });
+        meta["machine"]["metadata"] = json!({ "compose": { "subscriptions": [
+            { "producerMachineId": producer, "producerSequenceId": "sequence", "bitOffset": 6 } ] } });
+        engine.load_machine(meta).unwrap();
+        let app = app(engine);
+        send(
+            &app,
+            "POST",
+            "/api/perceive",
+            Some(json!({ "vector": [1] })),
+        )
+        .await;
+        let (_, fired) = send(
+            &app,
+            "POST",
+            "/api/perceive",
+            Some(json!({ "vector": [0] })),
+        )
+        .await;
+        assert_eq!(fired["eventBus"][0]["producerSequenceId"], "sequence");
+        assert_eq!(fired["eventBus"][0]["bitOffset"], 6);
+        assert_eq!(
+            fired["eventBus"][0]["provenance"],
+            json!(["start", "finish"])
+        );
+        assert_eq!(
+            fired["perceptualSpace"][6], 1,
+            "written after OSRE, into the space"
+        );
+        let (_, pair) = send(&app, "GET", "/api/engine/steps/1/pair", None).await;
+        assert!(
+            !pair["osre"]["nonZero"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|c| c["index"] == 6)
+        );
+        // The bit reaches the machines next step, over a caller's zeros.
+        send(
+            &app,
+            "POST",
+            "/api/perceive",
+            Some(json!({ "vector": [0] })),
+        )
+        .await;
+        let (_, pair) = send(&app, "GET", "/api/engine/steps/2/pair", None).await;
+        assert!(
+            pair["isre"]["nonZero"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|c| c["index"] == 6)
+        );
+        // A reset unlatches it.
+        send(&app, "POST", "/api/engine/reset", None).await;
+        send(
+            &app,
+            "POST",
+            "/api/perceive",
+            Some(json!({ "vector": [0] })),
+        )
+        .await;
+        let (_, pair) = send(&app, "GET", "/api/engine/steps/0/pair", None).await;
+        assert_eq!(pair["isre"]["nonZero"], json!([]));
     }
 
     #[tokio::test]

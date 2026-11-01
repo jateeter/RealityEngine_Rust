@@ -398,7 +398,7 @@
       "tracking": "jateeter/RealityEngine_Rust#13"
     },
     "RE POST /api/perceive": {
-      "notes": "slice 1 of #11: 40 full-corpus steps identical to C++ on machineResults and activeRegions; mergeBatch lacks governance/deprecation, eventBus is [], so the 2 SEVERITY cells resolve by value (slice 2); only and matchAlgorithmOverride are refused (slice 4)",
+      "notes": "slices 1-2 of #11: 60 full-corpus steps identical to C++ on the (ISRE, OSRE) pairs, mergeBatch with governance, activeRegions, eventBus and machineResults; only and matchAlgorithmOverride are refused (slice 4)",
       "status": "implemented"
     },
     "RE POST /api/perception/diagnostic": {
