@@ -318,6 +318,7 @@ async fn transition(pe: &SharedPe, include_machine_results: bool, only: &Value) 
         }
         state.advance();
         state.last_push = step.clone();
+        state.record_perception_events();
         // On the whole step, before the caller's selector narrows the reply.
         state.dispatch_triggers(&step);
         state.global_step

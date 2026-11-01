@@ -47,6 +47,8 @@ pub(crate) struct Dispatch {
     dropped_catalog_cold: u64,
     /// machine name -> ABox base IRI, read once.
     semantics_bases: Option<BTreeMap<String, String>>,
+    /// The semantic guardrail counters `GET /api/metrics` reports.
+    pub(crate) tally: metrics::Tally,
 }
 
 impl Default for Dispatch {
@@ -64,6 +66,7 @@ impl Default for Dispatch {
             dropped_no_dispatch: 0,
             dropped_catalog_cold: 0,
             semantics_bases: None,
+            tally: metrics::Tally::default(),
         }
     }
 }
@@ -167,15 +170,22 @@ impl Dispatch {
         }
     }
 
-    /// C++ `dispatch_semantics`: the record's link to the corpus ABox.
+    /// Machine name -> ABox base IRI, from the manifest, read once.
+    pub(crate) fn bases(&mut self) -> &BTreeMap<String, String> {
+        self.semantics_bases.get_or_insert_with(manifest_bases)
+    }
+
+    /// C++ `dispatch_semantics`: the record's link to the corpus ABox, and
+    /// the semantic dispatch counters.
     fn semantics(
         &mut self,
         machine_name: &str,
         governance: &Value,
         sequence_ids: &[Value],
     ) -> Value {
-        let bases = self.semantics_bases.get_or_insert_with(manifest_bases);
-        let base = bases.get(machine_name).cloned().unwrap_or_default();
+        let base = self.bases().get(machine_name).cloned().unwrap_or_default();
+        self.tally.dispatch_total += 1;
+        self.tally.dispatch_joined += u64::from(!base.is_empty());
         let mut sequence = governance["sequenceId"]
             .as_str()
             .unwrap_or_default()
@@ -194,6 +204,12 @@ impl Dispatch {
             })
             .collect();
         let action = governance["actionCode"].as_str().unwrap_or_default();
+        // re:EscalationDetermination requires RED; an unstated status is
+        // counted apart from an explicit non-RED.
+        if action == "emergency-dispatch" || action == "urgent-intervention" {
+            self.tally
+                .escalation(governance["ragStatusCode"].as_str().unwrap_or_default());
+        }
         json!({
             "machineIri": if base.is_empty() { Value::Null } else { json!(format!("{base}#machine")) },
             "sequenceIri": if base.is_empty() || sequence.is_empty() {
