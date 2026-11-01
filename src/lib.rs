@@ -5084,7 +5084,7 @@ mod tests {
                 &json!(false),
                 &Value::Null,
                 &json!(0),
-                &json!("llama3.1:8b")
+                &json!("nemotron-3-nano:4b-mlx")
             )
         );
         assert_eq!(

@@ -68,9 +68,10 @@ impl Default for Integrations {
             config: json!({}),
             source_mappings: BTreeMap::new(),
             ollama_base_url: "http://localhost:11434".to_owned(),
-            // The engines' built-in default (RealityEngine_CI
-            // docs/OLLAMA_INTEGRATION.md); a universe pins OLLAMA_MODEL.
-            ollama_model: "llama3.1:8b".to_owned(),
+            // The engines' built-in default is the universe model
+            // (RealityEngine_CI docs/OLLAMA_INTEGRATION.md, owner ruling
+            // 2026-11-01); a universe also pins OLLAMA_MODEL.
+            ollama_model: "nemotron-3-nano:4b-mlx".to_owned(),
             ollama_mapping: "agent-completion-risk".to_owned(),
             // The local LLM, never a cloud provider (owner ruling, 2026-11-01).
             openai_base_url: "http://localhost:11434/v1".to_owned(),
