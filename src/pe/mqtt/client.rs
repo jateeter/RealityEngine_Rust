@@ -34,12 +34,22 @@ pub(crate) struct Config {
     pub(crate) reconnect_delay: Duration,
 }
 
+/// This PE's MQTT client id: `MQTT_CLIENT_ID`, which a universe sets per
+/// instance, else this runtime's own. A broker drops a session when another
+/// connects with its id, so two PEs sharing one evict each other in turn.
+pub(crate) fn default_client_id() -> String {
+    std::env::var("MQTT_CLIENT_ID")
+        .ok()
+        .filter(|id| !id.is_empty())
+        .unwrap_or_else(|| "reality-engine-pe-rust".to_owned())
+}
+
 impl Default for Config {
     fn default() -> Self {
         Self {
             host: "localhost".to_owned(),
             port: 1883,
-            client_id: "reality-engine-pe".to_owned(),
+            client_id: default_client_id(),
             username: None,
             password: None,
             keepalive_sec: 60,
