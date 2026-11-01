@@ -270,9 +270,9 @@ pub(crate) struct ArbitrationRegistry {
 }
 
 pub(crate) struct ArbitrationEntry {
-    rule: String,
+    pub(crate) rule: String,
     within_rank: String,
-    provider_ranks: BTreeMap<String, i64>,
+    pub(crate) provider_ranks: BTreeMap<String, i64>,
 }
 
 impl ArbitrationRegistry {
@@ -382,7 +382,7 @@ pub(crate) fn determinism(provider: &str) -> &'static str {
 }
 
 /// Deterministic 3 > measured 2 > generated 1.
-fn determinism_rank(provider: &str) -> f64 {
+pub(crate) fn determinism_rank(provider: &str) -> f64 {
     match determinism(provider) {
         "deterministic" => 3.0,
         "measured" => 2.0,
