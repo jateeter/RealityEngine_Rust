@@ -57,3 +57,37 @@ pub(crate) async fn post_json(url: &str, body: &serde_json::Value) -> Result<Byt
     }
     Ok(body)
 }
+
+/// A request as C++ `http::request_json` makes it: the body whatever the
+/// status, failing only when nothing answers. For the integrations, whose
+/// services answer their own errors in JSON.
+pub(crate) async fn request(
+    method: axum::http::Method,
+    url: &str,
+    headers: &[(&str, String)],
+    body: Option<String>,
+) -> Result<Bytes, String> {
+    let mut builder = axum::http::Request::builder()
+        .method(method.clone())
+        .uri(url);
+    for (name, value) in headers {
+        builder = builder.header(*name, value);
+    }
+    if body.is_some() {
+        builder = builder.header(axum::http::header::CONTENT_TYPE, "application/json");
+    }
+    let request = builder
+        .body(Full::new(Bytes::from(body.unwrap_or_default())))
+        .map_err(|error| format!("{method} {url}: {error}"))?;
+    let client = Client::builder(TokioExecutor::new()).build_http::<Full<Bytes>>();
+    let response = tokio::time::timeout(TIMEOUT, client.request(request))
+        .await
+        .map_err(|_| format!("{method} {url}: timed out"))?
+        .map_err(|error| format!("{method} {url}: {error}"))?;
+    Ok(response
+        .into_body()
+        .collect()
+        .await
+        .map_err(|error| format!("{method} {url}: {error}"))?
+        .to_bytes())
+}

@@ -4819,6 +4819,53 @@ mod tests {
         );
     }
 
+    /// #20 workstream 4, slice A: the integration status routes, with no
+    /// configuration loaded. OpenAI is not asked without a key.
+    #[tokio::test]
+    async fn integration_status_reports_the_settings_in_force() {
+        let app = pe::pe_app(pe::PerceptionEngine::new(2));
+        let (_, body) = send(&app, "GET", "/api/integrations/status", None).await;
+        assert_eq!(
+            (
+                &body["loaded"],
+                &body["path"],
+                &body["integrationCount"],
+                &body["ollama"]["model"]
+            ),
+            (
+                &json!(false),
+                &Value::Null,
+                &json!(0),
+                &json!("llama3.1:8b")
+            )
+        );
+        assert_eq!(
+            body["acp"]["completionSourceMappingId"],
+            json!("acp-openclaw-completion")
+        );
+        let (_, body) = send(&app, "GET", "/api/integrations/openai/status", None).await;
+        assert_eq!(
+            (&body["reachable"], &body["models"], &body["error"]),
+            (
+                &json!(false),
+                &Value::Null,
+                &json!("OPENAI_API_KEY is not configured")
+            )
+        );
+        let (_, body) = send(&app, "GET", "/api/integrations/healthkit/status", None).await;
+        assert_eq!(
+            (&body["contract"]["auth"], &body["scope"]["declared"]),
+            (&json!("none"), &json!(false))
+        );
+        let (_, body) = send(&app, "GET", "/api/integrations/carekit/status", None).await;
+        assert_eq!(body["contract"]["auth"], json!("external-transport"));
+        let (_, body) = send(&app, "GET", "/api/integrations/acp/status", None).await;
+        assert_eq!(
+            (&body["gatewayUrl"], &body["noWaitDispatch"]),
+            (&json!("ws://127.0.0.1:18789"), &json!(true))
+        );
+    }
+
     /// #20: `POST /api/signals` registers a sensor live from the value it
     /// arrives with, under a declared `sensorId` or a minted one.
     #[tokio::test]

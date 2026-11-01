@@ -24,6 +24,7 @@ use axum::routing::patch;
 use std::sync::atomic::AtomicU64;
 
 mod client;
+mod integrations;
 mod push;
 mod sources;
 mod streams;
@@ -62,6 +63,8 @@ pub struct PerceptionEngine {
     auto_interval_ms: u64,
     /// `/api/events` and `/ws`: every message, to every listener.
     events: tokio::sync::broadcast::Sender<String>,
+    /// The integrations configuration, read once at boot.
+    integrations: Arc<integrations::Integrations>,
 }
 
 impl PerceptionEngine {
@@ -85,6 +88,7 @@ impl PerceptionEngine {
             auto_running: false,
             auto_interval_ms: AUTO_INTERVAL_MS,
             events: streams::channel(),
+            integrations: Arc::default(),
         }
     }
 
@@ -209,6 +213,31 @@ fn router(pe: SharedPe) -> Router {
         .route("/api/push/{id}", get(push::job))
         .route("/api/auto/start", post(push::auto_start))
         .route("/api/auto/stop", post(push::auto_stop))
+        .route("/api/integrations/status", get(integrations::status))
+        .route(
+            "/api/integrations/ollama/status",
+            get(integrations::ollama_status),
+        )
+        .route(
+            "/api/integrations/openai/status",
+            get(integrations::openai_status),
+        )
+        .route(
+            "/api/integrations/acp/status",
+            get(integrations::acp_status),
+        )
+        .route(
+            "/api/integrations/healthkit/status",
+            get(integrations::healthkit_status),
+        )
+        .route(
+            "/api/integrations/carekit/status",
+            get(integrations::carekit_status),
+        )
+        .route(
+            "/api/integrations/localai/status",
+            get(integrations::localai_status),
+        )
         .route("/api/events", get(streams::events))
         .route("/ws", get(streams::websocket))
         .fallback(|method: Method, uri: Uri| async move {
@@ -255,6 +284,7 @@ pub async fn serve() -> Result<(), Box<dyn std::error::Error>> {
     let machines_dir = std::env::var("MACHINES_DIR")
         .unwrap_or_else(|_| "../RealityEngine_Machines/machines".to_owned());
     engine.registry = step::ArbitrationRegistry::load(std::path::Path::new(&machines_dir));
+    engine.integrations = Arc::new(integrations::Integrations::from_environment());
     if let Ok(merge) = std::env::var("PE_SOURCE_MERGE") {
         engine.merge_only = flag_on(Some(&merge));
     }
