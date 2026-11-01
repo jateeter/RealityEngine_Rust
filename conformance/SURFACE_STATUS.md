@@ -6,7 +6,7 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 
 | layer | implemented | routes |
 |---|---|---|
-| RE | 37 | 79 |
+| RE | 38 | 79 |
 | PE | 0 | 47 |
 | RE-phase2 | 0 | 5 |
 
@@ -28,10 +28,10 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 | GET | `/api/config` | implemented |  |  |
 | PUT | `/api/config/dimension` | implemented |  |  |
 | PUT | `/api/config/threshold` | implemented |  |  |
-| GET | `/api/engine/config` | implemented |  | carries six of the eight universal controls (historyLimit, includeActiveRegions, includeMachineResults, includePerceptualSpace, phaseDetail, transitionsInhibited), identical to C++ on the regression corpus; arbitrationRetention and arbitrationWindow join with /api/arbitration (#12) |
-| GET | `/api/engine/config/:control` | implemented |  | carries six of the eight universal controls (historyLimit, includeActiveRegions, includeMachineResults, includePerceptualSpace, phaseDetail, transitionsInhibited), identical to C++ on the regression corpus; arbitrationRetention and arbitrationWindow join with /api/arbitration (#12) |
-| PUT | `/api/engine/config/:control` | implemented |  | carries six of the eight universal controls (historyLimit, includeActiveRegions, includeMachineResults, includePerceptualSpace, phaseDetail, transitionsInhibited), identical to C++ on the regression corpus; arbitrationRetention and arbitrationWindow join with /api/arbitration (#12) |
-| DELETE | `/api/engine/config/:control` | implemented |  | carries six of the eight universal controls (historyLimit, includeActiveRegions, includeMachineResults, includePerceptualSpace, phaseDetail, transitionsInhibited), identical to C++ on the regression corpus; arbitrationRetention and arbitrationWindow join with /api/arbitration (#12) |
+| GET | `/api/engine/config` | implemented |  | all eight universal controls, identical to C++ on the regression corpus |
+| GET | `/api/engine/config/:control` | implemented |  | all eight universal controls, identical to C++ on the regression corpus |
+| PUT | `/api/engine/config/:control` | implemented |  | all eight universal controls, identical to C++ on the regression corpus |
+| DELETE | `/api/engine/config/:control` | implemented |  | all eight universal controls, identical to C++ on the regression corpus |
 
 ## RE: Runtime Introspection
 
@@ -75,7 +75,7 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 | GET | `/api/engine/isre-history` | implemented |  |  |
 | GET | `/api/engine/steps/:n/pair` | implemented |  |  |
 | GET | `/api/engine/clock` | implemented |  | instance and lamport per RealityEngine_CI#296 (allocated UUID, persisted reservation, fcntl instance lock); the clock ticks once per committed step, pushed or simulated (#11) |
-| GET | `/api/arbitration` | declared-unsupported | jateeter/RealityEngine_Rust#12 |  |
+| GET | `/api/arbitration` | implemented |  | #12: CI's regression-arbitration-retention.py passes against standalone C++ on the regression corpus (controls, windows, ?step, toggles, clock, retained bodies byte-identical); the legacy object is byte-identical to C++'s committed baseline |
 | POST | `/api/engine/process` | implemented |  |  |
 | POST | `/api/engine/reset` | implemented |  |  |
 

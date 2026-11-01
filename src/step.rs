@@ -55,6 +55,8 @@ pub(crate) struct StepControls {
     pub(crate) include_machine_results: bool,
     pub(crate) include_perceptual_space: bool,
     pub(crate) phase_detail: bool,
+    pub(crate) arbitration_retention: bool,
+    pub(crate) arbitration_window: usize,
     /// Time summed per phase over the measured steps, and how many there were.
     pub(crate) phase_time: [Duration; 5],
     pub(crate) measured_steps: u64,
@@ -68,6 +70,8 @@ impl Default for StepControls {
             include_machine_results: true,
             include_perceptual_space: true,
             phase_detail: false,
+            arbitration_retention: false,
+            arbitration_window: crate::arbitration::WINDOW_DEFAULT,
             phase_time: [Duration::ZERO; 5],
             measured_steps: 0,
         }
@@ -164,6 +168,11 @@ pub(crate) struct StepState {
     pub(crate) history: VecDeque<Arc<Step>>,
     pub(crate) simulation: crate::simulation::Simulation,
     pub(crate) controls: StepControls,
+    /// The newest step's arbitration records (the legacy `/api/arbitration`).
+    pub(crate) last_arbitration: Vec<ArbitrationRecord>,
+    /// Retained steps' records, keyed by step, with the Lamport value each
+    /// committed at, while `arbitrationRetention` is on.
+    pub(crate) retained: BTreeMap<u64, (u64, Vec<ArbitrationRecord>)>,
     /// Each pushed step, as `POST /api/perceive` answered it, for
     /// `GET /api/engine/stream`.
     pub(crate) stream: tokio::sync::broadcast::Sender<String>,
@@ -181,6 +190,8 @@ impl Default for StepState {
             history: VecDeque::new(),
             simulation: crate::simulation::Simulation::default(),
             controls: StepControls::default(),
+            last_arbitration: Vec::new(),
+            retained: BTreeMap::new(),
             stream: tokio::sync::broadcast::channel(64).0,
         }
     }
@@ -201,6 +212,8 @@ impl StepState {
         self.osre.clear();
         self.history.clear();
         self.simulation.rewind();
+        self.last_arbitration.clear();
+        self.retained.clear();
         self.latched.clear();
         self.completed.send_replace(-1);
     }
@@ -220,6 +233,20 @@ impl StepState {
         self.completed.send_replace(step as i64);
     }
 
+    fn retain_arbitration(&mut self, step: u64, lamport: u64, records: &[ArbitrationRecord]) {
+        let controls = &self.controls;
+        if controls.arbitration_retention && controls.arbitration_window > 0 {
+            self.retained.insert(step, (lamport, records.to_vec()));
+            self.prune_arbitration(step as i64);
+        }
+    }
+
+    /// Drops every retained step outside the window ending at `latest`.
+    pub(crate) fn prune_arbitration(&mut self, latest: i64) {
+        let first = latest - self.controls.arbitration_window as i64 + 1;
+        self.retained.retain(|step, _| *step as i64 >= first);
+    }
+
     /// Keeps the newest `historyLimit` steps.
     pub(crate) fn trim_history(&mut self) {
         self.history.truncate(self.controls.history_limit);
@@ -237,10 +264,12 @@ impl StepState {
 /// cell. A cell it does not name resolves under PRECEDENCE.
 #[derive(Default)]
 pub(crate) struct ArbitrationRegistry {
-    entries: BTreeMap<usize, ArbitrationEntry>,
+    pub(crate) entries: BTreeMap<usize, ArbitrationEntry>,
+    /// The file the entries came from, as found (a deployment fact).
+    pub(crate) source: Option<String>,
 }
 
-struct ArbitrationEntry {
+pub(crate) struct ArbitrationEntry {
     rule: String,
     within_rank: String,
     provider_ranks: BTreeMap<String, i64>,
@@ -299,16 +328,37 @@ impl ArbitrationRegistry {
             entries.len(),
             found.display()
         );
-        Self { entries }
+        Self {
+            entries,
+            source: Some(found.to_string_lossy().into_owned()),
+        }
     }
 }
 
-/// One contestant for a contended cell.
-#[derive(Clone)]
-struct Contribution {
-    value: f64,
-    provider: &'static str,
-    rag_status_code: String,
+/// One contestant for a contended cell (C++ `Contribution`).
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct Contribution {
+    pub(crate) value: f64,
+    pub(crate) provider: &'static str,
+    /// The machine id, or a PE source id.
+    pub(crate) origin_id: String,
+    /// The contributing sequences, comma-joined: attribution, not identity.
+    pub(crate) ces_id: String,
+    /// `"0"` for a machine, which contributes one operation per cell.
+    pub(crate) output_vector_id: String,
+    pub(crate) rag_status_code: String,
+}
+
+/// How one contended cell resolved (ARBITER_CONTRACT.md 6): every contestant,
+/// and the ones the rule set aside.
+#[derive(Clone, Debug)]
+pub(crate) struct ArbitrationRecord {
+    pub(crate) instant: u64,
+    pub(crate) cell: usize,
+    pub(crate) rule: String,
+    pub(crate) resolved: f64,
+    pub(crate) contributors: Vec<Contribution>,
+    pub(crate) suppressed: Vec<Contribution>,
 }
 
 /// GREEN or absent 0 < AMBER 1 < RED 2 (lifeSafety 3 has no machine source).
@@ -320,11 +370,22 @@ fn severity_rank(rag: &str) -> f64 {
     }
 }
 
-/// Deterministic 3 > measured 2 > generated 1; a machine is deterministic.
-fn determinism_rank(provider: &str) -> f64 {
+/// The provider's determinism class, as `/api/arbitration` spells it. An
+/// unregistered provider is generated: misclassifying a generated source as
+/// measured would let irreproducible content outrank a reading.
+pub(crate) fn determinism(provider: &str) -> &'static str {
     match provider {
-        "machine" => 3.0,
-        "sensor" | "mqtt" | "healthkit" | "stream" | "ui" | "synthetic" => 2.0,
+        "machine" => "deterministic",
+        "sensor" | "mqtt" | "healthkit" | "stream" | "ui" | "synthetic" => "measured",
+        _ => "generated",
+    }
+}
+
+/// Deterministic 3 > measured 2 > generated 1.
+fn determinism_rank(provider: &str) -> f64 {
+    match determinism(provider) {
+        "deterministic" => 3.0,
+        "measured" => 2.0,
         _ => 1.0,
     }
 }
@@ -349,12 +410,28 @@ fn pick(
         .collect()
 }
 
-/// C++ `resolve_cell`: the declared rule over a contended cell's contestants.
-fn resolve_cell(contestants: &[Contribution], entry: Option<&ArbitrationEntry>) -> f64 {
+/// C++ `resolve_cell`: the declared rule over a contended cell's contestants,
+/// and its record. One contestant resolves to itself and needs no record.
+fn resolve_cell(
+    cell: usize,
+    instant: u64,
+    contestants: &[Contribution],
+    entry: Option<&ArbitrationEntry>,
+) -> (f64, Option<ArbitrationRecord>) {
     if contestants.len() == 1 {
-        return contestants[0].value;
+        return (contestants[0].value, None);
     }
     let rule = entry.map_or("PRECEDENCE", |e| e.rule.as_str());
+    let record = |resolved: f64, contributors: Vec<Contribution>, suppressed| {
+        Some(ArbitrationRecord {
+            instant,
+            cell,
+            rule: rule.to_owned(),
+            resolved,
+            contributors,
+            suppressed,
+        })
+    };
     let value = |c: &Contribution| c.value;
     let severity = |c: &Contribution| severity_rank(&c.rag_status_code);
     let winners = match rule {
@@ -362,7 +439,18 @@ fn resolve_cell(contestants: &[Contribution], entry: Option<&ArbitrationEntry>) 
         "AND" | "MIN" => pick(contestants, value, false),
         "SEVERITY" => pick(&pick(contestants, severity, true), value, true),
         "MEAN" => {
-            return contestants.iter().map(|c| c.value).sum::<f64>() / contestants.len() as f64;
+            // Floating-point addition is not associative: the sum runs in the
+            // canonical order, so every runtime adds the same terms the same way.
+            let mut ordered = contestants.to_vec();
+            ordered.sort_by(|a, b| {
+                (&a.origin_id, &a.ces_id, &a.output_vector_id).cmp(&(
+                    &b.origin_id,
+                    &b.ces_id,
+                    &b.output_vector_id,
+                ))
+            });
+            let mean = ordered.iter().map(|c| c.value).sum::<f64>() / ordered.len() as f64;
+            return (mean, record(mean, ordered, Vec::new()));
         }
         _ => {
             let rank = |c: &Contribution| {
@@ -378,7 +466,13 @@ fn resolve_cell(contestants: &[Contribution], entry: Option<&ArbitrationEntry>) 
             }
         }
     };
-    winners[0].value
+    let resolved = winners[0].value;
+    let suppressed = contestants
+        .iter()
+        .filter(|c| !winners.contains(c))
+        .cloned()
+        .collect();
+    (resolved, record(resolved, contestants.to_vec(), suppressed))
 }
 
 /// What one machine composed from ISRE(n).
@@ -962,14 +1056,24 @@ impl Engine {
                     Some(_) => contended.entry(cell).or_default().push(Contribution {
                         value,
                         provider: "machine",
+                        origin_id: merge.machine_id.clone(),
+                        ces_id: merge.sequence_ids.join(","),
+                        output_vector_id: "0".to_owned(),
                         rag_status_code: merge.rag_status_code.clone(),
                     }),
                     None => {}
                 }
             }
         }
+        let mut records = Vec::new();
         for (cell, contestants) in &contended {
-            let value = resolve_cell(contestants, self.arbitration.entries.get(cell));
+            let (value, record) = resolve_cell(
+                *cell,
+                step_number,
+                contestants,
+                self.arbitration.entries.get(cell),
+            );
+            records.extend(record);
             space[*cell] = value;
             if value != 0.0 {
                 osre_cells.push((*cell, value));
@@ -1049,11 +1153,16 @@ impl Engine {
 
         // The commit: the clock ticks for the step and the pair is appended;
         // then the completion is published.
-        self.clock.tick().map_err(|message| EngineError {
+        let lamport = self.clock.tick().map_err(|message| EngineError {
             status: StatusCode::INTERNAL_SERVER_ERROR,
             message,
         })?;
         self.steps.commit(isre, osre);
+        // Retained before the completion is published, so an observer woken
+        // for step n finds n's records already there.
+        self.steps
+            .retain_arbitration(step_number, lamport, &records);
+        self.steps.last_arbitration = records;
         boundary(3);
         self.steps.publish(step_number);
         boundary(4);
@@ -1319,8 +1428,15 @@ mod tests {
         Contribution {
             value,
             provider: "machine",
+            origin_id: format!("m{value}"),
+            ces_id: "s".to_owned(),
+            output_vector_id: "0".to_owned(),
             rag_status_code: rag.to_owned(),
         }
+    }
+
+    fn resolve(cs: &[Contribution], entry: Option<&ArbitrationEntry>) -> f64 {
+        resolve_cell(7, 0, cs, entry).0
     }
 
     fn entry(rule: &str, within: &str) -> ArbitrationEntry {
@@ -1339,24 +1455,34 @@ mod tests {
             contestant(2.0, "RED"),
         ];
         assert_eq!(
-            resolve_cell(&cs, None),
+            resolve(&cs, None),
             3.0,
             "PRECEDENCE: equal rank, the larger value"
         );
+        assert_eq!(resolve(&cs, Some(&entry("PRECEDENCE", "SEVERITY"))), 2.0);
+        assert_eq!(resolve(&cs, Some(&entry("PRECEDENCE", "MIN"))), 1.0);
+        assert_eq!(resolve(&cs, Some(&entry("SEVERITY", ""))), 2.0);
+        assert_eq!(resolve(&cs, Some(&entry("AND", ""))), 1.0);
+        assert_eq!(resolve(&cs, Some(&entry("OR", ""))), 3.0);
+        assert_eq!(resolve(&cs, Some(&entry("MEAN", ""))), 2.0);
         assert_eq!(
-            resolve_cell(&cs, Some(&entry("PRECEDENCE", "SEVERITY"))),
-            2.0
-        );
-        assert_eq!(resolve_cell(&cs, Some(&entry("PRECEDENCE", "MIN"))), 1.0);
-        assert_eq!(resolve_cell(&cs, Some(&entry("SEVERITY", ""))), 2.0);
-        assert_eq!(resolve_cell(&cs, Some(&entry("AND", ""))), 1.0);
-        assert_eq!(resolve_cell(&cs, Some(&entry("OR", ""))), 3.0);
-        assert_eq!(resolve_cell(&cs, Some(&entry("MEAN", ""))), 2.0);
-        assert_eq!(
-            resolve_cell(&cs[..1], Some(&entry("AND", ""))),
+            resolve(&cs[..1], Some(&entry("AND", ""))),
             1.0,
             "one contestant is the value"
         );
+        // The record: every contestant, and the ones the rule set aside.
+        let (_, record) = resolve_cell(7, 3, &cs, Some(&entry("PRECEDENCE", "SEVERITY")));
+        let record = record.unwrap();
+        assert_eq!(
+            (record.instant, record.cell, record.rule.as_str()),
+            (3, 7, "PRECEDENCE")
+        );
+        assert_eq!(record.resolved, 2.0);
+        assert_eq!(record.contributors, cs);
+        assert_eq!(record.suppressed, [cs[0].clone(), cs[1].clone()]);
+        let (_, mean) = resolve_cell(7, 3, &cs, Some(&entry("MEAN", "")));
+        assert!(mean.unwrap().suppressed.is_empty());
+        assert!(resolve_cell(7, 3, &cs[..1], None).1.is_none());
     }
 
     #[test]
