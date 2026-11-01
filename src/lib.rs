@@ -4632,10 +4632,9 @@ mod tests {
             })
         };
         for (method, uri, surface) in [
-            ("GET", "/api/sources", "GET /api/sources"),
-            ("POST", "/api/sensors/s-1", "POST /api/sensors/:sensorId"),
             ("POST", "/api/push", "POST /api/push"),
-            ("GET", "/api/machines", "GET /api/machines"),
+            ("GET", "/api/push/p-1", "GET /api/push/:id"),
+            ("POST", "/api/signals", "POST /api/signals"),
             ("GET", "/api/events", "SSE /api/events"),
             ("GET", "/ws", "WS /ws"),
         ] {
@@ -4652,6 +4651,140 @@ mod tests {
                 "{uri}"
             );
         }
+    }
+
+    /// #20 workstream 2: sources are declared inactive and earn activity by a
+    /// value, compose live over seed, and a reset validates rather than
+    /// assigns. Interning is one test source per machine, skip-if-present.
+    #[tokio::test]
+    async fn pe_sources_earn_activity_and_compose_live_over_seed() {
+        let mut engine = pe::PerceptionEngine::new(4);
+        let machines = json!({ "machines": [
+            {
+                "id": "machine-two-step", "name": "Two Step",
+                "perceptualMapping": { "input": { "offset": 0, "length": 2 }, "output": { "offset": 2, "length": 1 } },
+                "metadata": { "inputSequences": [
+                    { "name": "Walk", "events": [[1, 0], [0, 1]] },
+                    { "name": "Empty", "events": [] },
+                ] },
+            },
+            { "id": "machine-unmapped", "name": "Unmapped", "metadata": { "inputSequences": [{ "events": [[1]] }] } },
+        ] });
+        assert_eq!(
+            engine.bootstrap(&machines).to_json(),
+            json!({ "created": 1, "errors": [], "machinesSeen": 2, "skipped": 1, "success": true })
+        );
+        assert_eq!(engine.bootstrap(&machines).to_json()["skipped"], json!(2));
+        let app = pe::pe_app(engine);
+
+        let (_, body) = send(&app, "GET", "/api/sources", None).await;
+        let seed = &body["sources"][0];
+        assert_eq!(
+            (
+                &seed["id"],
+                &seed["name"],
+                &seed["active"],
+                &seed["metadata"]
+            ),
+            (
+                &json!("test-machine-two-step"),
+                &json!("Two Step / Walk"),
+                &json!(true),
+                &json!({ "segments": [{ "name": "Walk", "length": 2 }] })
+            )
+        );
+
+        // A sensor asking to be active is declared inactive; its value earns it.
+        let (_, body) = send(
+            &app,
+            "POST",
+            "/api/sources",
+            Some(json!({ "type": "sensor", "name": "Live", "sensorId": "s", "active": true, "region": { "offset": 1, "length": 2 } })),
+        )
+        .await;
+        assert_eq!(
+            (&body["source"]["active"], &body["source"]["lastUpdated"]),
+            (&json!(false), &Value::Null)
+        );
+        let sensor_id = body["source"]["id"].as_str().unwrap().to_owned();
+        let (_, state) = send(&app, "GET", "/api/state", None).await;
+        assert_eq!(state["assembledVector"], json!([1, 0, 0, 0]));
+        let (status, _) = send(
+            &app,
+            "POST",
+            "/api/sensors/s",
+            Some(json!({ "values": [0.5, 3] })),
+        )
+        .await;
+        assert_eq!(status, StatusCode::OK);
+        // Live over seed on the shared cell, clamped to [0, 1].
+        let (_, state) = send(&app, "GET", "/api/state", None).await;
+        assert_eq!(state["assembledVector"], json!([1, 0.5, 1, 0]));
+        let (status, body) = send(
+            &app,
+            "POST",
+            "/api/sensors/none",
+            Some(json!({ "values": [1] })),
+        )
+        .await;
+        assert_eq!(
+            (status, body["error"].as_str()),
+            (
+                StatusCode::NOT_FOUND,
+                Some("No sensor source with sensorId \"none\"")
+            )
+        );
+
+        // A pause is honoured; reset re-arms what validates, and the space
+        // grows to a region past it.
+        let (_, body) = send(
+            &app,
+            "POST",
+            "/api/sources",
+            Some(json!({ "name": "Far", "pattern": "constant", "dcOffset": 0.75, "active": false, "region": { "offset": 5, "length": 1 } })),
+        )
+        .await;
+        assert_eq!(body["source"]["active"], json!(false));
+        let (_, state) = send(&app, "GET", "/api/state", None).await;
+        assert_eq!(state["perceptionDimension"], json!(6));
+        send(&app, "POST", "/api/reset", None).await;
+        let (_, state) = send(&app, "GET", "/api/state", None).await;
+        assert_eq!(state["assembledVector"], json!([1, 0.5, 1, 0, 0, 0.75]));
+
+        let (status, body) = send(
+            &app,
+            "PATCH",
+            &format!("/api/sources/{sensor_id}"),
+            Some(json!({ "pattern": "chaos", "ttlMs": 1 })),
+        )
+        .await;
+        assert_eq!(
+            (status, body["source"]["ttlMs"].clone()),
+            (StatusCode::OK, json!(1))
+        );
+        let (status, _) = send(
+            &app,
+            "POST",
+            "/api/sources",
+            Some(json!({ "pattern": "chaos" })),
+        )
+        .await;
+        assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
+        let (status, _) = send(&app, "DELETE", &format!("/api/sources/{sensor_id}"), None).await;
+        assert_eq!(status, StatusCode::OK);
+        let (status, body) = send(&app, "DELETE", &format!("/api/sources/{sensor_id}"), None).await;
+        assert_eq!(
+            (status, body),
+            (
+                StatusCode::NOT_FOUND,
+                json!({ "error": "Source not found" })
+            )
+        );
+        let (_, body) = send(&app, "GET", "/api/sources/contention", None).await;
+        assert_eq!(
+            body,
+            json!({ "transition": 0, "cells": [], "folds": [], "counters": [] })
+        );
     }
 
     /// #10: `/api/runtime/*`. Options and `/api/engine/config` are one state.

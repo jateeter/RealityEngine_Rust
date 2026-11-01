@@ -8,6 +8,10 @@ default-run = "reality-engine"
 axum = "0.8.7"
 # `unfold` and `chain`: the step stream (`GET /api/engine/stream`) is a Stream.
 futures-util = { version = "0.3.34", default-features = false }
+# The PE's calls to its RE (`GET {re}/api/machines`): hyper's own client,
+# the versions axum already locks.
+http-body-util = "0.1.5"
+hyper-util = { version = "0.1.21", features = ["client-legacy", "http1", "tokio"] }
 # `fcntl`: the instance lock is a POSIX record lock, which `instance_uuids.py live` can see.
 libc = "0.2.191"
 serde = { version = "1.0.228", features = ["derive"] }

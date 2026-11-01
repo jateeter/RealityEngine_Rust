@@ -7,7 +7,7 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 | layer | implemented | routes |
 |---|---|---|
 | RE | 78 | 79 |
-| PE | 5 | 47 |
+| PE | 12 | 47 |
 | RE-phase2 | 0 | 5 |
 
 `RE` and `PE` are the specification's implemented-contract tables; `RE-phase2` is the K-line snapshot routes it specifies outside them. A route this engine does not implement is `declared-unsupported`: it answers `501` with the participation state, as the specification rules ("An unimplemented route answers `unsupported`"). A `missing` route answers silently, which the specification forbids. The RE's routes are probed on `app`, the PE's on `pe_app`. Status says a route exists, not that it conforms: the notes name known shape defects.
@@ -189,13 +189,13 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 
 | method | path | status | tracking | notes |
 |---|---|---|---|---|
-| GET | `/api/sources` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
-| POST | `/api/sources` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
-| PATCH | `/api/sources/:id` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
-| DELETE | `/api/sources/:id` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
-| POST | `/api/sources/bootstrap-from-machines` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
-| GET | `/api/sources/contention` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
-| POST | `/api/sensors/:sensorId` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
+| GET | `/api/sources` | implemented |  |  |
+| POST | `/api/sources` | implemented |  |  |
+| PATCH | `/api/sources/:id` | implemented |  |  |
+| DELETE | `/api/sources/:id` | implemented |  |  |
+| POST | `/api/sources/bootstrap-from-machines` | implemented |  |  |
+| GET | `/api/sources/contention` | implemented |  |  |
+| POST | `/api/sensors/:sensorId` | implemented |  |  |
 
 ## PE: Signals
 
@@ -207,7 +207,7 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 
 | method | path | status | tracking | notes |
 |---|---|---|---|---|
-| GET | `/api/machines` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
+| GET | `/api/machines` | implemented-error | jateeter/RealityEngine_Rust#20 | #20 workstream 2: served. The surface probe has no RE behind it, so it answers the proxy's 502; beside an RE it returns the RE's GET /api/machines as answered, identical to the C++ PE on the regression corpus |
 
 ## PE: Integrations
 
