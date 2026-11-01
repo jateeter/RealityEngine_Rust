@@ -22,9 +22,9 @@
 //! 6. The (ISRE, OSRE) pair is appended in one action, the instance clock ticks,
 //!    and the completion is published, waking every waiter for step n.
 //!
-//! Not yet (later slices of #11): the perceptual-simulation routes, the `only`
-//! selector, `matchAlgorithmOverride`, and the paging and deprecated-fire
-//! metrics series.
+//! The perceptual-simulation routes step through the same phases
+//! (`simulation.rs`). Not yet (slice 4 of #11): the `only` selector,
+//! `matchAlgorithmOverride`, and the paging and deprecated-fire metrics series.
 
 use super::*;
 use std::collections::{BTreeSet, VecDeque};
@@ -34,6 +34,8 @@ use std::time::Duration;
 const TRAJECTORY_CAPACITY: usize = 1024;
 const PAIR_TIMEOUT_DEFAULT_MS: u64 = 5000;
 const PAIR_TIMEOUT_MAX_MS: u64 = 60000;
+/// Steps the step history keeps, newest first (C++ `maxHistory`).
+const HISTORY_CAPACITY: usize = 250;
 
 /// One trajectory entry: the dense vector, sparse and lossless.
 #[derive(Clone, Debug)]
@@ -73,7 +75,7 @@ impl TrajectoryEntry {
 /// The step's state: the perceptual space, the two histories, and the
 /// completion point observers wait on.
 pub(crate) struct StepState {
-    space: Vec<f64>,
+    pub(crate) space: Vec<f64>,
     /// The next step's number; steps are numbered from 0 and a reset restarts them.
     next_step: u64,
     isre: VecDeque<TrajectoryEntry>,
@@ -83,6 +85,13 @@ pub(crate) struct StepState {
     /// Event-bus bits written so far: re-applied over every later input, so
     /// a caller's vector cannot clobber a milestone, until a reset.
     latched: BTreeSet<usize>,
+    /// Every step, pushed or simulated, newest first
+    /// (`GET /api/perceptual-simulation/history`).
+    pub(crate) history: VecDeque<Arc<Step>>,
+    pub(crate) simulation: crate::simulation::Simulation,
+    /// Each pushed step, as `POST /api/perceive` answered it, for
+    /// `GET /api/engine/stream`.
+    pub(crate) stream: tokio::sync::broadcast::Sender<String>,
 }
 
 impl Default for StepState {
@@ -94,6 +103,9 @@ impl Default for StepState {
             osre: VecDeque::new(),
             completed: tokio::sync::watch::channel(-1).0,
             latched: BTreeSet::new(),
+            history: VecDeque::new(),
+            simulation: crate::simulation::Simulation::default(),
+            stream: tokio::sync::broadcast::channel(64).0,
         }
     }
 }
@@ -104,12 +116,15 @@ impl StepState {
     }
 
     /// Step numbers restart, so the completion point does too; the space and
-    /// both histories empty. The clock keeps its value.
+    /// every history empty, and a simulation run stops at its start. The clock
+    /// keeps its value, and a committed sequence stays committed.
     pub(crate) fn reset(&mut self) {
         self.space.iter_mut().for_each(|cell| *cell = 0.0);
         self.next_step = 0;
         self.isre.clear();
         self.osre.clear();
+        self.history.clear();
+        self.simulation.rewind();
         self.latched.clear();
         self.completed.send_replace(-1);
     }
@@ -443,7 +458,7 @@ pub(crate) struct Step {
 impl Step {
     /// C++ `to_json(SimulationStep)`: a field not asked for is omitted, never
     /// emptied, since an empty array is a claim that there was nothing.
-    fn to_json(
+    pub(crate) fn to_json(
         &self,
         machine_results: bool,
         perceptual_space: bool,
@@ -479,7 +494,7 @@ fn region(mapping: Option<&Value>) -> (usize, usize) {
 impl Engine {
     /// The width of the perceptual space: the seed, grown to every machine's
     /// mapping, every subscribed event-bus bit, and what has been presented.
-    fn space_width(&self) -> usize {
+    pub(crate) fn space_width(&self) -> usize {
         let bits = self
             .subscriptions()
             .values()
@@ -520,9 +535,8 @@ impl Engine {
 
     /// One step (`POST /api/perceive`): `input` becomes the space, and the
     /// corpus is presented with it.
-    pub(crate) fn perceive(&mut self, input: &[f64]) -> Result<Step, EngineError> {
+    pub(crate) fn perceive(&mut self, input: &[f64]) -> Result<Arc<Step>, EngineError> {
         let width = self.space_width().max(input.len());
-        let subscriptions = self.subscriptions();
         let space = &mut self.steps.space;
         space.resize(width, 0.0);
         space.iter_mut().for_each(|cell| *cell = 0.0);
@@ -537,6 +551,14 @@ impl Engine {
 
         let step_number = self.steps.next_step;
         self.steps.next_step += 1;
+        self.run_phases(step_number)
+    }
+
+    /// The phases of one step over the space as it now stands: what
+    /// `POST /api/perceive` and a perceptual-simulation step share (C++
+    /// `run_phases`). The step is recorded in the step history, newest first.
+    pub(crate) fn run_phases(&mut self, step_number: u64) -> Result<Arc<Step>, EngineError> {
+        let subscriptions = self.subscriptions();
         // ISRE(n): what every machine below reads, captured before any does.
         let isre = TrajectoryEntry::sparse(step_number, &self.steps.space);
 
@@ -840,6 +862,11 @@ impl Engine {
             message,
         })?;
         self.steps.commit(isre, osre);
+        let step = Arc::new(step);
+        if self.steps.history.len() == HISTORY_CAPACITY {
+            self.steps.history.pop_back();
+        }
+        self.steps.history.push_front(Arc::clone(&step));
         Ok(step)
     }
 
@@ -954,11 +981,20 @@ pub(crate) async fn perceive(
     let mut state = engine.write().map_err(|_| error_response(lock_error()))?;
     let input = assemble_input(&body, state.space_width()).map_err(error_response)?;
     let step = state.perceive(&input).map_err(error_response)?;
-    Ok(Json(step.to_json(
+    let out = step.to_json(
         include_machine_results,
         include_perceptual_space,
         include_active_regions,
-    )))
+    );
+    // No subscriber is not an error: the step stands whether or not anyone
+    // is watching.
+    if let Ok(bytes) = ecmascript_json(&out) {
+        let _ = state
+            .steps
+            .stream
+            .send(String::from_utf8_lossy(&bytes).into_owned());
+    }
+    Ok(Json(out))
 }
 
 fn history_query(query: &HashMap<String, String>) -> Result<(u64, usize), EngineError> {

@@ -19,6 +19,7 @@ use std::{
 };
 
 pub mod instance_clock;
+mod simulation;
 mod step;
 
 use instance_clock::InstanceClock;
@@ -76,6 +77,8 @@ struct Event {
     elements: Vec<Element>,
     outputs: Vec<Output>,
     next_ids: Vec<String>,
+    /// The event's own `metadata`, as declared; `{}` when not.
+    metadata: Value,
     was_just_matched: bool,
     predecessor_chain: Vec<String>,
 }
@@ -458,6 +461,11 @@ impl Machine {
                         .filter_map(Value::as_str)
                         .map(str::to_owned)
                         .collect(),
+                    metadata: event_json
+                        .get("metadata")
+                        .filter(|m| m.is_object())
+                        .cloned()
+                        .unwrap_or_else(|| json!({})),
                     was_just_matched: false,
                     predecessor_chain: Vec::new(),
                 };
@@ -1424,14 +1432,20 @@ impl Engine {
     }
 
     pub fn reset(&mut self, clear_audit: bool) {
-        for machine in self.machines.values_mut() {
-            machine.reset();
-        }
+        self.reset_space();
         self.step = 0;
-        self.steps.reset();
         if clear_audit {
             self.history.clear();
         }
+    }
+
+    /// Every machine back to its initial Reality Events, and the step state
+    /// to its start (C++ `PerceptualSpaceRuntime::reset`).
+    fn reset_space(&mut self) {
+        for machine in self.machines.values_mut() {
+            machine.reset();
+        }
+        self.steps.reset();
     }
 
     fn health(&self) -> Value {
@@ -1780,6 +1794,25 @@ pub fn app(engine: Engine) -> Router {
         .route("/api/engine/isre-history", get(step::isre_history))
         .route("/api/engine/osre-history", get(step::osre_history))
         .route("/api/engine/steps/{n}/pair", get(step::step_pair))
+        .route("/api/engine/stream", get(simulation::stream))
+        .route("/api/engine/active", get(simulation::active))
+        .route(
+            "/api/perceptual-simulation/configure/chunk",
+            post(simulation::configure_chunk),
+        )
+        .route(
+            "/api/perceptual-simulation/configure/commit",
+            post(simulation::configure_commit),
+        )
+        .route("/api/perceptual-simulation/start", post(simulation::start))
+        .route("/api/perceptual-simulation/stop", post(simulation::stop))
+        .route("/api/perceptual-simulation/step", post(simulation::step))
+        .route("/api/perceptual-simulation/reset", post(simulation::reset))
+        .route("/api/perceptual-simulation/state", get(simulation::state))
+        .route(
+            "/api/perceptual-simulation/history",
+            get(simulation::history),
+        )
         .route("/api/engine/reset", post(reset))
         .fallback(|method: Method, uri: Uri| async move {
             unsupported_or(&method, &uri, StatusCode::NOT_FOUND)
@@ -3202,6 +3235,7 @@ mod tests {
             }],
             outputs: Vec::new(),
             next_ids: Vec::new(),
+            metadata: json!({}),
             was_just_matched: false,
             predecessor_chain: Vec::new(),
         }
@@ -3396,5 +3430,162 @@ mod tests {
         let (status, _) = send(&app, "GET", "/api/machines/json/..%2Fsecret", None).await;
         assert_eq!(status, StatusCode::BAD_REQUEST);
         fs::remove_dir_all(&root).unwrap();
+    }
+
+    /// SURFACE_SPEC.md, "`/api/perceptual-simulation` has one behaviour on
+    /// every runtime" (RealityEngine_CI#489).
+    #[tokio::test]
+    async fn a_perceptual_simulation_walks_its_committed_sequence() {
+        let (app, id) = loaded_app();
+        let sim = |route: &str| format!("/api/perceptual-simulation/{route}");
+        // Nothing committed: a caller precondition, so 400, never 500.
+        for route in ["step", "start", "configure/commit"] {
+            let (status, body) = send(&app, "POST", &sim(route), None).await;
+            assert_eq!(status, StatusCode::BAD_REQUEST, "{route}: {body}");
+            assert!(body["error"].is_string(), "{route}: {body}");
+        }
+        let (_, body) = send(
+            &app,
+            "POST",
+            &sim("configure/chunk"),
+            Some(json!({ "events": [[1]] })),
+        )
+        .await;
+        assert_eq!(body, json!({ "success": true, "bufferedEvents": 1 }));
+        let (status, _) = send(&app, "POST", &sim("configure/commit"), None).await;
+        assert_eq!(status, StatusCode::BAD_REQUEST, "no region buffered yet");
+        let chunk = json!({
+            "events": [[0], [1]],
+            "config": { "inputRegion": { "offset": 0, "length": 1 }, "stepDelayMs": 1, "maxSteps": 2 },
+        });
+        let (_, body) = send(&app, "POST", &sim("configure/chunk"), Some(chunk)).await;
+        assert_eq!(body["bufferedEvents"], json!(3));
+        let (_, body) = send(&app, "POST", &sim("configure/commit"), None).await;
+        assert_eq!(body, json!({ "success": true }));
+
+        // The walk writes sequence[n] at the region, over what step n-1 left.
+        let (_, first) = send(&app, "POST", &sim("step"), None).await;
+        assert_eq!(first["step"]["stepNumber"], json!(0));
+        assert_eq!(
+            first["step"]["machineResults"][&id]["inputEvent"],
+            json!([1])
+        );
+        let (_, second) = send(&app, "POST", &sim("step"), None).await;
+        assert_eq!(second["step"]["stepNumber"], json!(1));
+        assert_eq!(second["step"]["perceptualSpace"][1], json!(1), "{second}");
+        // maxSteps bounds the walk before the sequence's end.
+        let (_, done) = send(&app, "POST", &sim("step"), None).await;
+        assert_eq!(done, json!({ "done": true, "success": true }));
+        let (_, state) = send(&app, "GET", &sim("state"), None).await;
+        let state = &state["state"];
+        assert_eq!(state["currentStep"], json!(2));
+        assert_eq!(state["isRunning"], json!(false));
+        assert_eq!(state["machines"][0]["id"], json!(id));
+        assert_eq!(state["perceptualSpace"].as_array().unwrap().len(), 8);
+        let (_, history) = send(&app, "GET", &sim("history"), None).await;
+        let numbers: Vec<_> = history["history"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|step| step["stepNumber"].clone())
+            .collect();
+        assert_eq!(numbers, [json!(1), json!(0)], "newest first");
+
+        // The reset rewinds the walk and keeps it committed; start auto-plays
+        // it to the end, and the run stops by itself.
+        send(&app, "POST", &sim("reset"), None).await;
+        let (_, state) = send(&app, "GET", &sim("state"), None).await;
+        assert_eq!(state["state"]["currentStep"], json!(0));
+        let (_, body) = send(&app, "POST", &sim("start"), None).await;
+        assert_eq!(body, json!({ "success": true }));
+        let mut state = Value::Null;
+        for _ in 0..200 {
+            state = send(&app, "GET", &sim("state"), None).await.1;
+            if state["state"]["isRunning"] == json!(false) {
+                break;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(5)).await;
+        }
+        assert_eq!(state["state"]["currentStep"], json!(2), "{state}");
+        assert_eq!(state["state"]["isRunning"], json!(false));
+    }
+
+    #[tokio::test]
+    async fn active_events_are_each_machines_running_reality_events() {
+        let (app, id) = loaded_app();
+        let active = |body: Value| -> Vec<String> {
+            body["activeEvents"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|entry| {
+                    assert_eq!(entry["machineId"], json!(id));
+                    assert_eq!(entry["sequenceId"], json!("sequence"));
+                    assert_eq!(entry["vector"]["state"], json!("active"));
+                    entry["vector"]["id"].as_str().unwrap().to_owned()
+                })
+                .collect()
+        };
+        let (_, body) = send(&app, "GET", "/api/engine/active", None).await;
+        assert_eq!(
+            body["activeEvents"][0]["vector"]["elements"],
+            json!([{ "value": 1, "comparatorType": "equals" }])
+        );
+        assert_eq!(active(body), ["start"]);
+        send(
+            &app,
+            "POST",
+            "/api/perceive",
+            Some(json!({ "vector": [1] })),
+        )
+        .await;
+        let (_, body) = send(&app, "GET", "/api/engine/active", None).await;
+        // The initial event stays active; its successor joins it.
+        assert_eq!(
+            active(body),
+            ["finish", "start"],
+            "as the machine is running, not as registered"
+        );
+    }
+
+    /// SURFACE_SPEC.md, "Streaming events": `data: <json>` per pushed step.
+    #[tokio::test]
+    async fn the_step_stream_carries_each_pushed_step() {
+        use futures_util::StreamExt;
+        let (app, _) = loaded_app();
+        let request = Request::builder()
+            .uri("/api/engine/stream")
+            .body(Body::empty())
+            .unwrap();
+        let response = app.clone().oneshot(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(response.headers()["content-type"], "text/event-stream");
+        let mut frames = response.into_body().into_data_stream();
+        let mut text = String::new();
+        let (_, pushed) = send(
+            &app,
+            "POST",
+            "/api/perceive",
+            Some(json!({ "vector": [1] })),
+        )
+        .await;
+        while !text.contains("data: ") || !text.ends_with("\n\n") {
+            let frame = tokio::time::timeout(std::time::Duration::from_secs(5), frames.next())
+                .await
+                .expect("a step on the stream")
+                .unwrap()
+                .unwrap();
+            text.push_str(std::str::from_utf8(&frame).unwrap());
+        }
+        assert!(text.starts_with(": connected\n\n"), "{text}");
+        let data = text
+            .lines()
+            .find_map(|line| line.strip_prefix("data: "))
+            .unwrap();
+        assert_eq!(serde_json::from_str::<Value>(data).unwrap(), pushed);
+        assert!(
+            !data.contains(".0,"),
+            "ECMAScript numbers on the stream too: {data}"
+        );
     }
 }
