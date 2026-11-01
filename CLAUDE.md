@@ -6,7 +6,7 @@ See `/Users/johnt/workspace/GitHub/CLAUDE.md` for the integrated application map
 
 ## Role
 
-This repo is the Rust Reality Engine. It is a **non-voting conformance follower** (RealityEngine_CI#607): measured against the behaviour C++, LSP and Scala agree on, never a fourth vote. It implements part of the RE surface and no PE; where it stands is `RealityEngine_CI/docs/RUST_RUNTIME_EVALUATION.md`, and the repair plan is this repo's #2. Default port 5801 (RE), with 5800 reserved for a PE.
+This repo is the Rust Reality Engine. It is a **non-voting conformance follower** (RealityEngine_CI#607): measured against the behaviour C++, LSP and Scala agree on, never a fourth vote. It implements the RE surface outside phase 2 and the first slice of a PE (#20); where it stands is `conformance/SURFACE_STATUS.md` and `RealityEngine_CI/docs/RUST_RUNTIME_EVALUATION.md`, and the repair plan is this repo's #2. Default ports 5801 (RE, `reality-engine`) and 5800 (PE, `perception-engine`).
 
 ## Codebase Map
 
@@ -20,6 +20,7 @@ This repo is the Rust Reality Engine. It is a **non-voting conformance follower*
 - `src/sequences.rs`: the engine's own sequence and vector stores (#13), `/api/sequences` and `/api/vectors`. They are engine-scoped (RealityEngine_CI#397) and separate from the resident machines. A sequence is validated before it is stored (400 with every failure, as an array), and a vector search scores by cosine in id order up to `limit`.
 - `src/auxiliary.rs`: the rest of the RE surface (#13): the sampler (bookkeeping only; an engine reset keeps it), `/api/perception/observe` and `/diagnostic`, `GET /api/governance/route` (the step path's paging resolver, asked directly; values are percent-decoded, which C++ does not do) and the three demos (the resident machine of that name, or 404).
 - `src/runtime.rs`: `/api/runtime/*` (#10). `metrics` is the engine stats with a `domainWorkerPool` marker (`scoped-threads`: this engine keeps no pool counters to report); `vector-space` and `storage-footprint` follow C++; `options` is the flat view of five `/api/engine/config` controls, one state behind both, and `PATCH` ignores a field of the wrong type as C++ does.
+- `src/pe.rs`, `src/bin/perception-engine.rs`: the Perception Engine (#20), its own binary and router (`pe_app`). Workstream 1 (#46): `GET /`, health (the spec's shape), `GET /api/state` (C++ `state_json`; `sources` empty until registration lands), `PATCH /api/config` (`matchAlgorithm`, exact name or 500) and a layer-local `POST /api/reset`. Every other specified PE route answers 501 `unsupported` through the same fallback as the RE, scoped by `Layer`.
 - `src/main.rs`: entrypoint; `serve()` reads `REALITY_ENGINE_PORT`, `VECTOR_DIMENSION`, `MACHINES_DIR`, `INSTANCE_UUID`, `INSTANCE_CLOCK_DIR`.
 - `tests/instance_identity.rs`: a second engine process with a held UUID refuses to boot.
 - `tests/conformance.rs`: tier R1, the corpus replay.

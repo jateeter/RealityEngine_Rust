@@ -5,14 +5,21 @@ An implementation of the RealityEngine in the Rust Language providing black-box 
 
 ```sh
 cargo test
-cargo run
+cargo run                            # the Reality Engine
+cargo run --bin perception-engine    # the Perception Engine (in development, #20)
 ```
 
-The service listens on `0.0.0.0:5801` by default. Configure `REALITY_ENGINE_PORT`
+The Reality Engine listens on `0.0.0.0:5801` by default. Configure `REALITY_ENGINE_PORT`
 to use another port, `VECTOR_DIMENSION` for the universal perceptual-space
 dimension (default `7680`), and `MACHINES_DIR` for the machine corpus directory
 (default `../RealityEngine_Machines/machines`). JSON machine files are loaded
 recursively at startup.
+
+The Perception Engine listens on `0.0.0.0:5800` by default
+(`PERCEPTION_ENGINE_PORT`), with `VECTOR_DIMENSION` as above and `RE_URL` naming
+the Reality Engine it drives (default `http://localhost:5801`). It serves its
+health, state, configuration and reset today; every other PE route answers
+`501` with the participation state `unsupported`.
 
 ## Validation
 
