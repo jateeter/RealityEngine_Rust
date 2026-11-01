@@ -39,7 +39,7 @@ fn body_of(bytes: &Bytes) -> Result<Value, EngineError> {
 }
 
 /// The numbers of `value`, a non-number read as 0 (C++ `json::to_numbers`).
-fn numbers(value: &Value) -> Vec<f64> {
+pub(crate) fn numbers(value: &Value) -> Vec<f64> {
     value
         .as_array()
         .into_iter()
@@ -50,7 +50,7 @@ fn numbers(value: &Value) -> Vec<f64> {
 
 impl Machine {
     /// The machine's input region, `None` without a perceptual mapping.
-    fn input_region(&self) -> Option<(usize, usize)> {
+    pub(crate) fn input_region(&self) -> Option<(usize, usize)> {
         let input = self
             .raw
             .get("perceptualMapping")

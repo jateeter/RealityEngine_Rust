@@ -520,7 +520,11 @@ impl MergeOperation {
 /// C++ `resolve_governance`: the first `metadata.triggerConfig.rules` entry for
 /// `sequence_id` whose `outputMatches` equals `values`, with the rule's
 /// `governance` overriding the machine's `metadata.governance`.
-fn resolve_governance(machine: &Machine, sequence_id: &str, values: &[f64]) -> Option<Value> {
+pub(crate) fn resolve_governance(
+    machine: &Machine,
+    sequence_id: &str,
+    values: &[f64],
+) -> Option<Value> {
     let metadata = machine.raw.get("metadata")?;
     let rule = metadata["triggerConfig"]["rules"]
         .as_array()?
