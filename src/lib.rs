@@ -18,6 +18,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
+mod arbitration;
 pub mod instance_clock;
 mod simulation;
 mod step;
@@ -1125,9 +1126,8 @@ impl Engine {
     /// carries, sorted by name, each in the five-field shape.
     ///
     /// Only controls this engine acts on are carried: "a control that reports a
-    /// value it does not act on is worse than an absent one".
-    /// `arbitrationRetention` and `arbitrationWindow` join with
-    /// `/api/arbitration` (#12).
+    /// value it does not act on is worse than an absent one". All eight
+    /// universal controls are acted on.
     fn controls(&self) -> Vec<Value> {
         let control = |name: &str, value: Value, default: Value| json!({ "name": name, "scope": "engine", "value": value, "default": default, "mutable": true });
         let c = &self.steps.controls;
@@ -1137,6 +1137,16 @@ impl Engine {
             .map(|machine| (machine.id.clone(), json!(machine.transitions_inhibited)))
             .collect();
         vec![
+            control(
+                "arbitrationRetention",
+                json!(c.arbitration_retention),
+                json!(false),
+            ),
+            control(
+                "arbitrationWindow",
+                json!(c.arbitration_window),
+                json!(arbitration::WINDOW_DEFAULT),
+            ),
             control(
                 "historyLimit",
                 json!(c.history_limit),
@@ -1189,6 +1199,32 @@ impl Engine {
         };
         let controls = &mut self.steps.controls;
         match name {
+            "arbitrationRetention" => {
+                // Off is the legacy escape: it drops what was kept, restoring
+                // the memory profile as well as the shape. On retains from the
+                // next committed step.
+                controls.arbitration_retention = boolean()?;
+                if !controls.arbitration_retention {
+                    self.steps.retained.clear();
+                }
+            }
+            "arbitrationWindow" => {
+                let window = value
+                    .as_f64()
+                    .filter(|n| {
+                        *n >= 0.0 && *n <= arbitration::WINDOW_MAX as f64 && n.fract() == 0.0
+                    })
+                    .ok_or_else(|| {
+                        EngineError::bad_request(format!(
+                            "arbitrationWindow requires a whole-number `value` in [0, {}]",
+                            arbitration::WINDOW_MAX
+                        ))
+                    })?;
+                // Narrowing evicts at once.
+                controls.arbitration_window = window as usize;
+                let latest = self.steps.completed();
+                self.steps.prune_arbitration(latest);
+            }
             "historyLimit" => {
                 // Refused rather than cast: -1 as a size bounds nothing.
                 let limit = value
@@ -1233,6 +1269,15 @@ impl Engine {
         let controls = &mut self.steps.controls;
         let defaults = step::StepControls::default();
         match name {
+            "arbitrationRetention" => {
+                controls.arbitration_retention = defaults.arbitration_retention;
+                self.steps.retained.clear();
+            }
+            "arbitrationWindow" => {
+                controls.arbitration_window = defaults.arbitration_window;
+                let latest = self.steps.completed();
+                self.steps.prune_arbitration(latest);
+            }
             "historyLimit" => {
                 controls.history_limit = defaults.history_limit;
                 self.steps.trim_history();
@@ -1520,7 +1565,8 @@ impl Engine {
     }
 
     /// SURFACE_SPEC.md, "The instance clock": `{instance, lamport, step}` for
-    /// the newest committed step. Only the step path (`POST /api/perceive`)
+    /// the newest committed step (and, with `arbitration::clock_json`, for
+    /// each retained step). Only the step path (`POST /api/perceive`)
     /// commits a step, as in C++ (`onStepCommitted`); the process routes do not.
     fn clock(&self) -> Value {
         json!({
@@ -1951,6 +1997,7 @@ pub fn app(engine: Engine) -> Router {
         .route("/api/metrics", get(metrics))
         .route("/api/engine/history", get(engine_history))
         .route("/api/engine/clock", get(engine_clock))
+        .route("/api/arbitration", get(arbitration::arbitration))
         .route("/api/perceive", post(step::perceive))
         .route("/api/engine/isre-history", get(step::isre_history))
         .route("/api/engine/osre-history", get(step::osre_history))
@@ -2423,6 +2470,8 @@ mod tests {
         assert_eq!(
             body,
             json!({ "controls": [
+                engine("arbitrationRetention", json!(false)),
+                engine("arbitrationWindow", json!(1)),
                 engine("historyLimit", json!(250)),
                 engine("includeActiveRegions", json!(true)),
                 engine("includeMachineResults", json!(true)),
@@ -2454,8 +2503,8 @@ mod tests {
             ),
             "field order"
         );
-        // A universal control this engine does not act on yet is absent, not faked.
-        let (status, _) = send(&app, "GET", "/api/engine/config/arbitrationRetention", None).await;
+        // A control the specification does not declare does not exist.
+        let (status, _) = send(&app, "GET", "/api/engine/config/noSuchControl", None).await;
         assert_eq!(status, StatusCode::NOT_FOUND);
     }
 
@@ -2871,7 +2920,7 @@ mod tests {
         // A literal route, a template filled in, a path this engine serves
         // under another method, and a phase-2 route.
         for (method, uri, surface) in [
-            ("GET", "/api/arbitration", "GET /api/arbitration"),
+            ("GET", "/api/machine-graph", "GET /api/machine-graph"),
             (
                 "GET",
                 "/api/machines/m/export",
@@ -3313,6 +3362,130 @@ mod tests {
         // Both write cell 1; PRECEDENCE between equal-rank machines keeps the larger.
         let (_, pair) = send(&app, "GET", "/api/engine/steps/1/pair", None).await;
         assert_eq!(pair["osre"]["nonZero"], json!([{ "index": 1, "value": 3 }]));
+    }
+
+    /// SURFACE_SPEC.md, "Arbitration retention and the instance clock": the
+    /// legacy object while off; retained steps keyed by step, under their clock,
+    /// in the window, while on; the five `?step=N` answers; a reset drops them.
+    #[tokio::test]
+    async fn arbitration_records_are_retained_by_step_under_the_clock() {
+        let mut engine = Engine::new(8);
+        engine.load_machine(rival("zulu", 1.0)).unwrap();
+        engine.load_machine(rival("alpha", 3.0)).unwrap();
+        let app = app(engine);
+        let push = |vector: f64| {
+            let app = app.clone();
+            async move {
+                send(
+                    &app,
+                    "POST",
+                    "/api/perceive",
+                    Some(json!({ "vector": [vector] })),
+                )
+                .await
+            }
+        };
+        let config = |name: &str, value: Value| {
+            let app = app.clone();
+            let uri = format!("/api/engine/config/{name}");
+            async move { send(&app, "PUT", &uri, Some(json!({ "value": value }))).await }
+        };
+        let read = |query: &str| {
+            let app = app.clone();
+            let uri = format!("/api/arbitration{query}");
+            async move { send(&app, "GET", &uri, None).await }
+        };
+
+        // Off: the legacy object, the latest step only.
+        push(1.0).await;
+        push(0.0).await;
+        let (status, legacy) = read("").await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(legacy["count"], json!(1));
+        let record = &legacy["records"][0];
+        assert_eq!(
+            (record["instant"].clone(), record["cell"].clone()),
+            (json!(1), json!(1))
+        );
+        assert_eq!(record["rule"], "PRECEDENCE");
+        assert_eq!(record["resolved"], json!(3));
+        let origins: Vec<&str> = record["contributors"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|c| c["cesId"].as_str().unwrap())
+            .collect();
+        assert_eq!(origins, ["sequence", "sequence"]);
+        assert_eq!(record["contributors"][0]["determinism"], "deterministic");
+        assert_eq!(record["contributors"][0]["outputVectorId"], "0");
+        assert_eq!(
+            record["suppressed"][0]["value"],
+            json!(1),
+            "the smaller writer is set aside"
+        );
+        let (status, _) = read("?step=1").await;
+        assert_eq!(status, StatusCode::CONFLICT);
+
+        // On: retained from the next step, keyed by step, under its clock.
+        config("arbitrationRetention", json!(true)).await;
+        assert_eq!(
+            read("").await.1,
+            json!([]),
+            "nothing retained before it was on"
+        );
+        let (status, _) = read("?step=1").await;
+        assert_eq!(status, StatusCode::GONE, "ran before retention was on");
+        push(1.0).await;
+        push(0.0).await;
+        let (_, steps) = read("").await;
+        assert_eq!(
+            steps.as_array().unwrap().len(),
+            1,
+            "the default window is one"
+        );
+        assert_eq!(steps[0]["clock"]["step"], json!(3));
+        let (_, clock) = send(&app, "GET", "/api/engine/clock", None).await;
+        assert_eq!(steps[0]["clock"], clock, "the clock it committed at");
+        config("arbitrationWindow", json!(2)).await;
+        push(1.0).await;
+        let (_, steps) = read("").await;
+        let numbers: Vec<_> = steps
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|s| s["clock"]["step"].clone())
+            .collect();
+        assert_eq!(numbers, [json!(3), json!(4)], "oldest first");
+        assert_eq!(read("?step=4").await.0, StatusCode::OK);
+        assert_eq!(read("?step=9").await.0, StatusCode::NOT_FOUND);
+        assert_eq!(read("?step=-1").await.0, StatusCode::BAD_REQUEST);
+        for bad in [json!(-1), json!(1025), json!(1.5), json!(true)] {
+            assert_eq!(
+                config("arbitrationWindow", bad.clone()).await.0,
+                StatusCode::BAD_REQUEST,
+                "{bad}"
+            );
+        }
+        config("arbitrationWindow", json!(1)).await;
+        assert_eq!(
+            read("?step=3").await.0,
+            StatusCode::GONE,
+            "narrowing evicts at once"
+        );
+
+        // A reset drops every retained step and the latest records; the
+        // lamport keeps counting.
+        let lamport = clock["lamport"].as_u64().unwrap();
+        send(&app, "POST", "/api/engine/reset", None).await;
+        assert_eq!(read("").await.1, json!([]));
+        assert_eq!(read("?step=0").await.0, StatusCode::NOT_FOUND);
+        push(1.0).await;
+        let (_, steps) = read("").await;
+        assert_eq!(steps[0]["clock"]["step"], json!(0));
+        assert!(steps[0]["clock"]["lamport"].as_u64().unwrap() > lamport);
+        // Off again: the escape drops what was kept.
+        config("arbitrationRetention", json!(false)).await;
+        assert!(read("").await.1["records"].is_array());
     }
 
     #[tokio::test]

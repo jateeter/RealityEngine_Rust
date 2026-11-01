@@ -190,7 +190,7 @@
       "tracking": "jateeter/RealityEngine_Rust#17"
     },
     "RE DELETE /api/engine/config/:control": {
-      "notes": "carries six of the eight universal controls (historyLimit, includeActiveRegions, includeMachineResults, includePerceptualSpace, phaseDetail, transitionsInhibited), identical to C++ on the regression corpus; arbitrationRetention and arbitrationWindow join with /api/arbitration (#12)",
+      "notes": "all eight universal controls, identical to C++ on the regression corpus",
       "status": "implemented"
     },
     "RE DELETE /api/machines/:id": {
@@ -215,8 +215,8 @@
       "status": "implemented"
     },
     "RE GET /api/arbitration": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#12"
+      "notes": "#12: CI's regression-arbitration-retention.py passes against standalone C++ on the regression corpus (controls, windows, ?step, toggles, clock, retained bodies byte-identical); the legacy object is byte-identical to C++'s committed baseline",
+      "status": "implemented"
     },
     "RE GET /api/buses/semantic": {
       "status": "declared-unsupported",
@@ -249,11 +249,11 @@
       "status": "implemented"
     },
     "RE GET /api/engine/config": {
-      "notes": "carries six of the eight universal controls (historyLimit, includeActiveRegions, includeMachineResults, includePerceptualSpace, phaseDetail, transitionsInhibited), identical to C++ on the regression corpus; arbitrationRetention and arbitrationWindow join with /api/arbitration (#12)",
+      "notes": "all eight universal controls, identical to C++ on the regression corpus",
       "status": "implemented"
     },
     "RE GET /api/engine/config/:control": {
-      "notes": "carries six of the eight universal controls (historyLimit, includeActiveRegions, includeMachineResults, includePerceptualSpace, phaseDetail, transitionsInhibited), identical to C++ on the regression corpus; arbitrationRetention and arbitrationWindow join with /api/arbitration (#12)",
+      "notes": "all eight universal controls, identical to C++ on the regression corpus",
       "status": "implemented"
     },
     "RE GET /api/engine/history": {
@@ -468,7 +468,7 @@
       "status": "implemented"
     },
     "RE PUT /api/engine/config/:control": {
-      "notes": "carries six of the eight universal controls (historyLimit, includeActiveRegions, includeMachineResults, includePerceptualSpace, phaseDetail, transitionsInhibited), identical to C++ on the regression corpus; arbitrationRetention and arbitrationWindow join with /api/arbitration (#12)",
+      "notes": "all eight universal controls, identical to C++ on the regression corpus",
       "status": "implemented"
     },
     "RE PUT /api/machines/:id": {
