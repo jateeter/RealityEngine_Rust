@@ -8,12 +8,10 @@
       "status": "implemented"
     },
     "PE GET /api/dispatch/ledger": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#20"
+      "status": "implemented"
     },
     "PE GET /api/dispatch/records/:id": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#20"
+      "status": "implemented"
     },
     "PE GET /api/health": {
       "status": "implemented"
@@ -71,15 +69,13 @@
       "status": "implemented"
     },
     "PE GET /api/triggers/status": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#20"
+      "status": "implemented"
     },
     "PE PATCH /api/config": {
       "status": "implemented"
     },
     "PE PATCH /api/dispatch/records/:id": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#20"
+      "status": "implemented"
     },
     "PE PATCH /api/sources/:id": {
       "status": "implemented"
@@ -91,8 +87,7 @@
       "status": "implemented"
     },
     "PE POST /api/dispatch/records/:id/replay": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#20"
+      "status": "implemented"
     },
     "PE POST /api/integrations/acp/dispatch": {
       "status": "declared-unsupported",

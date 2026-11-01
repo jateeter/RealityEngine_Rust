@@ -80,40 +80,13 @@ impl Pushes {
     }
 }
 
-/// `machineId` -> (machine name, `outputMergeTransformation`).
-type Catalog = BTreeMap<String, (String, String)>;
-
-async fn catalog(re_url: &str) -> Catalog {
-    let Ok(bytes) = client::get(&format!("{re_url}/api/machines")).await else {
-        return Catalog::new();
-    };
-    let Ok(machines) = serde_json::from_slice::<Value>(&bytes) else {
-        return Catalog::new();
-    };
-    machines["machines"]
-        .as_array()
-        .into_iter()
-        .flatten()
-        .filter_map(|m| {
-            let id = m["id"].as_str().filter(|id| !id.is_empty())?;
-            Some((
-                id.to_owned(),
-                (
-                    m["name"].as_str().unwrap_or(id).to_owned(),
-                    m["outputMergeTransformation"]
-                        .as_str()
-                        .unwrap_or("or")
-                        .to_owned(),
-                ),
-            ))
-        })
-        .collect()
-}
-
 /// The OSRE cells of a step (C++ `osre_fold_cells`): each cell a mergeBatch
 /// region covers, with its writing machine (first by name where several do)
 /// and that machine's transformation.
-fn osre_fold_cells(step: &Value, catalog: &Catalog) -> BTreeMap<i64, (String, String)> {
+fn osre_fold_cells(
+    step: &Value,
+    catalog: &BTreeMap<String, Value>,
+) -> BTreeMap<i64, (String, String)> {
     let mut cells: BTreeMap<i64, (String, String)> = BTreeMap::new();
     for op in step["mergeBatch"].as_array().into_iter().flatten() {
         let Some(machine_id) = op["machineId"].as_str().filter(|id| !id.is_empty()) else {
@@ -122,12 +95,17 @@ fn osre_fold_cells(step: &Value, catalog: &Catalog) -> BTreeMap<i64, (String, St
         if !op["region"].is_object() {
             continue;
         }
-        let (name, transformation) = catalog.get(machine_id).cloned().unwrap_or_else(|| {
-            (
-                op["machineName"].as_str().unwrap_or(machine_id).to_owned(),
-                "or".to_owned(),
-            )
-        });
+        let declared = op["machineName"].as_str().unwrap_or(machine_id);
+        let (name, transformation) = match catalog.get(machine_id) {
+            Some(m) => (
+                m["name"].as_str().unwrap_or(declared).to_owned(),
+                m["outputMergeTransformation"]
+                    .as_str()
+                    .unwrap_or("or")
+                    .to_owned(),
+            ),
+            None => (declared.to_owned(), "or".to_owned()),
+        };
         let offset = op["region"]["offset"].as_f64().unwrap_or(-1.0) as i64;
         let length = op["region"]["length"].as_f64().unwrap_or(0.0) as i64;
         for cell in offset.max(0)..offset + length {
@@ -307,7 +285,9 @@ async fn transition(pe: &SharedPe, include_machine_results: bool, only: &Value) 
         state.record_contention();
         (vector, state.match_algorithm, state.re_url.clone())
     };
-    let catalog = catalog(&re_url).await;
+    // C++ reads the catalog on every push: the fold and trigger dispatch
+    // need each merge entry's machine as it is now.
+    dispatch::refresh_catalog(pe).await;
     // Every observation field, whatever the caller asked to see: machine
     // results are this engine's next input, not only part of the reply.
     let payload = json!({
@@ -328,7 +308,7 @@ async fn transition(pe: &SharedPe, include_machine_results: bool, only: &Value) 
         let Ok(mut state) = pe.write() else {
             return failure(pe, lock_error().message);
         };
-        state.osre_fold = osre_fold_cells(&step, &catalog);
+        state.osre_fold = osre_fold_cells(&step, &state.catalog.machines);
         if step["perceptualSpace"].is_array() {
             let space = aggregate(
                 machine_routes::numbers(&step["perceptualSpace"]),
@@ -338,6 +318,8 @@ async fn transition(pe: &SharedPe, include_machine_results: bool, only: &Value) 
         }
         state.advance();
         state.last_push = step.clone();
+        // On the whole step, before the caller's selector narrows the reply.
+        state.dispatch_triggers(&step);
         state.global_step
     };
     select(&mut step, only);

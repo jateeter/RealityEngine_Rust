@@ -24,6 +24,7 @@ use axum::routing::patch;
 use std::sync::atomic::AtomicU64;
 
 mod client;
+mod dispatch;
 mod ingest;
 mod integrations;
 mod localai;
@@ -69,6 +70,9 @@ pub struct PerceptionEngine {
     integrations: Arc<integrations::Integrations>,
     /// `GET /api/integrations/localai/ledger`: every invocation, newest 256.
     localai_ledger: Arc<std::sync::Mutex<std::collections::VecDeque<Value>>>,
+    /// The RE's machines by id: trigger dispatch and the OSRE fold read it.
+    catalog: dispatch::MachineCatalog,
+    dispatch: dispatch::Dispatch,
 }
 
 impl PerceptionEngine {
@@ -94,6 +98,8 @@ impl PerceptionEngine {
             events: streams::channel(),
             integrations: Arc::default(),
             localai_ledger: localai::ledger(),
+            catalog: dispatch::MachineCatalog::default(),
+            dispatch: dispatch::Dispatch::default(),
         }
     }
 
@@ -259,6 +265,13 @@ fn router(pe: SharedPe) -> Router {
             post(ingest::healthkit),
         )
         .route("/api/integrations/carekit/ingest", post(ingest::carekit))
+        .route("/api/triggers/status", get(dispatch::triggers))
+        .route("/api/dispatch/ledger", get(dispatch::ledger))
+        .route(
+            "/api/dispatch/records/{id}",
+            get(dispatch::record).patch(dispatch::update),
+        )
+        .route("/api/dispatch/records/{id}/replay", post(dispatch::replay))
         .route("/api/events", get(streams::events))
         .route("/ws", get(streams::websocket))
         .fallback(|method: Method, uri: Uri| async move {
@@ -306,10 +319,14 @@ pub async fn serve() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap_or_else(|_| "../RealityEngine_Machines/machines".to_owned());
     engine.registry = step::ArbitrationRegistry::load(std::path::Path::new(&machines_dir));
     engine.integrations = Arc::new(integrations::Integrations::from_environment());
+    engine.dispatch = dispatch::Dispatch::from_environment(&engine.integrations.localai_base_url);
     if let Ok(merge) = std::env::var("PE_SOURCE_MERGE") {
         engine.merge_only = flag_on(Some(&merge));
     }
     let pe = Arc::new(RwLock::new(engine));
+    // The catalog is a cache of the RE's machines, and reading it changes no
+    // source membership, so it is read whatever PE_SOURCE_BOOTSTRAP says.
+    dispatch::refresh_catalog(&pe).await;
     if flag_on(std::env::var("PE_SOURCE_BOOTSTRAP").ok().as_deref()) {
         let summary = sources::bootstrap_from_re(&pe, &re_url).await.to_json();
         eprintln!("perception-engine: boot bootstrap {summary}");
