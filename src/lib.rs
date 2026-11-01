@@ -23,6 +23,7 @@ mod auxiliary;
 pub mod instance_clock;
 mod machine_routes;
 mod machine_view;
+pub mod pe;
 mod runtime;
 mod sequences;
 mod simulation;
@@ -2147,10 +2148,10 @@ pub fn app(engine: Engine) -> Router {
         .route("/api/demo/data-center", get(auxiliary::demo_data_center))
         .route("/api/demo/kleene-star", get(auxiliary::demo_kleene_star))
         .fallback(|method: Method, uri: Uri| async move {
-            unsupported_or(&method, &uri, StatusCode::NOT_FOUND)
+            unsupported_or(Layer::Re, &method, &uri, StatusCode::NOT_FOUND)
         })
         .method_not_allowed_fallback(|method: Method, uri: Uri| async move {
-            unsupported_or(&method, &uri, StatusCode::METHOD_NOT_ALLOWED)
+            unsupported_or(Layer::Re, &method, &uri, StatusCode::METHOD_NOT_ALLOWED)
         })
         .layer(axum::middleware::map_response(ecmascript_numbers))
         .with_state(state)
@@ -2263,18 +2264,32 @@ pub fn ecmascript_number(value: f64) -> String {
 /// pinned to the spec's commit: the routes this engine is answerable for.
 const SPEC_ROUTES: &str = include_str!("../conformance/surface/spec-routes.json");
 
-/// The Reality Engine's specified routes as `(method, path)`, the path in the
-/// spec's own form (`:param` placeholders). The PE's are not this process's to
-/// answer.
-fn specified_re_routes() -> &'static [(String, String)] {
-    static ROUTES: std::sync::OnceLock<Vec<(String, String)>> = std::sync::OnceLock::new();
-    ROUTES.get_or_init(|| {
+/// The service a router answers for: the specification's layers it owns.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Layer {
+    /// The Reality Engine, phase 2 included.
+    Re,
+    /// The Perception Engine.
+    Pe,
+}
+
+/// A layer's specified routes as `(method, path)`, the path in the spec's own
+/// form (`:param` placeholders). The other service's are not this process's
+/// to answer.
+fn specified_routes(layer: Layer) -> &'static [(String, String)] {
+    static RE: std::sync::OnceLock<Vec<(String, String)>> = std::sync::OnceLock::new();
+    static PE: std::sync::OnceLock<Vec<(String, String)>> = std::sync::OnceLock::new();
+    let (cell, layers): (_, &[&str]) = match layer {
+        Layer::Re => (&RE, &["RE", "RE-phase2"]),
+        Layer::Pe => (&PE, &["PE"]),
+    };
+    cell.get_or_init(|| {
         let spec: Value = serde_json::from_str(SPEC_ROUTES).expect("vendored spec-routes.json");
         spec["routes"]
             .as_array()
             .into_iter()
             .flatten()
-            .filter(|route| matches!(route["layer"].as_str(), Some("RE" | "RE-phase2")))
+            .filter(|route| route["layer"].as_str().is_some_and(|l| layers.contains(&l)))
             .filter_map(|route| {
                 Some((
                     route["method"].as_str()?.to_owned(),
@@ -2288,9 +2303,9 @@ fn specified_re_routes() -> &'static [(String, String)] {
 /// The specified route a request this router does not serve was addressed to,
 /// as `"<METHOD> <path>"`; the most literal one when several templates match.
 /// `SSE` and `WS` routes are reached with `GET`.
-fn specified_surface(method: &Method, path: &str) -> Option<String> {
+fn specified_surface(layer: Layer, method: &Method, path: &str) -> Option<String> {
     let requested: Vec<&str> = path.split('/').collect();
-    specified_re_routes()
+    specified_routes(layer)
         .iter()
         .filter(|(spec_method, _)| {
             spec_method == method.as_str()
@@ -2313,8 +2328,13 @@ fn specified_surface(method: &Method, path: &str) -> Option<String> {
 /// SURFACE_SPEC.md, "An unimplemented route answers `unsupported`": a specified
 /// route this engine does not implement answers 501 with the participation
 /// state, never silence. Anything else keeps the router's own `otherwise`.
-fn unsupported_or(method: &Method, uri: &Uri, otherwise: StatusCode) -> Response {
-    match specified_surface(method, uri.path()) {
+pub(crate) fn unsupported_or(
+    layer: Layer,
+    method: &Method,
+    uri: &Uri,
+    otherwise: StatusCode,
+) -> Response {
+    match specified_surface(layer, method, uri.path()) {
         Some(surface) => (
             StatusCode::NOT_IMPLEMENTED,
             Json(json!({
@@ -4545,6 +4565,93 @@ mod tests {
         )
         .await;
         assert_eq!(all["results"].as_object().unwrap().len(), 2);
+    }
+
+    /// #46: the PE skeleton. State before any source or push, configuration,
+    /// a layer-local reset, and every other PE route declared unsupported.
+    #[tokio::test]
+    async fn the_pe_skeleton_reports_state_and_declares_the_rest() {
+        let app = pe::pe_app(pe::PerceptionEngine::new(4));
+        let (_, state) = send(&app, "GET", "/api/state", None).await;
+        assert_eq!(
+            state,
+            json!({
+                "sources": [],
+                "assembledVector": [0, 0, 0, 0],
+                "globalStep": 0,
+                "auto": { "running": false, "intervalMs": 1000 },
+                "lastPush": null,
+                "matchAlgorithm": "gte",
+                "perceptionDimension": 4,
+            })
+        );
+        let (_, body) = send(&app, "GET", "/api/health", None).await;
+        assert_eq!(body["status"], "healthy");
+        assert!(body["timestamp"].is_number() && body["version"].is_string());
+
+        let (status, body) = send(
+            &app,
+            "PATCH",
+            "/api/config",
+            Some(json!({ "matchAlgorithm": "equals" })),
+        )
+        .await;
+        assert_eq!(
+            (status, body),
+            (
+                StatusCode::OK,
+                json!({ "success": true, "matchAlgorithm": "equals" })
+            )
+        );
+        // The exact name only, as C++ reads it; a non-string is ignored.
+        let (status, body) = send(
+            &app,
+            "PATCH",
+            "/api/config",
+            Some(json!({ "matchAlgorithm": "GTE" })),
+        )
+        .await;
+        assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(body["error"], "Unknown match algorithm: GTE");
+        let (_, body) = send(
+            &app,
+            "PATCH",
+            "/api/config",
+            Some(json!({ "matchAlgorithm": 3 })),
+        )
+        .await;
+        assert_eq!(body["matchAlgorithm"], "equals");
+        let (status, body) = send(&app, "POST", "/api/reset", None).await;
+        assert_eq!((status, body), (StatusCode::OK, json!({ "success": true })));
+
+        let unsupported = |surface: &str| {
+            json!({
+                "error": format!("{surface} is not implemented by this runtime"),
+                "participation": "unsupported",
+                "surface": surface,
+            })
+        };
+        for (method, uri, surface) in [
+            ("GET", "/api/sources", "GET /api/sources"),
+            ("POST", "/api/sensors/s-1", "POST /api/sensors/:sensorId"),
+            ("POST", "/api/push", "POST /api/push"),
+            ("GET", "/api/machines", "GET /api/machines"),
+            ("GET", "/api/events", "SSE /api/events"),
+            ("GET", "/ws", "WS /ws"),
+        ] {
+            let (status, body) = send(&app, method, uri, None).await;
+            assert_eq!(status, StatusCode::NOT_IMPLEMENTED, "{method} {uri}");
+            assert_eq!(body, unsupported(surface), "{method} {uri}");
+        }
+        // The RE's routes are not the PE's to answer, nor are unspecified ones.
+        for uri in ["/api/engine/stats", "/api/not-in-the-spec"] {
+            let (status, body) = send(&app, "GET", uri, None).await;
+            assert_eq!(
+                (status, body),
+                (StatusCode::NOT_FOUND, Value::Null),
+                "{uri}"
+            );
+        }
     }
 
     /// #10: `/api/runtime/*`. Options and `/api/engine/config` are one state.

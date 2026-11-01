@@ -7,10 +7,10 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 | layer | implemented | routes |
 |---|---|---|
 | RE | 78 | 79 |
-| PE | 0 | 47 |
+| PE | 5 | 47 |
 | RE-phase2 | 0 | 5 |
 
-`RE` and `PE` are the specification's implemented-contract tables; `RE-phase2` is the K-line snapshot routes it specifies outside them. An RE route this engine does not implement is `declared-unsupported`: it answers `501` with the participation state, as the specification rules ("An unimplemented route answers `unsupported`"). A `missing` route answers silently, which the specification forbids; the PE's are missing because this repo has no Perception Engine. Status says a route exists, not that it conforms: the notes name known shape defects.
+`RE` and `PE` are the specification's implemented-contract tables; `RE-phase2` is the K-line snapshot routes it specifies outside them. A route this engine does not implement is `declared-unsupported`: it answers `501` with the participation state, as the specification rules ("An unimplemented route answers `unsupported`"). A `missing` route answers silently, which the specification forbids. The RE's routes are probed on `app`, the PE's on `pe_app`. Status says a route exists, not that it conforms: the notes name known shape defects.
 
 ## RE: Info & Health
 
@@ -165,98 +165,98 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 
 | method | path | status | tracking | notes |
 |---|---|---|---|---|
-| GET | `/` | missing | jateeter/RealityEngine_Rust#17 |  |
-| GET | `/api/health` | missing | jateeter/RealityEngine_Rust#17 |  |
-| GET | `/api/state` | missing | jateeter/RealityEngine_Rust#17 |  |
+| GET | `/` | implemented |  |  |
+| GET | `/api/health` | implemented |  |  |
+| GET | `/api/state` | implemented |  |  |
 
 ## PE: Push Cycle
 
 | method | path | status | tracking | notes |
 |---|---|---|---|---|
-| POST | `/api/push` | missing | jateeter/RealityEngine_Rust#17 |  |
-| GET | `/api/push/:id` | missing | jateeter/RealityEngine_Rust#17 |  |
-| POST | `/api/auto/start` | missing | jateeter/RealityEngine_Rust#17 |  |
-| POST | `/api/auto/stop` | missing | jateeter/RealityEngine_Rust#17 |  |
+| POST | `/api/push` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
+| GET | `/api/push/:id` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
+| POST | `/api/auto/start` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
+| POST | `/api/auto/stop` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
 
 ## PE: Configuration & Reset
 
 | method | path | status | tracking | notes |
 |---|---|---|---|---|
-| PATCH | `/api/config` | missing | jateeter/RealityEngine_Rust#17 |  |
-| POST | `/api/reset` | missing | jateeter/RealityEngine_Rust#17 |  |
+| PATCH | `/api/config` | implemented |  |  |
+| POST | `/api/reset` | implemented |  |  |
 
 ## PE: Sources & Sensors
 
 | method | path | status | tracking | notes |
 |---|---|---|---|---|
-| GET | `/api/sources` | missing | jateeter/RealityEngine_Rust#17 |  |
-| POST | `/api/sources` | missing | jateeter/RealityEngine_Rust#17 |  |
-| PATCH | `/api/sources/:id` | missing | jateeter/RealityEngine_Rust#17 |  |
-| DELETE | `/api/sources/:id` | missing | jateeter/RealityEngine_Rust#17 |  |
-| POST | `/api/sources/bootstrap-from-machines` | missing | jateeter/RealityEngine_Rust#17 |  |
-| GET | `/api/sources/contention` | missing | jateeter/RealityEngine_Rust#17 |  |
-| POST | `/api/sensors/:sensorId` | missing | jateeter/RealityEngine_Rust#17 |  |
+| GET | `/api/sources` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
+| POST | `/api/sources` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
+| PATCH | `/api/sources/:id` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
+| DELETE | `/api/sources/:id` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
+| POST | `/api/sources/bootstrap-from-machines` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
+| GET | `/api/sources/contention` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
+| POST | `/api/sensors/:sensorId` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
 
 ## PE: Signals
 
 | method | path | status | tracking | notes |
 |---|---|---|---|---|
-| POST | `/api/signals` | missing | jateeter/RealityEngine_Rust#17 |  |
+| POST | `/api/signals` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
 
 ## PE: Machines Proxy
 
 | method | path | status | tracking | notes |
 |---|---|---|---|---|
-| GET | `/api/machines` | missing | jateeter/RealityEngine_Rust#17 |  |
+| GET | `/api/machines` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
 
 ## PE: Integrations
 
 | method | path | status | tracking | notes |
 |---|---|---|---|---|
-| GET | `/api/integrations/status` | missing | jateeter/RealityEngine_Rust#17 |  |
-| POST | `/api/integrations/completions` | missing | jateeter/RealityEngine_Rust#17 |  |
-| GET | `/api/integrations/ollama/status` | missing | jateeter/RealityEngine_Rust#17 |  |
-| POST | `/api/integrations/ollama/dispatch` | missing | jateeter/RealityEngine_Rust#17 |  |
-| GET | `/api/integrations/openai/status` | missing | jateeter/RealityEngine_Rust#17 |  |
-| POST | `/api/integrations/openai/dispatch` | missing | jateeter/RealityEngine_Rust#17 |  |
-| GET | `/api/integrations/acp/status` | missing | jateeter/RealityEngine_Rust#17 |  |
-| POST | `/api/integrations/acp/dispatch` | missing | jateeter/RealityEngine_Rust#17 |  |
-| GET | `/api/integrations/healthkit/status` | missing | jateeter/RealityEngine_Rust#17 |  |
-| POST | `/api/integrations/healthkit/ingest` | missing | jateeter/RealityEngine_Rust#17 |  |
-| GET | `/api/integrations/carekit/status` | missing | jateeter/RealityEngine_Rust#17 |  |
-| POST | `/api/integrations/carekit/ingest` | missing | jateeter/RealityEngine_Rust#17 |  |
-| GET | `/api/integrations/localai/status` | missing | jateeter/RealityEngine_Rust#17 |  |
-| GET | `/api/integrations/localai/catalog` | missing | jateeter/RealityEngine_Rust#17 |  |
-| POST | `/api/integrations/localai/bootstrap` | missing | jateeter/RealityEngine_Rust#17 |  |
-| POST | `/api/integrations/localai/invoke` | missing | jateeter/RealityEngine_Rust#17 |  |
-| GET | `/api/integrations/localai/ledger` | missing | jateeter/RealityEngine_Rust#17 |  |
+| GET | `/api/integrations/status` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
+| POST | `/api/integrations/completions` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
+| GET | `/api/integrations/ollama/status` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
+| POST | `/api/integrations/ollama/dispatch` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
+| GET | `/api/integrations/openai/status` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
+| POST | `/api/integrations/openai/dispatch` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
+| GET | `/api/integrations/acp/status` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
+| POST | `/api/integrations/acp/dispatch` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
+| GET | `/api/integrations/healthkit/status` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
+| POST | `/api/integrations/healthkit/ingest` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
+| GET | `/api/integrations/carekit/status` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
+| POST | `/api/integrations/carekit/ingest` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
+| GET | `/api/integrations/localai/status` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
+| GET | `/api/integrations/localai/catalog` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
+| POST | `/api/integrations/localai/bootstrap` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
+| POST | `/api/integrations/localai/invoke` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
+| GET | `/api/integrations/localai/ledger` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
 
 ## PE: Dispatch & Triggers
 
 | method | path | status | tracking | notes |
 |---|---|---|---|---|
-| GET | `/api/dispatch/ledger` | missing | jateeter/RealityEngine_Rust#17 |  |
-| GET | `/api/dispatch/records/:id` | missing | jateeter/RealityEngine_Rust#17 |  |
-| PATCH | `/api/dispatch/records/:id` | missing | jateeter/RealityEngine_Rust#17 |  |
-| POST | `/api/dispatch/records/:id/replay` | missing | jateeter/RealityEngine_Rust#17 |  |
-| GET | `/api/triggers/status` | missing | jateeter/RealityEngine_Rust#17 |  |
+| GET | `/api/dispatch/ledger` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
+| GET | `/api/dispatch/records/:id` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
+| PATCH | `/api/dispatch/records/:id` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
+| POST | `/api/dispatch/records/:id/replay` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
+| GET | `/api/triggers/status` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
 
 ## PE: MQTT Bridge
 
 | method | path | status | tracking | notes |
 |---|---|---|---|---|
-| GET | `/api/mqtt/status` | missing | jateeter/RealityEngine_Rust#17 |  |
-| GET | `/api/mqtt/mappings` | missing | jateeter/RealityEngine_Rust#17 |  |
-| PUT | `/api/mqtt/mappings` | missing | jateeter/RealityEngine_Rust#17 |  |
-| POST | `/api/mqtt/enable` | missing | jateeter/RealityEngine_Rust#17 |  |
-| POST | `/api/mqtt/disable` | missing | jateeter/RealityEngine_Rust#17 |  |
+| GET | `/api/mqtt/status` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
+| GET | `/api/mqtt/mappings` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
+| PUT | `/api/mqtt/mappings` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
+| POST | `/api/mqtt/enable` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
+| POST | `/api/mqtt/disable` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
 
 ## PE: Streaming
 
 | method | path | status | tracking | notes |
 |---|---|---|---|---|
-| SSE | `/api/events` | missing | jateeter/RealityEngine_Rust#17 |  |
-| WS | `/ws` | missing | jateeter/RealityEngine_Rust#17 |  |
+| SSE | `/api/events` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
+| WS | `/ws` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
 
 ## RE-phase2: Routes
 

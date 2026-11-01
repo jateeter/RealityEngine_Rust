@@ -2,192 +2,187 @@
   "purpose": "Implementation status of every SURFACE_SPEC route in this repo. Rewrite with SURFACE_RECORD=1 cargo test --test surface; then give every UNCLASSIFIED entry its issue.",
   "routes": {
     "PE DELETE /api/sources/:id": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#17"
+      "status": "declared-unsupported",
+      "tracking": "jateeter/RealityEngine_Rust#20"
     },
     "PE GET /": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#17"
+      "status": "implemented"
     },
     "PE GET /api/dispatch/ledger": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#17"
+      "status": "declared-unsupported",
+      "tracking": "jateeter/RealityEngine_Rust#20"
     },
     "PE GET /api/dispatch/records/:id": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#17"
+      "status": "declared-unsupported",
+      "tracking": "jateeter/RealityEngine_Rust#20"
     },
     "PE GET /api/health": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#17"
+      "status": "implemented"
     },
     "PE GET /api/integrations/acp/status": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#17"
+      "status": "declared-unsupported",
+      "tracking": "jateeter/RealityEngine_Rust#20"
     },
     "PE GET /api/integrations/carekit/status": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#17"
+      "status": "declared-unsupported",
+      "tracking": "jateeter/RealityEngine_Rust#20"
     },
     "PE GET /api/integrations/healthkit/status": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#17"
+      "status": "declared-unsupported",
+      "tracking": "jateeter/RealityEngine_Rust#20"
     },
     "PE GET /api/integrations/localai/catalog": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#17"
+      "status": "declared-unsupported",
+      "tracking": "jateeter/RealityEngine_Rust#20"
     },
     "PE GET /api/integrations/localai/ledger": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#17"
+      "status": "declared-unsupported",
+      "tracking": "jateeter/RealityEngine_Rust#20"
     },
     "PE GET /api/integrations/localai/status": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#17"
+      "status": "declared-unsupported",
+      "tracking": "jateeter/RealityEngine_Rust#20"
     },
     "PE GET /api/integrations/ollama/status": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#17"
+      "status": "declared-unsupported",
+      "tracking": "jateeter/RealityEngine_Rust#20"
     },
     "PE GET /api/integrations/openai/status": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#17"
+      "status": "declared-unsupported",
+      "tracking": "jateeter/RealityEngine_Rust#20"
     },
     "PE GET /api/integrations/status": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#17"
+      "status": "declared-unsupported",
+      "tracking": "jateeter/RealityEngine_Rust#20"
     },
     "PE GET /api/machines": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#17"
+      "status": "declared-unsupported",
+      "tracking": "jateeter/RealityEngine_Rust#20"
     },
     "PE GET /api/mqtt/mappings": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#17"
+      "status": "declared-unsupported",
+      "tracking": "jateeter/RealityEngine_Rust#20"
     },
     "PE GET /api/mqtt/status": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#17"
+      "status": "declared-unsupported",
+      "tracking": "jateeter/RealityEngine_Rust#20"
     },
     "PE GET /api/push/:id": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#17"
+      "status": "declared-unsupported",
+      "tracking": "jateeter/RealityEngine_Rust#20"
     },
     "PE GET /api/sources": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#17"
+      "status": "declared-unsupported",
+      "tracking": "jateeter/RealityEngine_Rust#20"
     },
     "PE GET /api/sources/contention": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#17"
+      "status": "declared-unsupported",
+      "tracking": "jateeter/RealityEngine_Rust#20"
     },
     "PE GET /api/state": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#17"
+      "status": "implemented"
     },
     "PE GET /api/triggers/status": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#17"
+      "status": "declared-unsupported",
+      "tracking": "jateeter/RealityEngine_Rust#20"
     },
     "PE PATCH /api/config": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#17"
+      "status": "implemented"
     },
     "PE PATCH /api/dispatch/records/:id": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#17"
+      "status": "declared-unsupported",
+      "tracking": "jateeter/RealityEngine_Rust#20"
     },
     "PE PATCH /api/sources/:id": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#17"
+      "status": "declared-unsupported",
+      "tracking": "jateeter/RealityEngine_Rust#20"
     },
     "PE POST /api/auto/start": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#17"
+      "status": "declared-unsupported",
+      "tracking": "jateeter/RealityEngine_Rust#20"
     },
     "PE POST /api/auto/stop": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#17"
+      "status": "declared-unsupported",
+      "tracking": "jateeter/RealityEngine_Rust#20"
     },
     "PE POST /api/dispatch/records/:id/replay": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#17"
+      "status": "declared-unsupported",
+      "tracking": "jateeter/RealityEngine_Rust#20"
     },
     "PE POST /api/integrations/acp/dispatch": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#17"
+      "status": "declared-unsupported",
+      "tracking": "jateeter/RealityEngine_Rust#20"
     },
     "PE POST /api/integrations/carekit/ingest": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#17"
+      "status": "declared-unsupported",
+      "tracking": "jateeter/RealityEngine_Rust#20"
     },
     "PE POST /api/integrations/completions": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#17"
+      "status": "declared-unsupported",
+      "tracking": "jateeter/RealityEngine_Rust#20"
     },
     "PE POST /api/integrations/healthkit/ingest": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#17"
+      "status": "declared-unsupported",
+      "tracking": "jateeter/RealityEngine_Rust#20"
     },
     "PE POST /api/integrations/localai/bootstrap": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#17"
+      "status": "declared-unsupported",
+      "tracking": "jateeter/RealityEngine_Rust#20"
     },
     "PE POST /api/integrations/localai/invoke": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#17"
+      "status": "declared-unsupported",
+      "tracking": "jateeter/RealityEngine_Rust#20"
     },
     "PE POST /api/integrations/ollama/dispatch": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#17"
+      "status": "declared-unsupported",
+      "tracking": "jateeter/RealityEngine_Rust#20"
     },
     "PE POST /api/integrations/openai/dispatch": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#17"
+      "status": "declared-unsupported",
+      "tracking": "jateeter/RealityEngine_Rust#20"
     },
     "PE POST /api/mqtt/disable": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#17"
+      "status": "declared-unsupported",
+      "tracking": "jateeter/RealityEngine_Rust#20"
     },
     "PE POST /api/mqtt/enable": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#17"
+      "status": "declared-unsupported",
+      "tracking": "jateeter/RealityEngine_Rust#20"
     },
     "PE POST /api/push": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#17"
+      "status": "declared-unsupported",
+      "tracking": "jateeter/RealityEngine_Rust#20"
     },
     "PE POST /api/reset": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#17"
+      "status": "implemented"
     },
     "PE POST /api/sensors/:sensorId": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#17"
+      "status": "declared-unsupported",
+      "tracking": "jateeter/RealityEngine_Rust#20"
     },
     "PE POST /api/signals": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#17"
+      "status": "declared-unsupported",
+      "tracking": "jateeter/RealityEngine_Rust#20"
     },
     "PE POST /api/sources": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#17"
+      "status": "declared-unsupported",
+      "tracking": "jateeter/RealityEngine_Rust#20"
     },
     "PE POST /api/sources/bootstrap-from-machines": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#17"
+      "status": "declared-unsupported",
+      "tracking": "jateeter/RealityEngine_Rust#20"
     },
     "PE PUT /api/mqtt/mappings": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#17"
+      "status": "declared-unsupported",
+      "tracking": "jateeter/RealityEngine_Rust#20"
     },
     "PE SSE /api/events": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#17"
+      "status": "declared-unsupported",
+      "tracking": "jateeter/RealityEngine_Rust#20"
     },
     "PE WS /ws": {
-      "status": "missing",
-      "tracking": "jateeter/RealityEngine_Rust#17"
+      "status": "declared-unsupported",
+      "tracking": "jateeter/RealityEngine_Rust#20"
     },
     "RE DELETE /api/engine/config/:control": {
       "notes": "all eight universal controls, identical to C++ on the regression corpus",

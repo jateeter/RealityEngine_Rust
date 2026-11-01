@@ -34,6 +34,7 @@
 
 use axum::body::{Body, to_bytes};
 use axum::http::{Request, StatusCode, header};
+use reality_engine::pe::{PerceptionEngine, pe_app};
 use reality_engine::{Engine, app};
 use serde_json::{Map, Value, json};
 use std::collections::BTreeMap;
@@ -55,10 +56,11 @@ fn read_json(path: &PathBuf) -> Value {
 }
 
 /// The router a route's layer is served by, or `None` when this repo has no
-/// such service. A Perception Engine, when there is one, is added here.
+/// such service.
 fn router_for(layer: &str) -> Option<axum::Router> {
     match layer {
         "RE" | "RE-phase2" => Some(app(Engine::new(7680))),
+        "PE" => Some(pe_app(PerceptionEngine::new(7680))),
         _ => None,
     }
 }
@@ -258,11 +260,11 @@ fn render_markdown(spec: &Value, routes: &[Value], record: &Map<String, Value>) 
     out.push_str(
         "\n`RE` and `PE` are the specification's implemented-contract tables; \
          `RE-phase2` is the K-line snapshot routes it specifies outside them. \
-         An RE route this engine does not implement is `declared-unsupported`: \
+         A route this engine does not implement is `declared-unsupported`: \
          it answers `501` with the participation state, as the specification \
          rules (\"An unimplemented route answers `unsupported`\"). A `missing` \
-         route answers silently, which the specification forbids; the PE's are \
-         missing because this repo has no Perception Engine. Status says a route \
+         route answers silently, which the specification forbids. The RE's \
+         routes are probed on `app`, the PE's on `pe_app`. Status says a route \
          exists, not that it conforms: the notes name known shape defects.\n",
     );
     let mut current = (String::new(), String::new());
