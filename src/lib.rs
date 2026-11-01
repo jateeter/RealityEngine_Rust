@@ -23,6 +23,7 @@ mod auxiliary;
 pub mod instance_clock;
 mod machine_routes;
 mod machine_view;
+mod runtime;
 mod sequences;
 mod simulation;
 mod step;
@@ -2125,6 +2126,16 @@ pub fn app(engine: Engine) -> Router {
             get(simulation::history),
         )
         .route("/api/engine/reset", post(reset))
+        .route("/api/runtime/metrics", get(runtime::metrics))
+        .route("/api/runtime/vector-space", get(runtime::vector_space))
+        .route(
+            "/api/runtime/storage-footprint",
+            get(runtime::storage_footprint),
+        )
+        .route(
+            "/api/runtime/options",
+            get(runtime::options).patch(runtime::patch_options),
+        )
         .route("/api/sampler/start", post(auxiliary::sampler_start))
         .route("/api/sampler/stop", post(auxiliary::sampler_stop))
         .route("/api/sampler/sample", post(auxiliary::sampler_sample))
@@ -3031,18 +3042,20 @@ mod tests {
                 "surface": surface,
             })
         };
-        // Literal routes of three methods, and a phase-2 template filled in.
+        // The phase-2 snapshot routes are all that is left unimplemented:
+        // literal routes of two methods, and a template filled in.
         for (method, uri, surface) in [
             (
-                "GET",
-                "/api/runtime/vector-space",
-                "GET /api/runtime/vector-space",
+                "POST",
+                "/api/runtime/snapshot",
+                "POST /api/runtime/snapshot",
             ),
             (
-                "PATCH",
-                "/api/runtime/options",
-                "PATCH /api/runtime/options",
+                "GET",
+                "/api/runtime/snapshots",
+                "GET /api/runtime/snapshots",
             ),
+            ("POST", "/api/runtime/restore", "POST /api/runtime/restore"),
             (
                 "DELETE",
                 "/api/runtime/snapshot/s",
@@ -4532,6 +4545,68 @@ mod tests {
         )
         .await;
         assert_eq!(all["results"].as_object().unwrap().len(), 2);
+    }
+
+    /// #10: `/api/runtime/*`. Options and `/api/engine/config` are one state.
+    #[tokio::test]
+    async fn runtime_routes_report_and_share_one_state() {
+        let (app, id) = loaded_app();
+        let (_, body) = send(&app, "GET", "/api/runtime/vector-space", None).await;
+        assert_eq!(
+            body,
+            json!({ "dimension": 8, "requiredDimension": 2, "encoding": "dense-float64-clamped-0-1", "mappingVersion": 1 })
+        );
+        let (_, body) = send(&app, "GET", "/api/runtime/storage-footprint", None).await;
+        assert_eq!(body["perMachine"][0]["machineId"], json!(id));
+        assert_eq!(
+            (
+                &body["totalCells"],
+                &body["totalPackedBytes"],
+                &body["cumulativeShrinkFactor"],
+                &body["widthHistogram"]["8"]
+            ),
+            (&json!(2), &json!(2), &json!(8), &json!(1))
+        );
+        let (_, body) = send(&app, "GET", "/api/runtime/metrics", None).await;
+        assert_eq!(
+            body["domainWorkerPool"],
+            json!({ "semantics": "scoped-threads" })
+        );
+
+        // A field of the wrong type is ignored, as on C++.
+        let (status, body) = send(
+            &app,
+            "PATCH",
+            "/api/runtime/options",
+            Some(
+                json!({ "historyLimit": 2.9, "phaseDetail": true, "includeMachineResults": "no" }),
+            ),
+        )
+        .await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(
+            body,
+            json!({ "historyLimit": 2, "includeActiveRegions": true, "includeMachineResults": true, "includePerceptualSpace": true, "phaseDetail": true })
+        );
+        let (_, control) = send(&app, "GET", "/api/engine/config/historyLimit", None).await;
+        assert_eq!(control["value"], json!(2));
+        send(
+            &app,
+            "PUT",
+            "/api/engine/config/phaseDetail",
+            Some(json!({ "value": false })),
+        )
+        .await;
+        let (_, body) = send(&app, "GET", "/api/runtime/options", None).await;
+        assert_eq!(body["phaseDetail"], json!(false));
+        let (status, _) = send(
+            &app,
+            "PATCH",
+            "/api/runtime/options",
+            Some(json!({ "historyLimit": -1 })),
+        )
+        .await;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
     }
 
     /// #13 slice 4: the sampler, the perception routes, governance/route and

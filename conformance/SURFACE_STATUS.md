@@ -6,7 +6,7 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 
 | layer | implemented | routes |
 |---|---|---|
-| RE | 73 | 79 |
+| RE | 78 | 79 |
 | PE | 0 | 47 |
 | RE-phase2 | 0 | 5 |
 
@@ -37,11 +37,11 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 
 | method | path | status | tracking | notes |
 |---|---|---|---|---|
-| GET | `/api/runtime/metrics` | declared-unsupported | jateeter/RealityEngine_Rust#10 |  |
-| GET | `/api/runtime/vector-space` | declared-unsupported | jateeter/RealityEngine_Rust#10 |  |
-| GET | `/api/runtime/storage-footprint` | declared-unsupported | jateeter/RealityEngine_Rust#10 |  |
-| GET | `/api/runtime/options` | declared-unsupported | jateeter/RealityEngine_Rust#10 |  |
-| PATCH | `/api/runtime/options` | declared-unsupported | jateeter/RealityEngine_Rust#10 |  |
+| GET | `/api/runtime/metrics` | implemented |  |  |
+| GET | `/api/runtime/vector-space` | implemented |  |  |
+| GET | `/api/runtime/storage-footprint` | implemented |  |  |
+| GET | `/api/runtime/options` | implemented |  |  |
+| PATCH | `/api/runtime/options` | implemented |  |  |
 
 ## RE: Vectors
 
