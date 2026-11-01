@@ -110,7 +110,7 @@ fn pattern(name: &str) -> Result<&'static str, EngineError> {
         .ok_or_else(|| EngineError::internal(format!("Unknown sim pattern: {name}")))
 }
 
-fn now() -> i64 {
+pub(crate) fn now() -> i64 {
     now_ms() as i64
 }
 
@@ -518,7 +518,7 @@ impl PerceptionEngine {
 
     /// C++ `update_sensor_value`: the first sensor (in id order) with that
     /// `sensorId` takes the value, and earns activity by it.
-    fn update_sensor(&mut self, sensor_id: &str, values: Vec<f64>) -> bool {
+    pub(crate) fn update_sensor(&mut self, sensor_id: &str, values: Vec<f64>) -> bool {
         let step = self.global_step;
         for source in self.sources.values_mut() {
             let Detail::Sensor {
@@ -1096,7 +1096,7 @@ impl PerceptionEngine {
 
     /// The first sensor, in listing order, with that `sensorId` (C++
     /// `sensor_source_by_id`).
-    fn sensor_by_id(&self, sensor_id: &str) -> Option<Source> {
+    pub(crate) fn sensor_by_id(&self, sensor_id: &str) -> Option<Source> {
         self.sources_in_order()
             .into_iter()
             .find(|s| matches!(&s.detail, Detail::Sensor { sensor_id: id, .. } if id == sensor_id))

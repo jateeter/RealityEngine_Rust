@@ -29,6 +29,7 @@ mod dispatch;
 mod ingest;
 mod integrations;
 mod localai;
+mod mqtt;
 mod push;
 mod sources;
 mod streams;
@@ -74,6 +75,8 @@ pub struct PerceptionEngine {
     /// The RE's machines by id: trigger dispatch and the OSRE fold read it.
     catalog: dispatch::MachineCatalog,
     dispatch: dispatch::Dispatch,
+    /// The MQTT bridge, while one runs.
+    mqtt: Option<Arc<mqtt::Bridge>>,
 }
 
 impl PerceptionEngine {
@@ -101,6 +104,7 @@ impl PerceptionEngine {
             localai_ledger: localai::ledger(),
             catalog: dispatch::MachineCatalog::default(),
             dispatch: dispatch::Dispatch::default(),
+            mqtt: None,
         }
     }
 
@@ -276,6 +280,13 @@ fn router(pe: SharedPe) -> Router {
             get(dispatch::record).patch(dispatch::update),
         )
         .route("/api/dispatch/records/{id}/replay", post(dispatch::replay))
+        .route("/api/mqtt/status", get(mqtt::status))
+        .route(
+            "/api/mqtt/mappings",
+            get(mqtt::mappings).put(mqtt::replace_mappings),
+        )
+        .route("/api/mqtt/enable", post(mqtt::enable))
+        .route("/api/mqtt/disable", post(mqtt::disable))
         .route("/api/events", get(streams::events))
         .route("/ws", get(streams::websocket))
         .fallback(|method: Method, uri: Uri| async move {
@@ -335,6 +346,7 @@ pub async fn serve() -> Result<(), Box<dyn std::error::Error>> {
         let summary = sources::bootstrap_from_re(&pe, &re_url).await.to_json();
         eprintln!("perception-engine: boot bootstrap {summary}");
     }
+    mqtt::start_from_environment(&pe);
     let listener = tokio::net::TcpListener::bind(("0.0.0.0", port)).await?;
     axum::serve(listener, router(pe)).await?;
     Ok(())
