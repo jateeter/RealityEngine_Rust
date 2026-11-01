@@ -114,6 +114,25 @@ fn now() -> i64 {
     now_ms() as i64
 }
 
+/// A localAI bridge sensor as its integration declares it: registered, and
+/// inactive until a value arrives (C++ `sensor_source`).
+pub(crate) fn localai_sensor(sensor_id: &str, name: &str, offset: i64, length: i64) -> Source {
+    Source {
+        id: String::new(),
+        name: name.to_owned(),
+        region: Region { offset, length },
+        active: false,
+        activated_at: 0,
+        detail: Detail::Sensor {
+            sensor_id: sensor_id.to_owned(),
+            last_value: Vec::new(),
+            last_updated: None,
+            ttl_ms: 30000,
+            origin: "localai".to_owned(),
+        },
+    }
+}
+
 impl Source {
     pub(crate) fn kind(&self) -> &'static str {
         match self.detail {
@@ -438,7 +457,7 @@ impl PerceptionEngine {
     /// C++ `add_source`: activity derived, the activation instant kept for a
     /// source that stays active, the space grown to its region, its cursor
     /// rewound.
-    fn add_source(&mut self, mut source: Source) -> Source {
+    pub(crate) fn add_source(&mut self, mut source: Source) -> Source {
         if source.id.is_empty() {
             source.id = format!("source-{}", new_machine_id().trim_start_matches("machine-"));
         }
@@ -874,7 +893,7 @@ impl PerceptionEngine {
     /// C++ `sync_test_sources_from_machine`: one test source per machine, its
     /// input sequences end to end over its input region. 1 when a source was
     /// created, else 0.
-    fn intern(&mut self, machine: &Value) -> usize {
+    pub(crate) fn intern(&mut self, machine: &Value) -> usize {
         let Some(machine_id) = machine["id"].as_str().filter(|id| !id.is_empty()) else {
             return 0;
         };
