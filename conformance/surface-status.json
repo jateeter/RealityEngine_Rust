@@ -197,8 +197,8 @@
       "status": "implemented"
     },
     "RE DELETE /api/machines/:machineId/checkpoints/:cpId": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#13"
+      "notes": "#13 slice 2: identical to C++ on the regression corpus (minted ids and timestamps aside)",
+      "status": "implemented"
     },
     "RE DELETE /api/sequences/:id": {
       "status": "declared-unsupported",
@@ -292,8 +292,8 @@
       "status": "implemented"
     },
     "RE GET /api/machines/:id/checkpoints": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#13"
+      "notes": "#13 slice 2: identical to C++ on the regression corpus (minted ids and timestamps aside)",
+      "status": "implemented"
     },
     "RE GET /api/machines/:id/export": {
       "notes": "#13 slice 1: identical to C++ on the regression corpus (load-time output timestamps aside), fresh, after 20 steps and after a reset; regression-export-parity.py passes jointly with C++",
@@ -350,8 +350,8 @@
       "tracking": "jateeter/RealityEngine_Rust#13"
     },
     "RE PATCH /api/machines/:id": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#13"
+      "notes": "#13 slice 2: identical to C++ except that C++ leaves the patched machine transitionsInhibited (a C++ defect); this runtime keeps the machine's control state",
+      "status": "implemented"
     },
     "RE PATCH /api/runtime/options": {
       "status": "declared-unsupported",
@@ -367,35 +367,36 @@
       "status": "implemented"
     },
     "RE POST /api/machines/:id/checkpoints": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#13"
+      "notes": "#13 slice 2: identical to C++ on the regression corpus (minted ids and timestamps aside)",
+      "status": "implemented"
     },
     "RE POST /api/machines/:id/process": {
+      "notes": "the transition response matches C++, LSP and Scala since #13 slice 2: no machineId, and machineOutput is a minted machine-output-<id> without sequenceId",
       "status": "implemented"
     },
     "RE POST /api/machines/:id/process-universal": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#13"
+      "notes": "#13 slice 2: identical to C++ on the regression corpus (minted ids and timestamps aside)",
+      "status": "implemented"
     },
     "RE POST /api/machines/:id/whatif": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#13"
+      "notes": "#13 slice 2: identical to C++ on the regression corpus (minted ids and timestamps aside)",
+      "status": "implemented"
     },
     "RE POST /api/machines/:id/whatif-universal": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#13"
+      "notes": "#13 slice 2: identical to C++ on the regression corpus (minted ids and timestamps aside)",
+      "status": "implemented"
     },
     "RE POST /api/machines/:machineId/checkpoints/:cpId/restore": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#13"
+      "notes": "#13 slice 2: identical to C++ on the regression corpus (minted ids and timestamps aside)",
+      "status": "implemented"
     },
     "RE POST /api/machines/json/import": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#13"
+      "notes": "#13 slice 2: identical to C++ on the regression corpus (minted ids and timestamps aside)",
+      "status": "implemented"
     },
     "RE POST /api/machines/process-universal/all": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#13"
+      "notes": "#13 slice 2: identical to C++ on the regression corpus (minted ids and timestamps aside)",
+      "status": "implemented"
     },
     "RE POST /api/perceive": {
       "notes": "#11: 60 full-corpus and 60 regression-corpus steps identical to C++ on the (ISRE, OSRE) pairs, mergeBatch with governance, activeRegions, eventBus and machineResults; the only selector and matchAlgorithmOverride identical over 12 regression-corpus steps each; an unknown override is 400 here and 500 on C++; valuesPacked under compact is not emitted (SURFACE_SPEC, internal augmentation, absent on Scala too)",
@@ -474,8 +475,8 @@
       "status": "implemented"
     },
     "RE PUT /api/machines/:id": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#13"
+      "notes": "#13 slice 2: identical to C++ for a definition; a body whose machine is not an object is 400 here, where C++ answers 200 and installs an empty unnamed machine",
+      "status": "implemented"
     },
     "RE SSE /api/engine/stream": {
       "notes": "slice 3 of #11: the bare step, as C++ and Scala send it; LSP and SURFACE_SPEC wrap it as {type: step-result, step}, a split for the owner",

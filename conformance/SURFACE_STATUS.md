@@ -6,7 +6,7 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 
 | layer | implemented | routes |
 |---|---|---|
-| RE | 42 | 79 |
+| RE | 53 | 79 |
 | PE | 0 | 47 |
 | RE-phase2 | 0 | 5 |
 
@@ -86,22 +86,22 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 | GET | `/api/machines` | implemented |  | #13 slice 1: identical to C++ on the regression corpus (load-time output timestamps aside), fresh, after 20 steps and after a reset |
 | POST | `/api/machines` | implemented |  |  |
 | GET | `/api/machines/:id` | implemented |  | #13 slice 1: identical to C++ on the regression corpus (load-time output timestamps aside), fresh, after 20 steps and after a reset |
-| PUT | `/api/machines/:id` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
-| PATCH | `/api/machines/:id` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
+| PUT | `/api/machines/:id` | implemented |  | #13 slice 2: identical to C++ for a definition; a body whose machine is not an object is 400 here, where C++ answers 200 and installs an empty unnamed machine |
+| PATCH | `/api/machines/:id` | implemented |  | #13 slice 2: identical to C++ except that C++ leaves the patched machine transitionsInhibited (a C++ defect); this runtime keeps the machine's control state |
 | DELETE | `/api/machines/:id` | implemented |  |  |
-| POST | `/api/machines/:id/process` | implemented |  |  |
-| POST | `/api/machines/:id/process-universal` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
-| POST | `/api/machines/:id/whatif` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
-| POST | `/api/machines/:id/whatif-universal` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
-| POST | `/api/machines/process-universal/all` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
+| POST | `/api/machines/:id/process` | implemented |  | the transition response matches C++, LSP and Scala since #13 slice 2: no machineId, and machineOutput is a minted machine-output-<id> without sequenceId |
+| POST | `/api/machines/:id/process-universal` | implemented |  | #13 slice 2: identical to C++ on the regression corpus (minted ids and timestamps aside) |
+| POST | `/api/machines/:id/whatif` | implemented |  | #13 slice 2: identical to C++ on the regression corpus (minted ids and timestamps aside) |
+| POST | `/api/machines/:id/whatif-universal` | implemented |  | #13 slice 2: identical to C++ on the regression corpus (minted ids and timestamps aside) |
+| POST | `/api/machines/process-universal/all` | implemented |  | #13 slice 2: identical to C++ on the regression corpus (minted ids and timestamps aside) |
 | GET | `/api/machines/json/list` | implemented |  | the on-disk corpus with relFile and semantics; name, description, version, metadata and sequenceCount follow C++/LSP provisionally (the engines split 2-1): RealityEngine_CI#677 |
 | GET | `/api/machines/json/:name` | implemented |  |  |
-| POST | `/api/machines/json/import` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
+| POST | `/api/machines/json/import` | implemented |  | #13 slice 2: identical to C++ on the regression corpus (minted ids and timestamps aside) |
 | GET | `/api/machines/:id/export` | implemented |  | #13 slice 1: identical to C++ on the regression corpus (load-time output timestamps aside), fresh, after 20 steps and after a reset; regression-export-parity.py passes jointly with C++ |
-| GET | `/api/machines/:id/checkpoints` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
-| POST | `/api/machines/:id/checkpoints` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
-| POST | `/api/machines/:machineId/checkpoints/:cpId/restore` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
-| DELETE | `/api/machines/:machineId/checkpoints/:cpId` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
+| GET | `/api/machines/:id/checkpoints` | implemented |  | #13 slice 2: identical to C++ on the regression corpus (minted ids and timestamps aside) |
+| POST | `/api/machines/:id/checkpoints` | implemented |  | #13 slice 2: identical to C++ on the regression corpus (minted ids and timestamps aside) |
+| POST | `/api/machines/:machineId/checkpoints/:cpId/restore` | implemented |  | #13 slice 2: identical to C++ on the regression corpus (minted ids and timestamps aside) |
+| DELETE | `/api/machines/:machineId/checkpoints/:cpId` | implemented |  | #13 slice 2: identical to C++ on the regression corpus (minted ids and timestamps aside) |
 | GET | `/api/buses/semantic` | implemented |  | #13 slice 1: identical to C++ on the regression corpus (load-time output timestamps aside), fresh, after 20 steps and after a reset |
 | GET | `/api/buses/semantic/:id` | implemented |  | #13 slice 1: identical to C++ on the regression corpus (load-time output timestamps aside), fresh, after 20 steps and after a reset |
 
