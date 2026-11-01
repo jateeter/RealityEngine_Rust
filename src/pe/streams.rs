@@ -54,6 +54,13 @@ impl PerceptionEngine {
         }
     }
 
+    /// C++ `hub_broadcast` of an integration's own message.
+    pub(crate) fn broadcast(&self, message: &Value) {
+        if self.listened() {
+            let _ = self.events.send(text(message));
+        }
+    }
+
     /// C++ `broadcast_push_result`.
     pub(crate) fn broadcast_push_result(&self, result: &Value) {
         if !self.listened() {
