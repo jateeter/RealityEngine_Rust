@@ -6,7 +6,7 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 
 | layer | implemented | routes |
 |---|---|---|
-| RE | 53 | 79 |
+| RE | 63 | 79 |
 | PE | 0 | 47 |
 | RE-phase2 | 0 | 5 |
 
@@ -47,22 +47,22 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 
 | method | path | status | tracking | notes |
 |---|---|---|---|---|
-| POST | `/api/vectors/search` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
-| POST | `/api/vectors` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
-| GET | `/api/vectors/:id` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
-| DELETE | `/api/vectors/:id` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
+| POST | `/api/vectors/search` | implemented |  | #13 slice 3: identical to C++ (minted ids and timestamps aside) |
+| POST | `/api/vectors` | implemented |  | #13 slice 3: identical to C++ (minted ids and timestamps aside) |
+| GET | `/api/vectors/:id` | implemented |  | #13 slice 3: identical to C++ (minted ids and timestamps aside) |
+| DELETE | `/api/vectors/:id` | implemented |  | #13 slice 3: identical to C++ (minted ids and timestamps aside) |
 
 ## RE: Sequences
 
 | method | path | status | tracking | notes |
 |---|---|---|---|---|
-| GET | `/api/sequences` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
-| POST | `/api/sequences` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
-| GET | `/api/sequences/:id` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
-| DELETE | `/api/sequences/:id` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
-| POST | `/api/sequences/:id/reset` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
-| POST | `/api/sequences/:id/vectors` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
-| POST | `/api/sequences/persist` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
+| GET | `/api/sequences` | implemented |  | #13 slice 3: identical to C++ (minted ids and timestamps aside) |
+| POST | `/api/sequences` | implemented-bad-envelope | jateeter/RealityEngine_Rust#13 | #13 slice 3: identical to C++. Its validation 400 carries every failure as an array under error, as C++ and Scala do (LSP does not validate), which this classifier reads as a non-string envelope; an unknown comparatorType is 400 here and 500 on C++ |
+| GET | `/api/sequences/:id` | implemented |  | #13 slice 3: identical to C++ (minted ids and timestamps aside) |
+| DELETE | `/api/sequences/:id` | implemented |  | #13 slice 3: identical to C++ (minted ids and timestamps aside) |
+| POST | `/api/sequences/:id/reset` | implemented |  | #13 slice 3: identical to C++ (minted ids and timestamps aside) |
+| POST | `/api/sequences/:id/vectors` | implemented |  | #13 slice 3: identical to C++ (minted ids and timestamps aside); an unknown comparatorType is 400 here and 500 on C++ |
+| POST | `/api/sequences/persist` | implemented |  | #13 slice 3: identical to C++ (minted ids and timestamps aside) |
 
 ## RE: Engine
 

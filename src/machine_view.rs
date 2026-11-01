@@ -20,7 +20,7 @@ use std::path::PathBuf;
 
 impl Event {
     /// C++ `RealityEvent::to_json`: the event as it is running.
-    fn to_json(&self, match_algorithm: &str) -> Value {
+    pub(crate) fn to_json(&self, match_algorithm: &str) -> Value {
         let elements: Vec<Value> = self
             .elements
             .iter()
@@ -73,7 +73,7 @@ impl Sequence {
     }
 
     /// C++ `CriticalEventSequence::to_json`, events in id order.
-    fn to_json(&self, match_algorithm: &str) -> Value {
+    pub(crate) fn to_json(&self, match_algorithm: &str) -> Value {
         let mut out = json!({
             "id": self.id,
             "name": self.name,
