@@ -269,7 +269,7 @@
       "status": "implemented"
     },
     "RE GET /api/governance/route": {
-      "notes": "#13 slice 4: every triggerConfig rule of the regression corpus asked as declared, with an extra value and with trailing junk: 174 queries identical to C++. Values are percent-decoded here; C++ reads its query string raw, so `values=1%2C0` or a `%20` before a value matches here and not on C++ (58 such queries differ)",
+      "notes": "#13 slice 4: every triggerConfig rule of the regression corpus asked as declared, with an extra value and with trailing junk: 174 queries identical to C++. Values are percent-decoded here; C++ reads its query string raw, so `values=1%2C0` or a `%20` before a value matches here and not on C++ (58 such queries differ; RealityEngine_CPP#183)",
       "status": "implemented"
     },
     "RE GET /api/health": {
@@ -346,7 +346,7 @@
       "status": "implemented"
     },
     "RE PATCH /api/machines/:id": {
-      "notes": "#13 slice 2: identical to C++ except that C++ leaves the patched machine transitionsInhibited (a C++ defect); this runtime keeps the machine's control state",
+      "notes": "#13 slice 2: identical to C++ except that C++ leaves the patched machine transitionsInhibited (RealityEngine_CPP#181); this runtime keeps the machine's control state",
       "status": "implemented"
     },
     "RE PATCH /api/runtime/options": {
@@ -395,7 +395,7 @@
       "status": "implemented"
     },
     "RE POST /api/perceive": {
-      "notes": "#11: 60 full-corpus and 60 regression-corpus steps identical to C++ on the (ISRE, OSRE) pairs, mergeBatch with governance, activeRegions, eventBus and machineResults; the only selector and matchAlgorithmOverride identical over 12 regression-corpus steps each; an unknown override is 400 here and 500 on C++; valuesPacked under compact is not emitted (SURFACE_SPEC, internal augmentation, absent on Scala too)",
+      "notes": "#11: 60 full-corpus and 60 regression-corpus steps identical to C++ on the (ISRE, OSRE) pairs, mergeBatch with governance, activeRegions, eventBus and machineResults; the only selector and matchAlgorithmOverride identical over 12 regression-corpus steps each; an unknown override is a 500, as on C++ (owner ruling, 2026-11-01); valuesPacked under compact is not emitted (SURFACE_SPEC, internal augmentation, absent on Scala too)",
       "status": "implemented"
     },
     "RE POST /api/perception/diagnostic": {
@@ -432,7 +432,7 @@
       "status": "implemented"
     },
     "RE POST /api/sequences": {
-      "notes": "#13 slice 3: identical to C++. Its validation 400 carries every failure as an array under error, as C++ and Scala do (LSP does not validate), which this classifier reads as a non-string envelope; an unknown comparatorType is 400 here and 500 on C++",
+      "notes": "#13 slice 3: identical to C++. Its validation 400 carries every failure as an array under error, as C++ and Scala do (LSP does not validate), which this classifier reads as a non-string envelope; an unknown comparatorType is a 500, as on C++ (owner ruling, 2026-11-01)",
       "status": "implemented-bad-envelope",
       "tracking": "jateeter/RealityEngine_Rust#13"
     },
@@ -441,7 +441,7 @@
       "status": "implemented"
     },
     "RE POST /api/sequences/:id/vectors": {
-      "notes": "#13 slice 3: identical to C++ (minted ids and timestamps aside); an unknown comparatorType is 400 here and 500 on C++",
+      "notes": "#13 slice 3: identical to C++ (minted ids and timestamps aside); an unknown comparatorType is a 500, as on C++ (owner ruling, 2026-11-01)",
       "status": "implemented"
     },
     "RE POST /api/sequences/persist": {
@@ -467,7 +467,7 @@
       "status": "implemented"
     },
     "RE PUT /api/machines/:id": {
-      "notes": "#13 slice 2: identical to C++ for a definition; a body whose machine is not an object is 400 here, where C++ answers 200 and installs an empty unnamed machine",
+      "notes": "#13 slice 2: identical to C++ for a definition; a body whose machine is not an object is 400 here, where C++ answers 200 and installs an empty unnamed machine (RealityEngine_CPP#182)",
       "status": "implemented"
     },
     "RE SSE /api/engine/stream": {

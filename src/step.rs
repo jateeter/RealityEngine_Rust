@@ -1315,15 +1315,16 @@ pub(crate) async fn perceive(
     Ok(Json(out))
 }
 
-/// A comparator's canonical name (C++ `comparator_from_string`).
-fn comparator(name: &str) -> Result<&'static str, EngineError> {
+/// A comparator's canonical name (C++ `comparator_from_string`). An unknown
+/// name is a 500, as C++ answers it (owner ruling, 2026-11-01).
+pub(crate) fn comparator(name: &str) -> Result<&'static str, EngineError> {
     match name.to_lowercase().as_str() {
         "equals" => Ok("equals"),
         "threshold" => Ok("threshold"),
         "pattern" => Ok("pattern"),
         "custom" => Ok("custom"),
         "gte" => Ok("gte"),
-        _ => Err(EngineError::bad_request(format!(
+        _ => Err(EngineError::internal(format!(
             "Unknown comparator type: {name}"
         ))),
     }

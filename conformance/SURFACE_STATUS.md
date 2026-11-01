@@ -57,11 +57,11 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 | method | path | status | tracking | notes |
 |---|---|---|---|---|
 | GET | `/api/sequences` | implemented |  | #13 slice 3: identical to C++ (minted ids and timestamps aside) |
-| POST | `/api/sequences` | implemented-bad-envelope | jateeter/RealityEngine_Rust#13 | #13 slice 3: identical to C++. Its validation 400 carries every failure as an array under error, as C++ and Scala do (LSP does not validate), which this classifier reads as a non-string envelope; an unknown comparatorType is 400 here and 500 on C++ |
+| POST | `/api/sequences` | implemented-bad-envelope | jateeter/RealityEngine_Rust#13 | #13 slice 3: identical to C++. Its validation 400 carries every failure as an array under error, as C++ and Scala do (LSP does not validate), which this classifier reads as a non-string envelope; an unknown comparatorType is a 500, as on C++ (owner ruling, 2026-11-01) |
 | GET | `/api/sequences/:id` | implemented |  | #13 slice 3: identical to C++ (minted ids and timestamps aside) |
 | DELETE | `/api/sequences/:id` | implemented |  | #13 slice 3: identical to C++ (minted ids and timestamps aside) |
 | POST | `/api/sequences/:id/reset` | implemented |  | #13 slice 3: identical to C++ (minted ids and timestamps aside) |
-| POST | `/api/sequences/:id/vectors` | implemented |  | #13 slice 3: identical to C++ (minted ids and timestamps aside); an unknown comparatorType is 400 here and 500 on C++ |
+| POST | `/api/sequences/:id/vectors` | implemented |  | #13 slice 3: identical to C++ (minted ids and timestamps aside); an unknown comparatorType is a 500, as on C++ (owner ruling, 2026-11-01) |
 | POST | `/api/sequences/persist` | implemented |  | #13 slice 3: identical to C++ (minted ids and timestamps aside) |
 
 ## RE: Engine
@@ -86,8 +86,8 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 | GET | `/api/machines` | implemented |  | #13 slice 1: identical to C++ on the regression corpus (load-time output timestamps aside), fresh, after 20 steps and after a reset |
 | POST | `/api/machines` | implemented |  |  |
 | GET | `/api/machines/:id` | implemented |  | #13 slice 1: identical to C++ on the regression corpus (load-time output timestamps aside), fresh, after 20 steps and after a reset |
-| PUT | `/api/machines/:id` | implemented |  | #13 slice 2: identical to C++ for a definition; a body whose machine is not an object is 400 here, where C++ answers 200 and installs an empty unnamed machine |
-| PATCH | `/api/machines/:id` | implemented |  | #13 slice 2: identical to C++ except that C++ leaves the patched machine transitionsInhibited (a C++ defect); this runtime keeps the machine's control state |
+| PUT | `/api/machines/:id` | implemented |  | #13 slice 2: identical to C++ for a definition; a body whose machine is not an object is 400 here, where C++ answers 200 and installs an empty unnamed machine (RealityEngine_CPP#182) |
+| PATCH | `/api/machines/:id` | implemented |  | #13 slice 2: identical to C++ except that C++ leaves the patched machine transitionsInhibited (RealityEngine_CPP#181); this runtime keeps the machine's control state |
 | DELETE | `/api/machines/:id` | implemented |  |  |
 | POST | `/api/machines/:id/process` | implemented |  | the transition response matches C++, LSP and Scala since #13 slice 2: no machineId, and machineOutput is a minted machine-output-<id> without sequenceId |
 | POST | `/api/machines/:id/process-universal` | implemented |  | #13 slice 2: identical to C++ on the regression corpus (minted ids and timestamps aside) |
@@ -139,13 +139,13 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 |---|---|---|---|---|
 | POST | `/api/perception/observe` | implemented |  |  |
 | POST | `/api/perception/diagnostic` | implemented |  |  |
-| POST | `/api/perceive` | implemented |  | #11: 60 full-corpus and 60 regression-corpus steps identical to C++ on the (ISRE, OSRE) pairs, mergeBatch with governance, activeRegions, eventBus and machineResults; the only selector and matchAlgorithmOverride identical over 12 regression-corpus steps each; an unknown override is 400 here and 500 on C++; valuesPacked under compact is not emitted (SURFACE_SPEC, internal augmentation, absent on Scala too) |
+| POST | `/api/perceive` | implemented |  | #11: 60 full-corpus and 60 regression-corpus steps identical to C++ on the (ISRE, OSRE) pairs, mergeBatch with governance, activeRegions, eventBus and machineResults; the only selector and matchAlgorithmOverride identical over 12 regression-corpus steps each; an unknown override is a 500, as on C++ (owner ruling, 2026-11-01); valuesPacked under compact is not emitted (SURFACE_SPEC, internal augmentation, absent on Scala too) |
 
 ## RE: Governance
 
 | method | path | status | tracking | notes |
 |---|---|---|---|---|
-| GET | `/api/governance/route` | implemented |  | #13 slice 4: every triggerConfig rule of the regression corpus asked as declared, with an extra value and with trailing junk: 174 queries identical to C++. Values are percent-decoded here; C++ reads its query string raw, so `values=1%2C0` or a `%20` before a value matches here and not on C++ (58 such queries differ) |
+| GET | `/api/governance/route` | implemented |  | #13 slice 4: every triggerConfig rule of the regression corpus asked as declared, with an extra value and with trailing junk: 174 queries identical to C++. Values are percent-decoded here; C++ reads its query string raw, so `values=1%2C0` or a `%20` before a value matches here and not on C++ (58 such queries differ; RealityEngine_CPP#183) |
 
 ## RE: Demos
 
