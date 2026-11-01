@@ -26,6 +26,7 @@ use std::sync::atomic::AtomicU64;
 mod client;
 mod ingest;
 mod integrations;
+mod localai;
 mod push;
 mod sources;
 mod streams;
@@ -66,6 +67,8 @@ pub struct PerceptionEngine {
     events: tokio::sync::broadcast::Sender<String>,
     /// The integrations configuration, read once at boot.
     integrations: Arc<integrations::Integrations>,
+    /// `GET /api/integrations/localai/ledger`: every invocation, newest 256.
+    localai_ledger: Arc<std::sync::Mutex<std::collections::VecDeque<Value>>>,
 }
 
 impl PerceptionEngine {
@@ -90,6 +93,7 @@ impl PerceptionEngine {
             auto_interval_ms: AUTO_INTERVAL_MS,
             events: streams::channel(),
             integrations: Arc::default(),
+            localai_ledger: localai::ledger(),
         }
     }
 
@@ -238,6 +242,16 @@ fn router(pe: SharedPe) -> Router {
         .route(
             "/api/integrations/localai/status",
             get(integrations::localai_status),
+        )
+        .route("/api/integrations/localai/catalog", get(localai::catalog))
+        .route(
+            "/api/integrations/localai/bootstrap",
+            post(localai::bootstrap),
+        )
+        .route("/api/integrations/localai/invoke", post(localai::invoke))
+        .route(
+            "/api/integrations/localai/ledger",
+            get(localai::ledger_route),
         )
         .route("/api/integrations/completions", post(ingest::completion))
         .route(

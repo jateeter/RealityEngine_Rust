@@ -56,7 +56,7 @@ pub(crate) struct Integrations {
     pub(crate) carekit_mapping: String,
     pub(crate) carekit_token: String,
     pub(crate) localai_base_url: String,
-    localai_machines_dir: String,
+    pub(crate) localai_machines_dir: String,
 }
 
 impl Default for Integrations {
@@ -234,6 +234,21 @@ impl Integrations {
             self.source_mappings.len()
         );
         self.config = config;
+    }
+
+    /// `allowedOperations` on the `localai` integration, verbatim, and the
+    /// configuration it came from; none configured allows nothing.
+    pub(crate) fn localai_allowed_operations(&self) -> (Value, Option<String>) {
+        for item in self.config["integrations"].as_array().into_iter().flatten() {
+            if item["kind"] != "localai" {
+                continue;
+            }
+            return match item["allowedOperations"].as_array() {
+                Some(_) => (item["allowedOperations"].clone(), self.path.clone()),
+                None => (json!([]), None),
+            };
+        }
+        (json!([]), None)
     }
 
     fn nullable(value: &str) -> Value {

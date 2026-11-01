@@ -28,12 +28,10 @@
       "status": "implemented"
     },
     "PE GET /api/integrations/localai/catalog": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#20"
+      "status": "implemented"
     },
     "PE GET /api/integrations/localai/ledger": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#20"
+      "status": "implemented"
     },
     "PE GET /api/integrations/localai/status": {
       "status": "implemented"
@@ -112,12 +110,10 @@
       "tracking": "jateeter/RealityEngine_Rust#20"
     },
     "PE POST /api/integrations/localai/bootstrap": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#20"
+      "status": "implemented"
     },
     "PE POST /api/integrations/localai/invoke": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#20"
+      "status": "implemented"
     },
     "PE POST /api/integrations/ollama/dispatch": {
       "status": "declared-unsupported",

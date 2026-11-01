@@ -7,7 +7,7 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 | layer | implemented | routes |
 |---|---|---|
 | RE | 78 | 79 |
-| PE | 28 | 47 |
+| PE | 32 | 47 |
 | RE-phase2 | 0 | 5 |
 
 `RE` and `PE` are the specification's implemented-contract tables; `RE-phase2` is the K-line snapshot routes it specifies outside them. A route this engine does not implement is `declared-unsupported`: it answers `501` with the participation state, as the specification rules ("An unimplemented route answers `unsupported`"). A `missing` route answers silently, which the specification forbids. The RE's routes are probed on `app`, the PE's on `pe_app`. Status says a route exists, not that it conforms: the notes name known shape defects.
@@ -226,10 +226,10 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 | GET | `/api/integrations/carekit/status` | implemented |  |  |
 | POST | `/api/integrations/carekit/ingest` | implemented |  |  |
 | GET | `/api/integrations/localai/status` | implemented |  |  |
-| GET | `/api/integrations/localai/catalog` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
-| POST | `/api/integrations/localai/bootstrap` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
-| POST | `/api/integrations/localai/invoke` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
-| GET | `/api/integrations/localai/ledger` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
+| GET | `/api/integrations/localai/catalog` | implemented |  |  |
+| POST | `/api/integrations/localai/bootstrap` | implemented |  |  |
+| POST | `/api/integrations/localai/invoke` | implemented |  |  |
+| GET | `/api/integrations/localai/ledger` | implemented |  |  |
 
 ## PE: Dispatch & Triggers
 

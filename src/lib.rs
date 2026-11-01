@@ -1920,11 +1920,26 @@ async fn add_machine(
     input: Result<Json<Value>, JsonRejection>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     let Json(input) = input.map_err(json_rejection)?;
+    let declared = if input["machine"].is_object() {
+        &input["machine"]
+    } else {
+        &input
+    };
+    let requested_name = declared["name"].clone();
     let mut state = engine.write().map_err(|_| error_response(lock_error()))?;
-    state
-        .load_machine(input)
-        .map(|machine| Json(json!({ "success": true, "machine": machine })))
-        .map_err(error_response)
+    let summary = state.load_machine(input).map_err(error_response)?;
+    // C++'s answer: the machine as ingested, in full (a versioned name, a
+    // minted id), and whether its name was versioned on a clash.
+    let id = summary["id"].as_str().unwrap_or_default();
+    let machine = state
+        .machines
+        .get(id)
+        .map_or(summary.clone(), |m| m.to_json(true));
+    Ok(Json(json!({
+        "success": true,
+        "versioned": summary["name"] != requested_name,
+        "machine": machine,
+    })))
 }
 
 async fn get_machine(
@@ -4816,6 +4831,93 @@ mod tests {
         assert_eq!(
             body,
             json!({ "transition": 0, "cells": [], "folds": [], "counters": [] })
+        );
+    }
+
+    /// #20 workstream 4, slice D: localAI with no configuration allows
+    /// nothing, records every attempt, and bootstraps its bridge sensors.
+    #[tokio::test]
+    async fn localai_denies_by_default_and_records_every_attempt() {
+        let app = pe::pe_app(pe::PerceptionEngine::new(4).with_re_url("http://127.0.0.1:9"));
+        let (status, body) = send(
+            &app,
+            "POST",
+            "/api/integrations/localai/invoke",
+            Some(json!({ "method": "GET" })),
+        )
+        .await;
+        assert_eq!(
+            (status, body["error"].as_str()),
+            (
+                StatusCode::BAD_REQUEST,
+                Some("localAI invocation requires endpoint or path")
+            )
+        );
+        let (status, body) = send(
+            &app,
+            "POST",
+            "/api/integrations/localai/invoke",
+            Some(json!({ "path": "health", "correlationId": "c-1", "machineName": "M", "sequenceId": "" })),
+        )
+        .await;
+        assert_eq!(status, StatusCode::FORBIDDEN);
+        assert_eq!(
+            (
+                &body["endpoint"],
+                &body["method"],
+                &body["correlationId"],
+                &body["error"]
+            ),
+            (
+                &json!("/health"),
+                &json!("POST"),
+                &json!("c-1"),
+                &json!("localAI endpoint is not allowed")
+            )
+        );
+        let (_, ledger) = send(&app, "GET", "/api/integrations/localai/ledger", None).await;
+        let record = &ledger["records"][0];
+        assert_eq!(
+            (
+                &record["success"],
+                &record["machineName"],
+                record.get("sequenceId"),
+                record.get("operationId")
+            ),
+            (&json!(false), &json!("M"), None, None)
+        );
+        let (_, body) = send(&app, "POST", "/api/integrations/localai/bootstrap", None).await;
+        assert_eq!(body["registeredSensors"].as_array().map(Vec::len), Some(3));
+        assert_eq!(body["registeredSensors"][0]["active"], json!(false));
+        // No RE answers, so each bridge machine fails, whether or not the
+        // default machine directory exists beside this checkout.
+        assert_eq!(body["failedMachines"].as_array().map(Vec::len), Some(5));
+        assert_eq!(body["importedMachines"], json!([]));
+        let (_, body) = send(&app, "POST", "/api/integrations/localai/bootstrap", None).await;
+        assert_eq!(
+            body["skippedSensors"],
+            json!([
+                "localai_rag_retrieval",
+                "localai_rag_grading",
+                "localai_agent_activity"
+            ])
+        );
+    }
+
+    /// `POST /api/machines` answers the machine as ingested, in full, and
+    /// whether its name was versioned (C++).
+    #[tokio::test]
+    async fn adding_a_machine_answers_it_in_full() {
+        let app = app(Engine::new(8));
+        let (_, first) = send(&app, "POST", "/api/machines", Some(machine_definition())).await;
+        assert_eq!(first["versioned"], json!(false));
+        assert!(
+            first["machine"]["sequences"].is_array() && first["machine"]["arbiterRule"].is_string()
+        );
+        let (_, second) = send(&app, "POST", "/api/machines", Some(machine_definition())).await;
+        assert_eq!(
+            (&second["versioned"], &second["machine"]["name"]),
+            (&json!(true), &json!("two-step v2"))
         );
     }
 
