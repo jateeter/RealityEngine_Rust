@@ -22,6 +22,7 @@ mod arbitration;
 pub mod instance_clock;
 mod machine_routes;
 mod machine_view;
+mod sequences;
 mod simulation;
 mod step;
 
@@ -246,6 +247,10 @@ pub struct Engine {
     /// Checkpoints by machine id, then checkpoint id: each a copy of the
     /// machine as it was running (`/api/machines/:id/checkpoints`).
     checkpoints: BTreeMap<String, BTreeMap<String, machine_routes::Checkpoint>>,
+    /// The engine's own Critical Event Sequences and stored vectors
+    /// (`/api/sequences`, `/api/vectors`): engine-scoped, never compared.
+    sequence_store: BTreeMap<String, Sequence>,
+    vector_store: BTreeMap<String, Value>,
     /// The declared rule for each contended output cell.
     arbitration: step::ArbitrationRegistry,
 }
@@ -2054,6 +2059,23 @@ pub fn app(engine: Engine) -> Router {
             delete(machine_routes::delete_checkpoint),
         )
         .route("/api/machine-graph", get(machine_view::machine_graph))
+        .route("/api/vectors", post(sequences::store_vector))
+        .route("/api/vectors/search", post(sequences::search_vectors))
+        .route(
+            "/api/vectors/{id}",
+            get(sequences::vector).delete(sequences::delete_vector),
+        )
+        .route(
+            "/api/sequences",
+            get(sequences::list).post(sequences::create),
+        )
+        .route("/api/sequences/persist", post(sequences::persist))
+        .route(
+            "/api/sequences/{id}",
+            get(sequences::sequence).delete(sequences::delete_sequence),
+        )
+        .route("/api/sequences/{id}/reset", post(sequences::reset_sequence))
+        .route("/api/sequences/{id}/vectors", post(sequences::add_event))
         .route("/api/buses/semantic", get(machine_view::semantic_buses))
         .route("/api/buses/semantic/{id}", get(machine_view::semantic_bus))
         .route("/api/engine/process", post(process_all))
@@ -2988,20 +3010,16 @@ mod tests {
                 "surface": surface,
             })
         };
-        // A literal route, templates filled in, and a phase-2 route.
+        // Literal routes of three methods, and a phase-2 template filled in.
         for (method, uri, surface) in [
             ("GET", "/api/sampler/stats", "GET /api/sampler/stats"),
-            ("GET", "/api/sequences/s", "GET /api/sequences/:id"),
+            ("POST", "/api/sampler/start", "POST /api/sampler/start"),
             (
                 "POST",
-                "/api/sequences/s/vectors",
-                "POST /api/sequences/:id/vectors",
+                "/api/perception/observe",
+                "POST /api/perception/observe",
             ),
-            (
-                "POST",
-                "/api/sequences/s/reset",
-                "POST /api/sequences/:id/reset",
-            ),
+            ("GET", "/api/governance/route", "GET /api/governance/route"),
             (
                 "DELETE",
                 "/api/runtime/snapshot/s",
@@ -4491,5 +4509,97 @@ mod tests {
         )
         .await;
         assert_eq!(all["results"].as_object().unwrap().len(), 2);
+    }
+
+    /// #13 slice 3: the engine's own sequence and vector stores.
+    #[tokio::test]
+    async fn sequences_and_vectors_are_engine_scoped_stores() {
+        let app = app(Engine::new(8));
+        let event = |id: &str, initial: bool, output: bool| {
+            json!({
+                "id": id, "isInitial": initial, "elements": [{ "value": 1 }],
+                "outputEvents": if output { json!([{ "id": "o", "vector": [1] }]) } else { json!([]) },
+            })
+        };
+        let (status, body) = send(
+            &app,
+            "POST",
+            "/api/sequences",
+            Some(json!({ "id": "s", "events": [event("a", false, false)] })),
+        )
+        .await;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(
+            body["error"].as_array().unwrap().len(),
+            2,
+            "every failure, as an array"
+        );
+        let (_, created) = send(
+            &app,
+            "POST",
+            "/api/sequences",
+            Some(json!({ "id": "s", "name": "S", "events": [event("a", true, true)] })),
+        )
+        .await;
+        assert_eq!(created["sequence"]["initialEventIds"], json!(["a"]));
+        assert_eq!(created["sequence"]["events"][0]["matchAlgorithm"], "gte");
+        send(
+            &app,
+            "POST",
+            "/api/sequences/s/vectors",
+            Some(event("b", false, false)),
+        )
+        .await;
+        let (_, got) = send(&app, "GET", "/api/sequences/s", None).await;
+        assert_eq!(got["sequence"]["events"].as_array().unwrap().len(), 2);
+        assert_eq!(
+            send(&app, "POST", "/api/sequences/s/reset", None).await.0,
+            StatusCode::OK
+        );
+        assert_eq!(
+            send(&app, "DELETE", "/api/sequences/s", None).await.0,
+            StatusCode::OK
+        );
+        assert_eq!(
+            send(&app, "DELETE", "/api/sequences/s", None).await.0,
+            StatusCode::NOT_FOUND
+        );
+
+        let (_, stored) = send(
+            &app,
+            "POST",
+            "/api/vectors",
+            Some(json!({ "vector": [1, 0] })),
+        )
+        .await;
+        assert!(
+            stored["vector"]["id"]
+                .as_str()
+                .unwrap()
+                .starts_with("vector-")
+        );
+        send(
+            &app,
+            "POST",
+            "/api/vectors",
+            Some(json!({ "id": "w", "elements": [{ "value": 0 }, 1] })),
+        )
+        .await;
+        let (_, found) = send(
+            &app,
+            "POST",
+            "/api/vectors/search",
+            Some(json!({ "vector": [1, 0], "threshold": 0.5 })),
+        )
+        .await;
+        let results = found["results"].as_array().unwrap();
+        assert_eq!(results.len(), 1, "w scores 0 and falls under the threshold");
+        assert_eq!(results[0]["score"], json!(1));
+        assert_eq!(
+            send(&app, "GET", "/api/vectors/nope", None).await.0,
+            StatusCode::NOT_FOUND
+        );
+        let (_, deleted) = send(&app, "DELETE", "/api/vectors/w", None).await;
+        assert_eq!(deleted, json!({ "success": true, "id": "w" }));
     }
 }

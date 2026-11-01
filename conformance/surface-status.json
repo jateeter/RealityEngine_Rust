@@ -201,12 +201,12 @@
       "status": "implemented"
     },
     "RE DELETE /api/sequences/:id": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#13"
+      "notes": "#13 slice 3: identical to C++ (minted ids and timestamps aside)",
+      "status": "implemented"
     },
     "RE DELETE /api/vectors/:id": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#13"
+      "notes": "#13 slice 3: identical to C++ (minted ids and timestamps aside)",
+      "status": "implemented"
     },
     "RE GET /": {
       "status": "implemented"
@@ -338,16 +338,16 @@
       "tracking": "jateeter/RealityEngine_Rust#13"
     },
     "RE GET /api/sequences": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#13"
+      "notes": "#13 slice 3: identical to C++ (minted ids and timestamps aside)",
+      "status": "implemented"
     },
     "RE GET /api/sequences/:id": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#13"
+      "notes": "#13 slice 3: identical to C++ (minted ids and timestamps aside)",
+      "status": "implemented"
     },
     "RE GET /api/vectors/:id": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#13"
+      "notes": "#13 slice 3: identical to C++ (minted ids and timestamps aside)",
+      "status": "implemented"
     },
     "RE PATCH /api/machines/:id": {
       "notes": "#13 slice 2: identical to C++ except that C++ leaves the patched machine transitionsInhibited (a C++ defect); this runtime keeps the machine's control state",
@@ -441,28 +441,29 @@
       "tracking": "jateeter/RealityEngine_Rust#13"
     },
     "RE POST /api/sequences": {
-      "status": "declared-unsupported",
+      "notes": "#13 slice 3: identical to C++. Its validation 400 carries every failure as an array under error, as C++ and Scala do (LSP does not validate), which this classifier reads as a non-string envelope; an unknown comparatorType is 400 here and 500 on C++",
+      "status": "implemented-bad-envelope",
       "tracking": "jateeter/RealityEngine_Rust#13"
     },
     "RE POST /api/sequences/:id/reset": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#13"
+      "notes": "#13 slice 3: identical to C++ (minted ids and timestamps aside)",
+      "status": "implemented"
     },
     "RE POST /api/sequences/:id/vectors": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#13"
+      "notes": "#13 slice 3: identical to C++ (minted ids and timestamps aside); an unknown comparatorType is 400 here and 500 on C++",
+      "status": "implemented"
     },
     "RE POST /api/sequences/persist": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#13"
+      "notes": "#13 slice 3: identical to C++ (minted ids and timestamps aside)",
+      "status": "implemented"
     },
     "RE POST /api/vectors": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#13"
+      "notes": "#13 slice 3: identical to C++ (minted ids and timestamps aside)",
+      "status": "implemented"
     },
     "RE POST /api/vectors/search": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#13"
+      "notes": "#13 slice 3: identical to C++ (minted ids and timestamps aside)",
+      "status": "implemented"
     },
     "RE PUT /api/config/dimension": {
       "status": "implemented"
