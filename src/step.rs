@@ -23,19 +23,93 @@
 //!    and the completion is published, waking every waiter for step n.
 //!
 //! The perceptual-simulation routes step through the same phases
-//! (`simulation.rs`). Not yet (slice 4 of #11): the `only` selector,
-//! `matchAlgorithmOverride`, and the paging and deprecated-fire metrics series.
+//! (`simulation.rs`). With `phaseDetail` on, each step is timed in the five
+//! universal phases (SURFACE_SPEC.md, "`phaseDetail`: step phase timing").
 
 use super::*;
 use std::collections::{BTreeSet, VecDeque};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 /// Entries each trajectory history keeps (SURFACE_SPEC.md: capped at 1024).
 const TRAJECTORY_CAPACITY: usize = 1024;
 const PAIR_TIMEOUT_DEFAULT_MS: u64 = 5000;
 const PAIR_TIMEOUT_MAX_MS: u64 = 60000;
-/// Steps the step history keeps, newest first (C++ `maxHistory`).
-const HISTORY_CAPACITY: usize = 250;
+/// `historyLimit`'s declared default: steps the step history keeps.
+pub(crate) const HISTORY_LIMIT_DEFAULT: usize = 250;
+
+/// The universal step phases, in order (SURFACE_SPEC.md, "`phaseDetail`").
+pub(crate) const STEP_PHASES: [&str; 5] = [
+    "step.isre_capture",
+    "step.compose",
+    "step.resolve",
+    "step.commit",
+    "step.publish",
+];
+
+/// The engine-scoped step controls (`/api/engine/config`) and what
+/// `phaseDetail` has measured. Neither is touched by a reset: the controls are
+/// configuration, and the phase totals are counters since boot.
+pub(crate) struct StepControls {
+    pub(crate) history_limit: usize,
+    pub(crate) include_active_regions: bool,
+    pub(crate) include_machine_results: bool,
+    pub(crate) include_perceptual_space: bool,
+    pub(crate) phase_detail: bool,
+    /// Time summed per phase over the measured steps, and how many there were.
+    pub(crate) phase_time: [Duration; 5],
+    pub(crate) measured_steps: u64,
+}
+
+impl Default for StepControls {
+    fn default() -> Self {
+        Self {
+            history_limit: HISTORY_LIMIT_DEFAULT,
+            include_active_regions: true,
+            include_machine_results: true,
+            include_perceptual_space: true,
+            phase_detail: false,
+            phase_time: [Duration::ZERO; 5],
+            measured_steps: 0,
+        }
+    }
+}
+
+/// `POST /api/perceive`'s `only`: keep what is attributable to these sequences
+/// or these machine names (SURFACE_SPEC.md, "`only` selector"). Present, it
+/// selects, even when it names nothing.
+#[derive(Default)]
+pub(crate) struct Selector {
+    pub(crate) sequence_ids: BTreeSet<String>,
+    pub(crate) machine_names: BTreeSet<String>,
+}
+
+impl Selector {
+    /// The selector a body's `only` declares: `None` when absent, `null` or
+    /// not an object, which is no selector at all.
+    pub(crate) fn from_body(only: &Value) -> Option<Self> {
+        let only = only.as_object()?;
+        let strings = |key: &str| -> BTreeSet<String> {
+            only.get(key)
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+                .filter_map(Value::as_str)
+                .map(str::to_owned)
+                .collect()
+        };
+        Some(Self {
+            sequence_ids: strings("sequenceIds"),
+            machine_names: strings("machineNames"),
+        })
+    }
+
+    fn wants_sequences(&self, ids: &Value) -> bool {
+        ids.as_array()
+            .into_iter()
+            .flatten()
+            .any(|id| id.as_str().is_some_and(|id| self.sequence_ids.contains(id)))
+    }
+}
 
 /// One trajectory entry: the dense vector, sparse and lossless.
 #[derive(Clone, Debug)]
@@ -89,6 +163,7 @@ pub(crate) struct StepState {
     /// (`GET /api/perceptual-simulation/history`).
     pub(crate) history: VecDeque<Arc<Step>>,
     pub(crate) simulation: crate::simulation::Simulation,
+    pub(crate) controls: StepControls,
     /// Each pushed step, as `POST /api/perceive` answered it, for
     /// `GET /api/engine/stream`.
     pub(crate) stream: tokio::sync::broadcast::Sender<String>,
@@ -105,6 +180,7 @@ impl Default for StepState {
             latched: BTreeSet::new(),
             history: VecDeque::new(),
             simulation: crate::simulation::Simulation::default(),
+            controls: StepControls::default(),
             stream: tokio::sync::broadcast::channel(64).0,
         }
     }
@@ -129,15 +205,24 @@ impl StepState {
         self.completed.send_replace(-1);
     }
 
+    /// Appends the (ISRE, OSRE) pair: B4.
     fn commit(&mut self, isre: TrajectoryEntry, osre: TrajectoryEntry) {
-        let step = isre.step_number as i64;
         for (history, entry) in [(&mut self.isre, isre), (&mut self.osre, osre)] {
             if history.len() == TRAJECTORY_CAPACITY {
                 history.pop_front();
             }
             history.push_back(entry);
         }
-        self.completed.send_replace(step);
+    }
+
+    /// Publishes the completion point, waking every waiter for `step`: B5.
+    fn publish(&mut self, step: u64) {
+        self.completed.send_replace(step as i64);
+    }
+
+    /// Keeps the newest `historyLimit` steps.
+    pub(crate) fn trim_history(&mut self) {
+        self.history.truncate(self.controls.history_limit);
     }
 
     fn pair(&self, step: u64) -> Option<(&TrajectoryEntry, &TrajectoryEntry)> {
@@ -457,28 +542,81 @@ pub(crate) struct Step {
 
 impl Step {
     /// C++ `to_json(SimulationStep)`: a field not asked for is omitted, never
-    /// emptied, since an empty array is a claim that there was nothing.
+    /// emptied, since an empty array is a claim that there was nothing. With a
+    /// selector, each list keeps only what it attributes to the selection, and
+    /// entries are skipped before they are copied, not removed afterwards.
     pub(crate) fn to_json(
         &self,
         machine_results: bool,
         perceptual_space: bool,
         active_regions: bool,
+        only: Option<&Selector>,
     ) -> Value {
+        // The machine ids the selected names resolve to, through
+        // machineResults: ids are minted per runtime, so a caller names
+        // machines, while mergeBatch, eventBus and activeRegions carry ids.
+        let selected: BTreeSet<&str> = only
+            .map(|only| {
+                self.machine_results
+                    .iter()
+                    .filter(|(_, result)| {
+                        result["machineName"]
+                            .as_str()
+                            .is_some_and(|name| only.machine_names.contains(name))
+                    })
+                    .map(|(id, _)| id.as_str())
+                    .collect()
+            })
+            .unwrap_or_default();
+        let by_id = |value: &Value| value.as_str().is_some_and(|id| selected.contains(id));
+        let keep_merge = |op: &&Value| {
+            only.is_none_or(|only| {
+                only.wants_sequences(&op["sequenceIds"]) || by_id(&op["machineId"])
+            })
+        };
+        let keep_write = |write: &&Value| {
+            only.is_none_or(|only| {
+                write["producerSequenceId"]
+                    .as_str()
+                    .is_some_and(|id| only.sequence_ids.contains(id))
+                    || by_id(&write["producerMachineId"])
+                    || by_id(&write["subscriberMachineId"])
+            })
+        };
+        let keep_region = |region: &&Value| only.is_none() || by_id(&region["machineId"]);
+        let keep_result = |id: &str| {
+            only.is_none_or(|only| {
+                selected.contains(id)
+                    || self
+                        .merge_batch
+                        .iter()
+                        .any(|op| op["machineId"] == id && only.wants_sequences(&op["sequenceIds"]))
+            })
+        };
+        let merge_batch: Vec<&Value> = self.merge_batch.iter().filter(keep_merge).collect();
+        let event_bus: Vec<&Value> = self.event_bus.iter().filter(keep_write).collect();
         let mut out = json!({
             "stepNumber": self.step_number,
             "timestamp": self.timestamp,
-            "mergeBatch": self.merge_batch,
-            "eventBus": self.event_bus,
+            "mergeBatch": merge_batch,
+            "eventBus": event_bus,
         });
         if active_regions {
-            out["activeRegions"] = json!(self.active_regions);
+            let regions: Vec<&Value> = self.active_regions.iter().filter(keep_region).collect();
+            out["activeRegions"] = json!(regions);
         }
         if perceptual_space {
             out["perceptualSpace"] = json!(self.perceptual_space);
             out["perceptualSpaceIsDebugProjection"] = json!(true);
         }
         if machine_results {
-            out["machineResults"] = Value::Object(self.machine_results.clone());
+            let results: serde_json::Map<String, Value> = self
+                .machine_results
+                .iter()
+                .filter(|(id, _)| keep_result(id))
+                .map(|(id, result)| (id.clone(), result.clone()))
+                .collect();
+            out["machineResults"] = Value::Object(results);
         }
         out
     }
@@ -535,7 +673,11 @@ impl Engine {
 
     /// One step (`POST /api/perceive`): `input` becomes the space, and the
     /// corpus is presented with it.
-    pub(crate) fn perceive(&mut self, input: &[f64]) -> Result<Arc<Step>, EngineError> {
+    pub(crate) fn perceive(
+        &mut self,
+        input: &[f64],
+        overriding: Option<&str>,
+    ) -> Result<Arc<Step>, EngineError> {
         let width = self.space_width().max(input.len());
         let space = &mut self.steps.space;
         space.resize(width, 0.0);
@@ -551,16 +693,34 @@ impl Engine {
 
         let step_number = self.steps.next_step;
         self.steps.next_step += 1;
-        self.run_phases(step_number)
+        self.run_phases(step_number, overriding)
     }
 
     /// The phases of one step over the space as it now stands: what
     /// `POST /api/perceive` and a perceptual-simulation step share (C++
     /// `run_phases`). The step is recorded in the step history, newest first.
-    pub(crate) fn run_phases(&mut self, step_number: u64) -> Result<Arc<Step>, EngineError> {
+    /// `overriding` is a comparator applied above every element's own.
+    pub(crate) fn run_phases(
+        &mut self,
+        step_number: u64,
+        overriding: Option<&str>,
+    ) -> Result<Arc<Step>, EngineError> {
+        // B0. Whether this step is timed is decided here, once, so a toggle
+        // mid-step never splits one step's phases.
+        let timed = self.steps.controls.phase_detail;
+        let mut phase_time = [Duration::ZERO; 5];
+        let mut mark = Instant::now();
+        let mut boundary = |phase: usize| {
+            if timed {
+                let now = Instant::now();
+                phase_time[phase] = now - mark;
+                mark = now;
+            }
+        };
         let subscriptions = self.subscriptions();
         // ISRE(n): what every machine below reads, captured before any does.
         let isre = TrajectoryEntry::sparse(step_number, &self.steps.space);
+        boundary(0);
 
         // Compose in parallel; the scope is the join, and nothing below runs
         // until every composer has returned.
@@ -580,7 +740,7 @@ impl Engine {
                                         space.get(machine.input_offset + i).copied().unwrap_or(0.0)
                                     })
                                     .collect();
-                                let transition = machine.respond(&snapshot);
+                                let transition = machine.respond(&snapshot, overriding);
                                 Composed {
                                     id: (*id).clone(),
                                     snapshot,
@@ -596,6 +756,7 @@ impl Engine {
                 .flat_map(|handle| handle.join().expect("a composer panicked"))
                 .collect()
         });
+        boundary(1);
 
         let mut machine_results = serde_json::Map::new();
         let mut merges: Vec<MergeOperation> = Vec::new();
@@ -692,6 +853,19 @@ impl Engine {
                 // winning decision travels whole with its own action.
                 let mut governance: Option<(f64, String, Value)> = None;
                 for (sequence_id, values, action) in &pending {
+                    // Deprecated fires count once per asserted output, so a
+                    // sequence asserting twice in a step counts twice (C++,
+                    // FOLD_PLACEMENT.md amendment A4).
+                    if let Some(sequence) = machine.sequences.get(sequence_id)
+                        && !sequence.deprecated_at.is_empty()
+                    {
+                        self.coverage.record_deprecated_fire(
+                            &id,
+                            &machine.name,
+                            sequence_id,
+                            &sequence.replaced_by,
+                        );
+                    }
                     let Some(mut decision) = resolve_governance(machine, sequence_id, values)
                     else {
                         continue;
@@ -725,6 +899,22 @@ impl Engine {
                     .and_then(|(_, _, d)| d["ragStatusCode"].as_str())
                     .unwrap_or("")
                     .to_owned();
+                // The joined decision is recorded once per merge operation.
+                if let Some((_, _, decision)) = &governance {
+                    let text = |key: &str, fallback: &'static str| {
+                        decision[key]
+                            .as_str()
+                            .filter(|s| !s.is_empty())
+                            .unwrap_or(fallback)
+                            .to_owned()
+                    };
+                    self.coverage.record_paging_decision(
+                        text("ownerTeam", "unrouted"),
+                        text("processStatus", "unknown"),
+                        text("ragStatusCode", "unknown"),
+                        id.clone(),
+                    );
+                }
                 merges.push(MergeOperation {
                     offset: output_offset,
                     length: output_length,
@@ -855,18 +1045,28 @@ impl Engine {
             perceptual_space: space.clone(),
         };
 
-        // The commit: the clock ticks for the step, then the pair is appended
-        // and the completion published in one action.
+        boundary(2);
+
+        // The commit: the clock ticks for the step and the pair is appended;
+        // then the completion is published.
         self.clock.tick().map_err(|message| EngineError {
             status: StatusCode::INTERNAL_SERVER_ERROR,
             message,
         })?;
         self.steps.commit(isre, osre);
-        let step = Arc::new(step);
-        if self.steps.history.len() == HISTORY_CAPACITY {
-            self.steps.history.pop_back();
+        boundary(3);
+        self.steps.publish(step_number);
+        boundary(4);
+        if timed {
+            let controls = &mut self.steps.controls;
+            for (total, spent) in controls.phase_time.iter_mut().zip(phase_time) {
+                *total += spent;
+            }
+            controls.measured_steps += 1;
         }
+        let step = Arc::new(step);
         self.steps.history.push_front(Arc::clone(&step));
+        self.steps.trim_history();
         Ok(step)
     }
 
@@ -963,28 +1163,33 @@ pub(crate) async fn perceive(
     body: Result<Json<Value>, JsonRejection>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     let Json(body) = body.map_err(json_rejection)?;
-    // Not in this slice, and refused rather than ignored: ignoring `only`
-    // would answer the whole universe to a caller who asked for a selection.
-    for key in ["only", "matchAlgorithmOverride"] {
-        if body.get(key).is_some_and(|v| !v.is_null()) {
-            return Err(error_response(EngineError::bad_request(format!(
-                "{key} is not implemented by this runtime yet (jateeter/RealityEngine_Rust#11)"
-            ))));
-        }
-    }
+    // Only an explicit override overrides; `matchAlgorithm` is not an
+    // instruction (RealityEngine_CI#201).
+    let overriding = match body["matchAlgorithmOverride"].as_str() {
+        None => None,
+        Some(name) => Some(comparator(name).map_err(error_response)?),
+    };
+    let only = Selector::from_body(&body["only"]);
     let flag = |key: &str, default: bool| body[key].as_bool().unwrap_or(default);
-    let compact = flag("compact", false);
-    let include_machine_results = flag("includeMachineResults", !compact);
-    let include_perceptual_space = flag("includePerceptualSpace", true);
-    let include_active_regions = flag("includeActiveRegions", true);
 
     let mut state = engine.write().map_err(|_| error_response(lock_error()))?;
+    // The configured defaults; a request's own flag overrides one for that
+    // call. `compact` omits exactly machineResults.
+    let defaults = &state.steps.controls;
+    let include_machine_results = flag(
+        "includeMachineResults",
+        !flag("compact", false) && defaults.include_machine_results,
+    );
+    let include_perceptual_space =
+        flag("includePerceptualSpace", defaults.include_perceptual_space);
+    let include_active_regions = flag("includeActiveRegions", defaults.include_active_regions);
     let input = assemble_input(&body, state.space_width()).map_err(error_response)?;
-    let step = state.perceive(&input).map_err(error_response)?;
+    let step = state.perceive(&input, overriding).map_err(error_response)?;
     let out = step.to_json(
         include_machine_results,
         include_perceptual_space,
         include_active_regions,
+        only.as_ref(),
     );
     // No subscriber is not an error: the step stands whether or not anyone
     // is watching.
@@ -995,6 +1200,20 @@ pub(crate) async fn perceive(
             .send(String::from_utf8_lossy(&bytes).into_owned());
     }
     Ok(Json(out))
+}
+
+/// A comparator's canonical name (C++ `comparator_from_string`).
+fn comparator(name: &str) -> Result<&'static str, EngineError> {
+    match name.to_lowercase().as_str() {
+        "equals" => Ok("equals"),
+        "threshold" => Ok("threshold"),
+        "pattern" => Ok("pattern"),
+        "custom" => Ok("custom"),
+        "gte" => Ok("gte"),
+        _ => Err(EngineError::bad_request(format!(
+            "Unknown comparator type: {name}"
+        ))),
+    }
 }
 
 fn history_query(query: &HashMap<String, String>) -> Result<(u64, usize), EngineError> {

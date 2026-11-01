@@ -190,7 +190,7 @@
       "tracking": "jateeter/RealityEngine_Rust#17"
     },
     "RE DELETE /api/engine/config/:control": {
-      "notes": "carries transitionsInhibited only; the other seven universal controls join with the behaviour they govern (historyLimit, include*, phaseDetail: jateeter/RealityEngine_Rust#11; arbitrationRetention, arbitrationWindow: #12)",
+      "notes": "carries six of the eight universal controls (historyLimit, includeActiveRegions, includeMachineResults, includePerceptualSpace, phaseDetail, transitionsInhibited), identical to C++ on the regression corpus; arbitrationRetention and arbitrationWindow join with /api/arbitration (#12)",
       "status": "implemented"
     },
     "RE DELETE /api/machines/:id": {
@@ -249,11 +249,11 @@
       "status": "implemented"
     },
     "RE GET /api/engine/config": {
-      "notes": "carries transitionsInhibited only; the other seven universal controls join with the behaviour they govern (historyLimit, include*, phaseDetail: jateeter/RealityEngine_Rust#11; arbitrationRetention, arbitrationWindow: #12)",
+      "notes": "carries six of the eight universal controls (historyLimit, includeActiveRegions, includeMachineResults, includePerceptualSpace, phaseDetail, transitionsInhibited), identical to C++ on the regression corpus; arbitrationRetention and arbitrationWindow join with /api/arbitration (#12)",
       "status": "implemented"
     },
     "RE GET /api/engine/config/:control": {
-      "notes": "carries transitionsInhibited only; the other seven universal controls join with the behaviour they govern (historyLimit, include*, phaseDetail: jateeter/RealityEngine_Rust#11; arbitrationRetention, arbitrationWindow: #12)",
+      "notes": "carries six of the eight universal controls (historyLimit, includeActiveRegions, includeMachineResults, includePerceptualSpace, phaseDetail, transitionsInhibited), identical to C++ on the regression corpus; arbitrationRetention and arbitrationWindow join with /api/arbitration (#12)",
       "status": "implemented"
     },
     "RE GET /api/engine/history": {
@@ -305,7 +305,7 @@
       "status": "implemented"
     },
     "RE GET /api/metrics": {
-      "notes": "CES coverage and runtime gauges, structurally identical to C++; step-phase, paging and deprecated-fire series absent until measured (#11)",
+      "notes": "CES coverage and runtime gauges, structurally identical to C++, with ces_paging_decisions_total, ces_deprecated_fires_total and the five universal step phases under phaseDetail (#11); C++'s own finer phases are its instrumentation and not carried",
       "status": "implemented"
     },
     "RE GET /api/perceptual-simulation/history": {
@@ -396,7 +396,7 @@
       "tracking": "jateeter/RealityEngine_Rust#13"
     },
     "RE POST /api/perceive": {
-      "notes": "slices 1-3 of #11: 60 full-corpus and 60 regression-corpus steps identical to C++ on the (ISRE, OSRE) pairs, mergeBatch with governance, activeRegions, eventBus and machineResults; only and matchAlgorithmOverride are refused (slice 4)",
+      "notes": "#11: 60 full-corpus and 60 regression-corpus steps identical to C++ on the (ISRE, OSRE) pairs, mergeBatch with governance, activeRegions, eventBus and machineResults; the only selector and matchAlgorithmOverride identical over 12 regression-corpus steps each; an unknown override is 400 here and 500 on C++; valuesPacked under compact is not emitted (SURFACE_SPEC, internal augmentation, absent on Scala too)",
       "status": "implemented"
     },
     "RE POST /api/perception/diagnostic": {
@@ -468,7 +468,7 @@
       "status": "implemented"
     },
     "RE PUT /api/engine/config/:control": {
-      "notes": "carries transitionsInhibited only; the other seven universal controls join with the behaviour they govern (historyLimit, include*, phaseDetail: jateeter/RealityEngine_Rust#11; arbitrationRetention, arbitrationWindow: #12)",
+      "notes": "carries six of the eight universal controls (historyLimit, includeActiveRegions, includeMachineResults, includePerceptualSpace, phaseDetail, transitionsInhibited), identical to C++ on the regression corpus; arbitrationRetention and arbitrationWindow join with /api/arbitration (#12)",
       "status": "implemented"
     },
     "RE PUT /api/machines/:id": {

@@ -87,7 +87,7 @@ impl Engine {
         space.resize(width, 0.0);
         space[offset..offset + event.len()].copy_from_slice(event);
         let step_number = simulation.current_step;
-        let step = self.run_phases(step_number)?;
+        let step = self.run_phases(step_number, None)?;
         let simulation = &mut self.steps.simulation;
         simulation.current_step += 1;
         // A run ends on the step that finishes the walk, not on the call after it.
@@ -213,7 +213,7 @@ pub(crate) async fn step(State(engine): State<SharedEngine>) -> Answer {
     Ok(Json(
         match state.simulation_step().map_err(error_response)? {
             None => json!({ "done": true, "success": true }),
-            Some(step) => json!({ "success": true, "step": step.to_json(true, true, true) }),
+            Some(step) => json!({ "success": true, "step": step.to_json(true, true, true, None) }),
         },
     ))
 }
@@ -308,7 +308,7 @@ pub(crate) async fn history(State(engine): State<SharedEngine>) -> Answer {
         .steps
         .history
         .iter()
-        .map(|step| step.to_json(true, true, true))
+        .map(|step| step.to_json(true, true, true, None))
         .collect();
     Ok(Json(json!({ "history": steps })))
 }
