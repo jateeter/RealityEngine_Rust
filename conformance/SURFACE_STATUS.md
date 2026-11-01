@@ -6,7 +6,7 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 
 | layer | implemented | routes |
 |---|---|---|
-| RE | 38 | 79 |
+| RE | 42 | 79 |
 | PE | 0 | 47 |
 | RE-phase2 | 0 | 5 |
 
@@ -83,9 +83,9 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 
 | method | path | status | tracking | notes |
 |---|---|---|---|---|
-| GET | `/api/machines` | implemented |  |  |
+| GET | `/api/machines` | implemented |  | #13 slice 1: identical to C++ on the regression corpus (load-time output timestamps aside), fresh, after 20 steps and after a reset |
 | POST | `/api/machines` | implemented |  |  |
-| GET | `/api/machines/:id` | implemented |  |  |
+| GET | `/api/machines/:id` | implemented |  | #13 slice 1: identical to C++ on the regression corpus (load-time output timestamps aside), fresh, after 20 steps and after a reset |
 | PUT | `/api/machines/:id` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
 | PATCH | `/api/machines/:id` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
 | DELETE | `/api/machines/:id` | implemented |  |  |
@@ -97,19 +97,19 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 | GET | `/api/machines/json/list` | implemented |  | the on-disk corpus with relFile and semantics; name, description, version, metadata and sequenceCount follow C++/LSP provisionally (the engines split 2-1): RealityEngine_CI#677 |
 | GET | `/api/machines/json/:name` | implemented |  |  |
 | POST | `/api/machines/json/import` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
-| GET | `/api/machines/:id/export` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
+| GET | `/api/machines/:id/export` | implemented |  | #13 slice 1: identical to C++ on the regression corpus (load-time output timestamps aside), fresh, after 20 steps and after a reset; regression-export-parity.py passes jointly with C++ |
 | GET | `/api/machines/:id/checkpoints` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
 | POST | `/api/machines/:id/checkpoints` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
 | POST | `/api/machines/:machineId/checkpoints/:cpId/restore` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
 | DELETE | `/api/machines/:machineId/checkpoints/:cpId` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
-| GET | `/api/buses/semantic` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
-| GET | `/api/buses/semantic/:id` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
+| GET | `/api/buses/semantic` | implemented |  | #13 slice 1: identical to C++ on the regression corpus (load-time output timestamps aside), fresh, after 20 steps and after a reset |
+| GET | `/api/buses/semantic/:id` | implemented |  | #13 slice 1: identical to C++ on the regression corpus (load-time output timestamps aside), fresh, after 20 steps and after a reset |
 
 ## RE: Machine Graph
 
 | method | path | status | tracking | notes |
 |---|---|---|---|---|
-| GET | `/api/machine-graph` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
+| GET | `/api/machine-graph` | implemented |  | #13 slice 1: identical to C++ on the regression corpus (load-time output timestamps aside), fresh, after 20 steps and after a reset |
 
 ## RE: Perceptual Simulation
 
@@ -121,7 +121,7 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 | POST | `/api/perceptual-simulation/stop` | implemented |  |  |
 | POST | `/api/perceptual-simulation/step` | implemented |  |  |
 | POST | `/api/perceptual-simulation/reset` | implemented |  |  |
-| GET | `/api/perceptual-simulation/state` | implemented |  | slice 3 of #11: identical to C++ over 30 regression-corpus steps except machines, which carries this runtime's GET /api/machines summary (C++ serves the full machine; #13) |
+| GET | `/api/perceptual-simulation/state` | implemented |  | slice 3 of #11: identical to C++ over 30 regression-corpus steps, machines included (in GET /api/machines' list form since #13 slice 1) |
 | GET | `/api/perceptual-simulation/history` | implemented |  |  |
 
 ## RE: Sampler

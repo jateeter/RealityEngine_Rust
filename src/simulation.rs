@@ -282,22 +282,13 @@ pub(crate) async fn state(State(engine): State<SharedEngine>) -> Answer {
     let state = engine.read().map_err(|_| error_response(lock_error()))?;
     let mut space = state.steps.space.clone();
     space.resize(state.space_width(), 0.0);
-    // Canonical order: domain, then name, then id (C++ `machine_order_less`).
-    let mut machines: Vec<&Machine> = state.machines.values().collect();
-    machines.sort_by_cached_key(|m| {
-        let domain = m.raw["metadata"]["domain"]
-            .as_str()
-            .unwrap_or("")
-            .to_owned();
-        (domain, m.name.clone(), m.id.clone())
-    });
     let simulation = &state.steps.simulation;
     Ok(Json(json!({
         "state": {
             "perceptualSpace": space,
             "currentStep": simulation.current_step,
             "isRunning": simulation.running,
-            "machines": machines.into_iter().map(Machine::summary).collect::<Vec<_>>(),
+            "machines": state.list_machines(),
         }
     })))
 }

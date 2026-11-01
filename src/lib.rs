@@ -20,6 +20,7 @@ use std::{
 
 mod arbitration;
 pub mod instance_clock;
+mod machine_view;
 mod simulation;
 mod step;
 
@@ -69,6 +70,8 @@ struct Output {
     id: String,
     vector: Vec<f64>,
     metadata: Value,
+    /// When the machine was loaded (ms), as C++ stamps a declared output.
+    timestamp: u128,
 }
 
 struct Event {
@@ -86,6 +89,12 @@ struct Event {
 
 struct Sequence {
     id: String,
+    /// As declared; `unnamed` when not, as C++ loads it.
+    name: String,
+    /// The sequence's own `metadata` object, `{}` when absent.
+    metadata: Value,
+    /// `schemaVersion`, as declared; empty when not.
+    schema_version: String,
     events: BTreeMap<String, Event>,
     /// `deprecatedAt` and `replacedBy`, as declared; empty when not.
     deprecated_at: String,
@@ -381,6 +390,7 @@ fn version_base(name: &str) -> &str {
 
 impl Machine {
     fn from_json(input: Value) -> Result<Self, EngineError> {
+        let loaded_at = now_ms();
         let root = input
             .as_object()
             .ok_or_else(|| EngineError::bad_request("machine definition must be a JSON object"))?;
@@ -481,6 +491,7 @@ impl Machine {
                         id: string(output.get("id"), &format!("{event_id}-output-{index}")),
                         vector: json_vector(output.get("vector")),
                         metadata: output.get("metadata").cloned().unwrap_or_else(|| json!({})),
+                        timestamp: loaded_at,
                     })
                     .collect();
                 let initial = event_json
@@ -520,6 +531,13 @@ impl Machine {
                     sequence_id.clone(),
                     Sequence {
                         id: sequence_id.clone(),
+                        name: string(sequence_json.get("name"), "unnamed"),
+                        metadata: sequence_json
+                            .get("metadata")
+                            .filter(|m| m.is_object())
+                            .cloned()
+                            .unwrap_or_else(|| json!({})),
+                        schema_version: string(sequence_json.get("schemaVersion"), ""),
                         events,
                         deprecated_at: string(sequence_json.get("deprecatedAt"), ""),
                         replaced_by: string(sequence_json.get("replacedBy"), ""),
@@ -1055,19 +1073,20 @@ impl Engine {
         self.load_machine(definition)
     }
 
+    /// `GET /api/machines`: every resident machine, in canonical order, in
+    /// list form.
     pub fn list_machines(&self) -> Vec<Value> {
-        self.machines.values().map(Machine::summary).collect()
+        self.machines_in_canonical_order()
+            .into_iter()
+            .map(|machine| machine.to_json(false))
+            .collect()
     }
 
+    /// `GET /api/machines/:id`: the machine in full, as it is running.
     pub fn machine(&self, id: &str) -> Option<Value> {
-        self.machines.get(id).map(|machine| {
-            json!({
-                "id": machine.id,
-                "name": machine.name,
-                "description": machine.description,
-                "machine": machine.raw,
-            })
-        })
+        self.machines
+            .get(id)
+            .map(|machine| json!({ "machine": machine.to_json(true) }))
     }
 
     pub fn remove_machine(&mut self, id: &str) -> bool {
@@ -1880,7 +1899,7 @@ async fn get_machine(
     state
         .machine(&id)
         .map(Json)
-        .ok_or_else(|| error_response(EngineError::not_found(format!("machine {id} not found"))))
+        .ok_or_else(|| error_response(EngineError::not_found("Machine not found")))
 }
 
 async fn delete_machine(
@@ -1985,6 +2004,10 @@ pub fn app(engine: Engine) -> Router {
             get(get_machine).delete(delete_machine),
         )
         .route("/api/machines/{id}/process", post(process_machine))
+        .route("/api/machines/{id}/export", get(machine_view::export))
+        .route("/api/machine-graph", get(machine_view::machine_graph))
+        .route("/api/buses/semantic", get(machine_view::semantic_buses))
+        .route("/api/buses/semantic/{id}", get(machine_view::semantic_bus))
         .route("/api/engine/process", post(process_all))
         .route("/api/engine/stats", get(engine_stats))
         .route("/api/engine/config", get(engine_config))
@@ -2920,12 +2943,8 @@ mod tests {
         // A literal route, a template filled in, a path this engine serves
         // under another method, and a phase-2 route.
         for (method, uri, surface) in [
-            ("GET", "/api/machine-graph", "GET /api/machine-graph"),
-            (
-                "GET",
-                "/api/machines/m/export",
-                "GET /api/machines/:id/export",
-            ),
+            ("GET", "/api/sampler/stats", "GET /api/sampler/stats"),
+            ("GET", "/api/sequences/s", "GET /api/sequences/:id"),
             (
                 "POST",
                 "/api/machines/m/checkpoints/c/restore",
@@ -4221,5 +4240,66 @@ mod tests {
             !data.contains(".0,"),
             "ECMAScript numbers on the stream too: {data}"
         );
+    }
+
+    /// #13 slice 1: canonical order, the list and full forms, and the export
+    /// as a corpus document.
+    #[tokio::test]
+    async fn machines_are_shown_in_canonical_order_and_exported_as_declared() {
+        let mut engine = Engine::new(8);
+        let mut zulu = rival("zulu", 1.0);
+        zulu["machine"]["metadata"] = json!({ "domain": "a-domain" });
+        zulu["machine"]["arbiterRule"] = json!("OR");
+        zulu["machine"]["inputSequences"] = json!([{ "id": "seed", "events": [[1]] }]);
+        engine.load_machine(zulu).unwrap();
+        engine.load_machine(rival("alpha", 3.0)).unwrap();
+        let app = app(engine);
+        let (_, list) = send(&app, "GET", "/api/machines", None).await;
+        let machines = list["machines"].as_array().unwrap();
+        let names: Vec<&str> = machines
+            .iter()
+            .map(|m| m["name"].as_str().unwrap())
+            .collect();
+        assert_eq!(names, ["alpha", "zulu"], "no domain sorts before a-domain");
+        let zulu = &machines[1];
+        assert_eq!(
+            zulu["sequences"],
+            json!([{ "id": "sequence", "name": "unnamed", "initialEventIds": ["start"] }])
+        );
+        assert_eq!(
+            zulu["metadata"]["inputSequences"][0]["id"], "seed",
+            "stashed in metadata"
+        );
+        assert_eq!(zulu["arbiterRule"], "or");
+        let id = zulu["id"].as_str().unwrap();
+
+        let (_, detail) = send(&app, "GET", &format!("/api/machines/{id}"), None).await;
+        let events = &detail["machine"]["sequences"][0]["events"];
+        assert_eq!(events[1]["id"], "start");
+        assert_eq!(events[1]["state"], "active");
+        assert_eq!(
+            detail["machine"]["sequences"][0]["outputEventIds"],
+            json!(["finish"])
+        );
+
+        let (_, export) = send(&app, "GET", &format!("/api/machines/{id}/export"), None).await;
+        assert_eq!(export["version"], "1.0.0");
+        assert_eq!(export["machine"]["arbiterRule"], "OR");
+        assert_eq!(export["machine"]["inputSequences"][0]["id"], "seed");
+        assert!(
+            export["machine"]["metadata"]
+                .get("inputSequences")
+                .is_none()
+        );
+        let (status, body) = send(&app, "GET", "/api/machines/nope/export", None).await;
+        assert_eq!(
+            (status, body["error"].clone()),
+            (StatusCode::NOT_FOUND, json!("Machine not found"))
+        );
+
+        // Both write the same cell, so neither's output overlaps the other's input.
+        let (_, graph) = send(&app, "GET", "/api/machine-graph", None).await;
+        assert_eq!(graph["nodes"].as_array().unwrap().len(), 2);
+        assert_eq!(graph["edges"], json!([]));
     }
 }
