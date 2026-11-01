@@ -33,14 +33,7 @@ fn event_from_json(body: &Value) -> Result<Event, EngineError> {
     for element in body["elements"].as_array().into_iter().flatten() {
         let comparator = match element["comparatorType"].as_str() {
             None => String::new(),
-            Some(name) => match name.to_lowercase().as_str() {
-                known @ ("equals" | "threshold" | "pattern" | "custom" | "gte") => known.to_owned(),
-                _ => {
-                    return Err(EngineError::bad_request(format!(
-                        "Unknown comparator type: {name}"
-                    )));
-                }
-            },
+            Some(name) => step::comparator(name)?.to_owned(),
         };
         elements.push(Element {
             value: element["value"].as_f64().unwrap_or(0.0),

@@ -132,10 +132,9 @@ impl Engine {
                 continue;
             };
             if offset + length > dimension {
-                return Err(EngineError {
-                    status: StatusCode::INTERNAL_SERVER_ERROR,
-                    message: "Input mapping outside perceptual space".to_owned(),
-                });
+                return Err(EngineError::internal(
+                    "Input mapping outside perceptual space",
+                ));
             }
             let resolved: Vec<f64> = (offset..offset + length)
                 .map(|i| universal.get(i).copied().unwrap_or(0.0))

@@ -51,6 +51,13 @@ impl EngineError {
             message: message.into(),
         }
     }
+
+    fn internal(message: impl Into<String>) -> Self {
+        Self {
+            status: StatusCode::INTERNAL_SERVER_ERROR,
+            message: message.into(),
+        }
+    }
 }
 
 impl std::fmt::Display for EngineError {
@@ -2871,7 +2878,8 @@ mod tests {
             Some(json!({ "vector": [1], "matchAlgorithmOverride": "fuzzy" })),
         )
         .await;
-        assert_eq!(status, StatusCode::BAD_REQUEST);
+        // Owner ruling, 2026-11-01: a 500, as C++ answers it.
+        assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
         assert_eq!(body["error"], "Unknown comparator type: fuzzy");
     }
 

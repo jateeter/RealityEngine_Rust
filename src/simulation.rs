@@ -20,8 +20,9 @@
 //!   theirs; both land in the trajectories and the step history.
 //!
 //! `GET /api/engine/stream` carries each pushed step as `POST /api/perceive`
-//! answered it, bare, as C++ and Scala send it. LSP and SURFACE_SPEC wrap it as
-//! `{type: "step-result", step}`; that split is the owner's to settle.
+//! answered it, bare, as C++ and Scala send it: the C++ signature is the
+//! contract (owner ruling, 2026-11-01), not the `{type: "step-result", step}`
+//! wrapper LSP sends.
 
 use super::*;
 use axum::response::sse::{Event as SseEvent, KeepAlive, Sse};
