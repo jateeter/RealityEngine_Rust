@@ -106,7 +106,7 @@ impl Machine {
     }
 
     /// Sequences in canonical order: by name, then id.
-    fn sequences_in_order(&self) -> Vec<&Sequence> {
+    pub(crate) fn sequences_in_order(&self) -> Vec<&Sequence> {
         let mut sequences: Vec<&Sequence> = self.sequences.values().collect();
         sequences.sort_by(|a, b| (&a.name, &a.id).cmp(&(&b.name, &b.id)));
         sequences
@@ -114,7 +114,7 @@ impl Machine {
 
     /// The machine's `metadata`, with its declared `inputSequences` stashed in
     /// it, as C++ holds it at load.
-    fn metadata(&self) -> Value {
+    pub(crate) fn metadata(&self) -> Value {
         let mut metadata = match self.raw.get("metadata") {
             Some(Value::Object(object)) => Value::Object(object.clone()),
             _ => json!({}),

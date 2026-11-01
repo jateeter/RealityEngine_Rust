@@ -6,7 +6,7 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 
 | layer | implemented | routes |
 |---|---|---|
-| RE | 63 | 79 |
+| RE | 73 | 79 |
 | PE | 0 | 47 |
 | RE-phase2 | 0 | 5 |
 
@@ -128,32 +128,32 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 
 | method | path | status | tracking | notes |
 |---|---|---|---|---|
-| POST | `/api/sampler/start` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
-| POST | `/api/sampler/stop` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
-| POST | `/api/sampler/sample` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
-| GET | `/api/sampler/stats` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
+| POST | `/api/sampler/start` | implemented |  |  |
+| POST | `/api/sampler/stop` | implemented |  |  |
+| POST | `/api/sampler/sample` | implemented |  |  |
+| GET | `/api/sampler/stats` | implemented |  |  |
 
 ## RE: Perception
 
 | method | path | status | tracking | notes |
 |---|---|---|---|---|
-| POST | `/api/perception/observe` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
-| POST | `/api/perception/diagnostic` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
+| POST | `/api/perception/observe` | implemented |  |  |
+| POST | `/api/perception/diagnostic` | implemented |  |  |
 | POST | `/api/perceive` | implemented |  | #11: 60 full-corpus and 60 regression-corpus steps identical to C++ on the (ISRE, OSRE) pairs, mergeBatch with governance, activeRegions, eventBus and machineResults; the only selector and matchAlgorithmOverride identical over 12 regression-corpus steps each; an unknown override is 400 here and 500 on C++; valuesPacked under compact is not emitted (SURFACE_SPEC, internal augmentation, absent on Scala too) |
 
 ## RE: Governance
 
 | method | path | status | tracking | notes |
 |---|---|---|---|---|
-| GET | `/api/governance/route` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
+| GET | `/api/governance/route` | implemented |  | #13 slice 4: every triggerConfig rule of the regression corpus asked as declared, with an extra value and with trailing junk: 174 queries identical to C++. Values are percent-decoded here; C++ reads its query string raw, so `values=1%2C0` or a `%20` before a value matches here and not on C++ (58 such queries differ) |
 
 ## RE: Demos
 
 | method | path | status | tracking | notes |
 |---|---|---|---|---|
-| GET | `/api/demo/multi-step` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
-| GET | `/api/demo/data-center` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
-| GET | `/api/demo/kleene-star` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
+| GET | `/api/demo/multi-step` | implemented |  |  |
+| GET | `/api/demo/data-center` | implemented |  |  |
+| GET | `/api/demo/kleene-star` | implemented |  |  |
 
 ## RE: Streaming
 

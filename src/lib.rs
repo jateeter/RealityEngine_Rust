@@ -19,6 +19,7 @@ use std::{
 };
 
 mod arbitration;
+mod auxiliary;
 pub mod instance_clock;
 mod machine_routes;
 mod machine_view;
@@ -253,6 +254,8 @@ pub struct Engine {
     vector_store: BTreeMap<String, Value>,
     /// The declared rule for each contended output cell.
     arbitration: step::ArbitrationRegistry,
+    /// The sampler's bookkeeping (`/api/sampler/*`); an engine reset keeps it.
+    sampler: auxiliary::Sampler,
 }
 
 /// The id a corpus file's machine gets, on every engine: `machine-` and the
@@ -2115,6 +2118,16 @@ pub fn app(engine: Engine) -> Router {
             get(simulation::history),
         )
         .route("/api/engine/reset", post(reset))
+        .route("/api/sampler/start", post(auxiliary::sampler_start))
+        .route("/api/sampler/stop", post(auxiliary::sampler_stop))
+        .route("/api/sampler/sample", post(auxiliary::sampler_sample))
+        .route("/api/sampler/stats", get(auxiliary::sampler_stats))
+        .route("/api/perception/observe", post(auxiliary::observe))
+        .route("/api/perception/diagnostic", post(auxiliary::diagnostic))
+        .route("/api/governance/route", get(auxiliary::governance_route))
+        .route("/api/demo/multi-step", get(auxiliary::demo_multi_step))
+        .route("/api/demo/data-center", get(auxiliary::demo_data_center))
+        .route("/api/demo/kleene-star", get(auxiliary::demo_kleene_star))
         .fallback(|method: Method, uri: Uri| async move {
             unsupported_or(&method, &uri, StatusCode::NOT_FOUND)
         })
@@ -3012,14 +3025,16 @@ mod tests {
         };
         // Literal routes of three methods, and a phase-2 template filled in.
         for (method, uri, surface) in [
-            ("GET", "/api/sampler/stats", "GET /api/sampler/stats"),
-            ("POST", "/api/sampler/start", "POST /api/sampler/start"),
             (
-                "POST",
-                "/api/perception/observe",
-                "POST /api/perception/observe",
+                "GET",
+                "/api/runtime/vector-space",
+                "GET /api/runtime/vector-space",
             ),
-            ("GET", "/api/governance/route", "GET /api/governance/route"),
+            (
+                "PATCH",
+                "/api/runtime/options",
+                "PATCH /api/runtime/options",
+            ),
             (
                 "DELETE",
                 "/api/runtime/snapshot/s",
@@ -4509,6 +4524,107 @@ mod tests {
         )
         .await;
         assert_eq!(all["results"].as_object().unwrap().len(), 2);
+    }
+
+    /// #13 slice 4: the sampler, the perception routes, governance/route and
+    /// the demos.
+    #[tokio::test]
+    async fn the_auxiliary_routes_answer_as_cpp_does() {
+        let mut definition = machine_definition();
+        definition["machine"]["metadata"] = json!({
+            "governance": { "ownerTeam": "ops", "sla": { "RED": 60 } },
+            "triggerConfig": { "rules": [
+                { "sequenceId": "sequence", "outputMatches": [1, 0], "processStatus": "RED" }
+            ] }
+        });
+        let mut engine = Engine::new(8);
+        let id = engine.load_machine(definition).unwrap()["id"]
+            .as_str()
+            .unwrap()
+            .to_owned();
+        let app = app(engine);
+
+        // The sampler keeps its bookkeeping across a reset.
+        let (_, body) = send(
+            &app,
+            "POST",
+            "/api/sampler/start",
+            Some(json!({ "intervalMs": 250.7 })),
+        )
+        .await;
+        assert_eq!(
+            body["stats"],
+            json!({ "isRunning": true, "sampleCount": 0, "bufferSize": 0, "strategy": "manual", "intervalMs": 250 })
+        );
+        let (_, body) = send(
+            &app,
+            "POST",
+            "/api/sampler/sample",
+            Some(json!({ "data": [1, "x"] })),
+        )
+        .await;
+        assert_eq!(body["result"]["inputEvent"], json!([1, 0]));
+        send(&app, "POST", "/api/sampler/stop", None).await;
+        send(&app, "POST", "/api/engine/reset", Some(json!({}))).await;
+        let (_, body) = send(&app, "GET", "/api/sampler/stats", None).await;
+        assert_eq!(
+            (&body["stats"]["isRunning"], &body["stats"]["sampleCount"]),
+            (&json!(false), &json!(1))
+        );
+
+        let (_, body) = send(
+            &app,
+            "POST",
+            "/api/perception/observe",
+            Some(json!({ "data": [2] })),
+        )
+        .await;
+        assert_eq!(
+            (&body["inputEvent"], &body["transformations"]),
+            (&json!([2]), &json!([]))
+        );
+        let (_, body) = send(
+            &app,
+            "POST",
+            "/api/perception/diagnostic",
+            Some(json!({ "universalInputSpace": [0, 3] })),
+        )
+        .await;
+        assert_eq!(
+            body["universalSpace"],
+            json!({ "dimension": 8, "nonZeroValues": [{ "index": 1, "value": 3 }] })
+        );
+        assert_eq!(body["machineMappings"][0]["resolvedInput"], json!([0]));
+
+        // A trailing separator opens no value, and a token is read as strtod reads it.
+        let route = |values: &str| {
+            format!("/api/governance/route?machineId={id}&sequenceId=sequence&values={values}")
+        };
+        let (status, body) = send(&app, "GET", &route("1,0abc,"), None).await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(
+            (
+                &body["decision"]["ownerTeam"],
+                &body["decision"]["slaSeconds"],
+                &body["decision"]["source"]
+            ),
+            (&json!("ops"), &json!(60), &json!("rule-only"))
+        );
+        let (status, body) = send(&app, "GET", &route("1,0,9"), None).await;
+        assert_eq!(status, StatusCode::NOT_FOUND);
+        assert_eq!(
+            body["error"],
+            "No triggerConfig rule matches (sequenceId=sequence, values=1,0,9)"
+        );
+        let (status, _) = send(&app, "GET", "/api/governance/route?machineId=x", None).await;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+
+        let (status, body) = send(&app, "GET", "/api/demo/kleene-star", None).await;
+        assert_eq!(status, StatusCode::NOT_FOUND);
+        assert_eq!(
+            body["error"],
+            "Kleene Star Operator machine not found. Please ensure KleeneStar.json is loaded."
+        );
     }
 
     /// #13 slice 3: the engine's own sequence and vector stores.

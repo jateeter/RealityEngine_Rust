@@ -230,16 +230,13 @@
       "status": "implemented"
     },
     "RE GET /api/demo/data-center": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#13"
+      "status": "implemented"
     },
     "RE GET /api/demo/kleene-star": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#13"
+      "status": "implemented"
     },
     "RE GET /api/demo/multi-step": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#13"
+      "status": "implemented"
     },
     "RE GET /api/engine/active": {
       "status": "implemented"
@@ -272,8 +269,8 @@
       "status": "implemented"
     },
     "RE GET /api/governance/route": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#13"
+      "notes": "#13 slice 4: every triggerConfig rule of the regression corpus asked as declared, with an extra value and with trailing junk: 174 queries identical to C++. Values are percent-decoded here; C++ reads its query string raw, so `values=1%2C0` or a `%20` before a value matches here and not on C++ (58 such queries differ)",
+      "status": "implemented"
     },
     "RE GET /api/health": {
       "notes": "follows the spec {status,timestamp,version}; the three engines return {status}: RealityEngine_CI#610, owner ruling pending",
@@ -334,8 +331,7 @@
       "tracking": "jateeter/RealityEngine_Rust#10"
     },
     "RE GET /api/sampler/stats": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#13"
+      "status": "implemented"
     },
     "RE GET /api/sequences": {
       "notes": "#13 slice 3: identical to C++ (minted ids and timestamps aside)",
@@ -403,12 +399,10 @@
       "status": "implemented"
     },
     "RE POST /api/perception/diagnostic": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#13"
+      "status": "implemented"
     },
     "RE POST /api/perception/observe": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#13"
+      "status": "implemented"
     },
     "RE POST /api/perceptual-simulation/configure/chunk": {
       "status": "implemented"
@@ -429,16 +423,13 @@
       "status": "implemented"
     },
     "RE POST /api/sampler/sample": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#13"
+      "status": "implemented"
     },
     "RE POST /api/sampler/start": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#13"
+      "status": "implemented"
     },
     "RE POST /api/sampler/stop": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#13"
+      "status": "implemented"
     },
     "RE POST /api/sequences": {
       "notes": "#13 slice 3: identical to C++. Its validation 400 carries every failure as an array under error, as C++ and Scala do (LSP does not validate), which this classifier reads as a non-string envelope; an unknown comparatorType is 400 here and 500 on C++",
