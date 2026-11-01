@@ -975,6 +975,7 @@ impl PerceptionEngine {
 
     /// The machine list's interning (C++ `bootstrap_test_sources_from_machine_list`).
     pub(crate) fn bootstrap(&mut self, machines: &Value) -> Bootstrap {
+        self.cache_catalog(machines);
         // Migration, as on C++: a machine holding more than one test source
         // (the old per-sequence form) loses them all, and is interned whole.
         let mut per_machine: BTreeMap<String, Vec<String>> = BTreeMap::new();
@@ -1237,12 +1238,16 @@ pub(crate) async fn machines(
     State(pe): State<SharedPe>,
 ) -> Result<Response, (StatusCode, Json<Value>)> {
     let re_url = read(&pe)?.re_url.clone();
-    match client::get(&format!("{re_url}/api/machines")).await {
-        Ok(bytes) => Ok((
-            [(axum::http::header::CONTENT_TYPE, "application/json")],
-            bytes,
-        )
-            .into_response()),
-        Err(error) => Err((StatusCode::BAD_GATEWAY, Json(json!({ "error": error })))),
+    let bytes = client::get(&format!("{re_url}/api/machines"))
+        .await
+        .map_err(|error| (StatusCode::BAD_GATEWAY, Json(json!({ "error": error }))))?;
+    // Read through to the catalog cache (C++ `cache_machine_catalog`).
+    if let Ok(listing) = serde_json::from_slice::<Value>(&bytes) {
+        write(&pe)?.cache_catalog(&listing);
     }
+    Ok((
+        [(axum::http::header::CONTENT_TYPE, "application/json")],
+        bytes,
+    )
+        .into_response())
 }
