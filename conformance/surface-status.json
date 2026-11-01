@@ -315,20 +315,16 @@
       "status": "implemented"
     },
     "RE GET /api/runtime/metrics": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#10"
+      "status": "implemented"
     },
     "RE GET /api/runtime/options": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#10"
+      "status": "implemented"
     },
     "RE GET /api/runtime/storage-footprint": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#10"
+      "status": "implemented"
     },
     "RE GET /api/runtime/vector-space": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#10"
+      "status": "implemented"
     },
     "RE GET /api/sampler/stats": {
       "status": "implemented"
@@ -350,8 +346,7 @@
       "status": "implemented"
     },
     "RE PATCH /api/runtime/options": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#10"
+      "status": "implemented"
     },
     "RE POST /api/engine/process": {
       "status": "implemented"
