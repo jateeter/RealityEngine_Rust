@@ -13,8 +13,9 @@
 //!   system prompt, by the model's family (`docs/OLLAMA_INTEGRATION.md`,
 //!   "Structured output").
 //! - **OpenAI:** `POST {base}/responses`, with the bearer key when one is set,
-//!   constrained by a JSON schema built from the mapping; then the same
-//!   commit. Its provider
+//!   constrained by a JSON schema built from the mapping, or, for a model
+//!   that cannot take one, with the completion contract in its instructions,
+//!   as on the Ollama route; then the same commit. Its provider
 //!   is the local LLM: by default localAIStack's Ollama at
 //!   `http://localhost:11434/v1`, the key optional (owner ruling, 2026-11-01).
 //! - **ACP:** no call at all. The PE records an OpenClaw handoff receipt and
@@ -636,13 +637,23 @@ fn openai_payload(record: &Value, body: &Value, model: &str, mapping: &Value) ->
     if body["reasoning"].is_object() {
         payload["reasoning"] = body["reasoning"].clone();
     }
-    payload["text"] = if body["text"].is_object() {
-        body["text"].clone()
-    } else if text_or(body, "responseFormatMode", "json-schema") == "json-object" {
-        json!({"format": {"type": "json_object"}})
+    // A request's own `text`, or an explicit `responseFormatMode`, wins. A
+    // model that cannot take a schema gets none, and the completion contract
+    // in its instructions instead, as on the Ollama route (owner ruling,
+    // 2026-11-01).
+    if body["text"].is_object() {
+        payload["text"] = body["text"].clone();
+    } else if let Some(mode) = body["responseFormatMode"].as_str() {
+        payload["text"] = if mode == "json-object" {
+            json!({"format": {"type": "json_object"}})
+        } else {
+            openai_text_format(mapping)
+        };
+    } else if supports_structured_output(model) {
+        payload["text"] = openai_text_format(mapping);
     } else {
-        openai_text_format(mapping)
-    };
+        payload["instructions"] = json!(instructions + &contract_prompt(mapping));
+    }
     payload
 }
 
@@ -1123,6 +1134,28 @@ mod tests {
             completion_schema(&mapping)["required"],
             json!(["a", "b", "a"])
         );
+        let record = json!({"envelope": {}});
+        let nemotron = openai_payload(&record, &json!({}), "nemotron-3-nano:4b-mlx", &mapping);
+        assert_eq!(nemotron["text"], Value::Null);
+        assert_eq!(
+            nemotron["instructions"],
+            json!(format!(
+                "{OPENAI_INSTRUCTIONS}{}",
+                contract_prompt(&mapping)
+            ))
+        );
+        let gpt = openai_payload(&record, &json!({}), "gpt-x", &mapping);
+        assert_eq!(
+            (&gpt["text"], &gpt["instructions"]),
+            (&openai_text_format(&mapping), &json!(OPENAI_INSTRUCTIONS))
+        );
+        let explicit = openai_payload(
+            &record,
+            &json!({"responseFormatMode": "json-schema"}),
+            "nemotron-3-nano:4b",
+            &mapping,
+        );
+        assert_eq!(explicit["text"], openai_text_format(&mapping));
         assert!(!supports_structured_output("nemotron-3-nano:4b-mlx"));
         assert!(supports_structured_output("llama3.1:8b"));
     }
