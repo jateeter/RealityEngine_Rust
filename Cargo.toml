@@ -5,7 +5,7 @@ edition = "2024"
 default-run = "reality-engine"
 
 [dependencies]
-axum = "0.8.7"
+axum = { version = "0.8.7", features = ["ws"] }
 # `unfold` and `chain`: the step stream (`GET /api/engine/stream`) is a Stream.
 futures-util = { version = "0.3.34", default-features = false }
 # The PE's calls to its RE (`GET {re}/api/machines`): hyper's own client,
@@ -19,6 +19,7 @@ serde_json = "1.0.145"
 tokio = { version = "1.48.0", features = ["macros", "rt-multi-thread", "net", "sync", "time"] }
 
 [dev-dependencies]
-# `time`: the surface test bounds each probe, so a streaming route cannot hang it.
-tokio = { version = "1.48.0", features = ["time"] }
+# `time`: the surface test bounds each probe, so a streaming route cannot hang it;
+# `io-util`: it sends a WebSocket route a real upgrade over a loopback socket.
+tokio = { version = "1.48.0", features = ["time", "io-util"] }
 tower = { version = "0.5.3", features = ["util"] }

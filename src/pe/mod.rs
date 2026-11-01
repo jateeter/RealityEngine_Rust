@@ -26,6 +26,7 @@ use std::sync::atomic::AtomicU64;
 mod client;
 mod push;
 mod sources;
+mod streams;
 
 /// The auto-push interval C++ reports before any `POST /api/auto/start`.
 const AUTO_INTERVAL_MS: u64 = 1000;
@@ -59,6 +60,8 @@ pub struct PerceptionEngine {
     pushes: Arc<push::Pushes>,
     auto_running: bool,
     auto_interval_ms: u64,
+    /// `/api/events` and `/ws`: every message, to every listener.
+    events: tokio::sync::broadcast::Sender<String>,
 }
 
 impl PerceptionEngine {
@@ -81,6 +84,7 @@ impl PerceptionEngine {
             pushes: Arc::default(),
             auto_running: false,
             auto_interval_ms: AUTO_INTERVAL_MS,
+            events: streams::channel(),
         }
     }
 
@@ -168,14 +172,16 @@ async fn state(State(pe): State<SharedPe>) -> Answer {
 
 async fn config(State(pe): State<SharedPe>, body: Bytes) -> Answer {
     let body = body_of(&body)?;
-    write(&pe)?
-        .configure(&body)
-        .map(Json)
-        .map_err(error_response)
+    let mut state = write(&pe)?;
+    let answer = state.configure(&body).map_err(error_response)?;
+    state.broadcast_state();
+    Ok(Json(answer))
 }
 
 async fn reset(State(pe): State<SharedPe>) -> Answer {
-    write(&pe)?.reset();
+    let mut state = write(&pe)?;
+    state.reset();
+    state.broadcast_state();
     Ok(Json(json!({ "success": true })))
 }
 
@@ -202,6 +208,8 @@ fn router(pe: SharedPe) -> Router {
         .route("/api/push/{id}", get(push::job))
         .route("/api/auto/start", post(push::auto_start))
         .route("/api/auto/stop", post(push::auto_stop))
+        .route("/api/events", get(streams::events))
+        .route("/ws", get(streams::websocket))
         .fallback(|method: Method, uri: Uri| async move {
             unsupported_or(Layer::Pe, &method, &uri, StatusCode::NOT_FOUND)
         })

@@ -167,12 +167,10 @@
       "tracking": "jateeter/RealityEngine_Rust#20"
     },
     "PE SSE /api/events": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#20"
+      "status": "implemented"
     },
     "PE WS /ws": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#20"
+      "status": "implemented"
     },
     "RE DELETE /api/engine/config/:control": {
       "notes": "all eight universal controls, identical to C++ on the regression corpus",

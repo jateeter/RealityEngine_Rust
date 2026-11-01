@@ -4363,6 +4363,44 @@ mod tests {
         );
     }
 
+    /// #20 workstream 3: the PE's SSE stream carries a state update for each
+    /// change, as `GET /api/state` would answer it.
+    #[tokio::test]
+    async fn the_pe_event_stream_carries_state_updates() {
+        use futures_util::StreamExt;
+        let app = pe::pe_app(pe::PerceptionEngine::new(2));
+        let request = Request::builder()
+            .uri("/api/events")
+            .body(Body::empty())
+            .unwrap();
+        let response = app.clone().oneshot(request).await.unwrap();
+        assert_eq!(response.headers()["content-type"], "text/event-stream");
+        let mut frames = response.into_body().into_data_stream();
+        send(
+            &app,
+            "PATCH",
+            "/api/config",
+            Some(json!({ "matchAlgorithm": "equals" })),
+        )
+        .await;
+        let mut text = String::new();
+        while !text.contains("data: ") || !text.ends_with("\n\n") {
+            let frame = tokio::time::timeout(std::time::Duration::from_secs(5), frames.next())
+                .await
+                .expect("a state update on the stream")
+                .unwrap()
+                .unwrap();
+            text.push_str(std::str::from_utf8(&frame).unwrap());
+        }
+        assert!(text.starts_with(": connected\n\n"), "{text}");
+        let data: Value =
+            serde_json::from_str(text.lines().find_map(|l| l.strip_prefix("data: ")).unwrap())
+                .unwrap();
+        let (_, state) = send(&app, "GET", "/api/state", None).await;
+        assert_eq!(data, json!({ "type": "state-update", "state": state }));
+        assert_eq!(data["state"]["assembledVector"], json!([0, 0]));
+    }
+
     /// #13 slice 1: canonical order, the list and full forms, and the export
     /// as a corpus document.
     #[tokio::test]
@@ -4634,8 +4672,6 @@ mod tests {
         for (method, uri, surface) in [
             ("POST", "/api/signals", "POST /api/signals"),
             ("GET", "/api/mqtt/status", "GET /api/mqtt/status"),
-            ("GET", "/api/events", "SSE /api/events"),
-            ("GET", "/ws", "WS /ws"),
         ] {
             let (status, body) = send(&app, method, uri, None).await;
             assert_eq!(status, StatusCode::NOT_IMPLEMENTED, "{method} {uri}");

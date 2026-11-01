@@ -1014,6 +1014,7 @@ pub(crate) async fn create(State(pe): State<SharedPe>, body: Bytes) -> Answer {
     if asks_for_deactivation(&body) {
         added = state.deactivate(&added.id).unwrap_or(added);
     }
+    state.broadcast_state();
     Ok(Json(json!({ "source": added.to_json(now()) })))
 }
 
@@ -1031,13 +1032,16 @@ pub(crate) async fn update(
     if asks_for_deactivation(&body) {
         added = state.deactivate(&added.id).unwrap_or(added);
     }
+    state.broadcast_state();
     Ok(Json(json!({ "source": added.to_json(now()) })))
 }
 
 pub(crate) async fn remove(State(pe): State<SharedPe>, Path(id): Path<String>) -> Answer {
-    if !write(&pe)?.remove_source(&id) {
+    let mut state = write(&pe)?;
+    if !state.remove_source(&id) {
         return Err(not_found());
     }
+    state.broadcast_state();
     Ok(Json(json!({ "success": true })))
 }
 
@@ -1052,11 +1056,13 @@ pub(crate) async fn sensor(
 ) -> Answer {
     let body = body_of(&body)?;
     let values = numbers(&body["values"]);
-    if !write(&pe)?.update_sensor(&sensor_id, values) {
+    let mut state = write(&pe)?;
+    if !state.update_sensor(&sensor_id, values) {
         return Err(error_response(EngineError::not_found(format!(
             "No sensor source with sensorId \"{sensor_id}\""
         ))));
     }
+    state.broadcast_state();
     Ok(Json(
         json!({ "success": true, "sensorId": sensor_id, "timestamp": now_ms() }),
     ))
@@ -1080,7 +1086,9 @@ pub(crate) async fn bootstrap_from_re(pe: &SharedPe, re_url: &str) -> Bootstrap 
 
 pub(crate) async fn bootstrap(State(pe): State<SharedPe>) -> Answer {
     let re_url = read(&pe)?.re_url.clone();
-    Ok(Json(bootstrap_from_re(&pe, &re_url).await.to_json()))
+    let summary = bootstrap_from_re(&pe, &re_url).await.to_json();
+    read(&pe)?.broadcast_state();
+    Ok(Json(summary))
 }
 
 /// The machines proxy: the RE's `GET /api/machines`, as it answered, or 502.
