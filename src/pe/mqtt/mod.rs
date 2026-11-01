@@ -31,6 +31,7 @@ use tokio::sync::{Notify, watch};
 
 #[derive(Default, Clone, Copy)]
 struct BridgeStats {
+    messages_received: u64,
     messages_mapped: u64,
     messages_rejected: u64,
     messages_unmatched: u64,
@@ -100,6 +101,7 @@ impl Bridge {
     }
 
     fn on_message(&self, topic: &str, payload: &[u8]) {
+        self.count(|s| s.messages_received += 1);
         let Some(pe) = self.pe.upgrade() else {
             return;
         };
@@ -243,6 +245,71 @@ impl Bridge {
             },
         })
     }
+}
+
+/// The MQTT block of `GET /api/metrics` (C++ `mqtt_metrics_text`): the two
+/// gauges at 0 with no bridge, else the bridge's own counters.
+pub(crate) fn metrics_text(bridge: Option<&Bridge>) -> String {
+    let mut out = String::new();
+    let enabled = "MQTT bridge is configured (1) or disabled (0).";
+    let connected = "MQTT bridge is currently connected to the broker (1/0).";
+    let Some(bridge) = bridge else {
+        metrics::write(&mut out, "mqtt_bridge_enabled", enabled, "gauge", 0);
+        metrics::write(&mut out, "mqtt_bridge_connected", connected, "gauge", 0);
+        return out;
+    };
+    let s = bridge.stats.lock().map(|s| *s).unwrap_or_default();
+    metrics::write(&mut out, "mqtt_bridge_enabled", enabled, "gauge", 1);
+    metrics::write(
+        &mut out,
+        "mqtt_bridge_connected",
+        connected,
+        "gauge",
+        u64::from(bridge.client.is_connected()),
+    );
+    metrics::write(
+        &mut out,
+        "mqtt_messages_received_total",
+        "Total MQTT PUBLISH messages received.",
+        "counter",
+        s.messages_received,
+    );
+    metrics::write(
+        &mut out,
+        "mqtt_messages_mapped_total",
+        "Total messages successfully mapped to a region.",
+        "counter",
+        s.messages_mapped,
+    );
+    metrics::write(
+        &mut out,
+        "mqtt_messages_rejected_total",
+        "Total messages rejected by mapping/normalize.",
+        "counter",
+        s.messages_rejected,
+    );
+    metrics::write(
+        &mut out,
+        "mqtt_messages_unmatched_total",
+        "Total messages whose topic matched no rule.",
+        "counter",
+        s.messages_unmatched,
+    );
+    metrics::write(
+        &mut out,
+        "mqtt_pushes_triggered_total",
+        "Total perceive pushes triggered by MQTT ingest.",
+        "counter",
+        s.pushes_triggered,
+    );
+    metrics::write(
+        &mut out,
+        "mqtt_mappings_loaded",
+        "Number of mapping rules in the registry.",
+        "gauge",
+        bridge.rule_count() as u64,
+    );
+    out
 }
 
 /// C++ `do_push(false, true)`: an async push, which coalesces with one in

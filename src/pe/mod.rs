@@ -29,6 +29,7 @@ mod dispatch;
 mod ingest;
 mod integrations;
 mod localai;
+mod metrics;
 mod mqtt;
 mod push;
 mod sources;
@@ -280,6 +281,7 @@ fn router(pe: SharedPe) -> Router {
             get(dispatch::record).patch(dispatch::update),
         )
         .route("/api/dispatch/records/{id}/replay", post(dispatch::replay))
+        .route("/api/metrics", get(metrics::metrics))
         .route("/api/mqtt/status", get(mqtt::status))
         .route(
             "/api/mqtt/mappings",
