@@ -1,6 +1,7 @@
 //! The Perception Engine (#20): its binary, router, health, state,
-//! configuration and reset (workstream 1, #46), and its sources, sensors and
-//! machine ingestion (workstream 2, `sources.rs`).
+//! configuration and reset (workstream 1, #46), its sources, sensors and
+//! machine ingestion (workstream 2, `sources.rs`), and the push cycle
+//! (workstream 3, `push.rs`).
 //!
 //! Every engine instance is an RE and a PE. The PE assembles the universal
 //! Reality Event from its active sources and drives its RE with it. C++'s
@@ -23,6 +24,7 @@ use axum::routing::patch;
 use std::sync::atomic::AtomicU64;
 
 mod client;
+mod push;
 mod sources;
 
 /// The auto-push interval C++ reports before any `POST /api/auto/start`.
@@ -46,6 +48,17 @@ pub struct PerceptionEngine {
     /// default, skip-if-present), or rebuild one whose definition changed.
     merge_only: bool,
     rng: AtomicU64,
+    /// Each random walk's current values; a push moves them.
+    walk_state: BTreeMap<String, Vec<f64>>,
+    /// The last push's OSRE cells: cell -> (writing machine, its
+    /// `outputMergeTransformation`). A source on one is folded with it.
+    osre_fold: BTreeMap<i64, (String, String)>,
+    /// The arbitration registry the RE loads: a fold on a declared cell
+    /// follows the declared rule.
+    registry: step::ArbitrationRegistry,
+    pushes: Arc<push::Pushes>,
+    auto_running: bool,
+    auto_interval_ms: u64,
 }
 
 impl PerceptionEngine {
@@ -62,6 +75,12 @@ impl PerceptionEngine {
             contention: sources::Contention::default(),
             merge_only: true,
             rng: sources::new_rng(),
+            walk_state: BTreeMap::new(),
+            osre_fold: BTreeMap::new(),
+            registry: step::ArbitrationRegistry::default(),
+            pushes: Arc::default(),
+            auto_running: false,
+            auto_interval_ms: AUTO_INTERVAL_MS,
         }
     }
 
@@ -76,7 +95,7 @@ impl PerceptionEngine {
             "sources": self.sources_json(),
             "assembledVector": self.assemble(),
             "globalStep": self.global_step,
-            "auto": { "running": false, "intervalMs": AUTO_INTERVAL_MS },
+            "auto": { "running": self.auto_running, "intervalMs": self.auto_interval_ms },
             "lastPush": self.last_push,
             "matchAlgorithm": self.match_algorithm,
             "perceptionDimension": self.dimension,
@@ -179,6 +198,10 @@ fn router(pe: SharedPe) -> Router {
         .route("/api/sources/contention", get(sources::contention))
         .route("/api/sensors/{sensor_id}", post(sources::sensor))
         .route("/api/machines", get(sources::machines))
+        .route("/api/push", post(push::push_route))
+        .route("/api/push/{id}", get(push::job))
+        .route("/api/auto/start", post(push::auto_start))
+        .route("/api/auto/stop", post(push::auto_stop))
         .fallback(|method: Method, uri: Uri| async move {
             unsupported_or(Layer::Pe, &method, &uri, StatusCode::NOT_FOUND)
         })
@@ -205,8 +228,9 @@ fn flag_on(value: Option<&str>) -> bool {
 
 /// `PERCEPTION_ENGINE_PORT` (default 5800), `VECTOR_DIMENSION` (default
 /// 7680), `RE_URL`, the RE this PE reads and drives (default
-/// `http://localhost:5801`, the Rust RE's port), `PE_SOURCE_BOOTSTRAP` and
-/// `PE_SOURCE_MERGE`.
+/// `http://localhost:5801`, the Rust RE's port), `PE_SOURCE_BOOTSTRAP`,
+/// `PE_SOURCE_MERGE`, and `MACHINES_DIR` / `ARBITRATION_REGISTRY` for the
+/// arbitration registry, found as the RE finds it.
 pub async fn serve() -> Result<(), Box<dyn std::error::Error>> {
     let port = std::env::var("PERCEPTION_ENGINE_PORT")
         .ok()
@@ -219,6 +243,9 @@ pub async fn serve() -> Result<(), Box<dyn std::error::Error>> {
     let re_url = std::env::var("RE_URL").unwrap_or_else(|_| "http://localhost:5801".to_owned());
     eprintln!("perception-engine: port {port}, perceptionDimension {dimension}, RE {re_url}");
     let mut engine = PerceptionEngine::new(dimension).with_re_url(re_url.clone());
+    let machines_dir = std::env::var("MACHINES_DIR")
+        .unwrap_or_else(|_| "../RealityEngine_Machines/machines".to_owned());
+    engine.registry = step::ArbitrationRegistry::load(std::path::Path::new(&machines_dir));
     if let Ok(merge) = std::env::var("PE_SOURCE_MERGE") {
         engine.merge_only = flag_on(Some(&merge));
     }

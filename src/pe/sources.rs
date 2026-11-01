@@ -21,10 +21,12 @@
 //!   end to end, as one test source over its input region, id `test-<machine
 //!   id>`. A machine that already has one is skipped (skip-if-present);
 //!   `PE_SOURCE_MERGE=false` rebuilds a source whose definition changed.
-//! - **Contention** is recorded by the push assembly only. Until the push
-//!   cycle lands nothing records, so `GET /api/sources/contention` reports
-//!   transition 0 with no cells, folds or counters: what a PE that has not
-//!   been pushed reports.
+//! - **Contention** is recorded by the push assembly only (`record_contention`);
+//!   `GET /api/state` assembles for display and records nothing. A source on a
+//!   cell the last push's `mergeBatch` wrote is **folded** with the OSRE value:
+//!   by the cell's declared rule for a provider the arbitration registry names,
+//!   else by the writing machine's `outputMergeTransformation` over `[0, 1]`
+//!   (§4.4b, RealityEngine_CI#525).
 
 use super::*;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -243,6 +245,31 @@ impl Source {
         Ok(self)
     }
 
+    /// The contract provider (C++ `source_provider`): the first `.` segment of
+    /// `origin` through the aliases; an empty origin or `signal` falls back
+    /// to the kind.
+    fn provider(&self) -> String {
+        let origin = self.origin().to_lowercase();
+        let head = origin.split('.').next().unwrap_or_default();
+        match head {
+            "" | "signal" => match self.detail {
+                Detail::Sensor { .. } => "sensor",
+                _ => "synthetic",
+            }
+            .to_owned(),
+            "openclaw" => "acp".to_owned(),
+            "ollama" | "localaistack" => "localai".to_owned(),
+            other => other.to_owned(),
+        }
+    }
+
+    fn origin(&self) -> &str {
+        match &self.detail {
+            Detail::Sensor { origin, .. } => origin,
+            _ => "",
+        }
+    }
+
     /// A sensor holding a value inside its TTL (C++ `sensor_value_is_live`).
     fn live(&self, now: i64) -> bool {
         match &self.detail {
@@ -337,6 +364,20 @@ pub(crate) struct Contention {
     pub(crate) counters: BTreeMap<String, (u64, u64)>,
 }
 
+/// Each declared operator's multi-valued form over `[0, 1]` (C++
+/// `fold_unit_interval`); `or`, `join` and anything unrecognised are `max`.
+fn fold_unit_interval(transformation: &str, s: f64, o: f64) -> f64 {
+    match transformation {
+        "and" | "meet" | "discrete-median" => s.min(o),
+        "strong-disjunction" => (s + o).min(1.0),
+        "strong-conjunction" => (s + o - 1.0).max(0.0),
+        "xor" => s.min(1.0 - o).max((1.0 - s).min(o)),
+        "nor" => 1.0 - s.max(o),
+        "nand" => 1.0 - s.min(o),
+        _ => s.max(o),
+    }
+}
+
 /// A lowercase id fragment (C++ `source_id_part`).
 fn id_part(value: &str) -> String {
     let mut out = String::new();
@@ -413,6 +454,17 @@ impl PerceptionEngine {
         };
         self.ensure_capacity(source.region.end());
         self.test_step.insert(source.id.clone(), 0);
+        if let Detail::Simulated {
+            pattern: "random-walk",
+            dc_offset,
+            ..
+        } = source.detail
+        {
+            self.walk_state.insert(
+                source.id.clone(),
+                vec![dc_offset; source.region.length.max(0) as usize],
+            );
+        }
         self.sources.insert(source.id.clone(), source.clone());
         source
     }
@@ -425,6 +477,7 @@ impl PerceptionEngine {
 
     fn remove_source(&mut self, id: &str) -> bool {
         self.test_step.remove(id);
+        self.walk_state.remove(id);
         self.contention.counters.remove(id);
         self.sources.remove(id).is_some()
     }
@@ -530,7 +583,12 @@ impl PerceptionEngine {
                         "linear-ramp" => dc_offset + amplitude * phase,
                         // The walk starts at the offset and moves only when
                         // a push advances it.
-                        "random-walk" => *dc_offset,
+                        "random-walk" => self
+                            .walk_state
+                            .get(&source.id)
+                            .and_then(|walk| walk.first())
+                            .copied()
+                            .unwrap_or(*dc_offset),
                         "gaussian-noise" => dc_offset + amplitude * (self.uniform() * 2.0 - 1.0),
                         "binary" => {
                             if phase < 0.5 {
@@ -557,10 +615,19 @@ impl PerceptionEngine {
     }
 
     /// C++ `assemble_vector`: the persistent vector with each active source
-    /// written over its region in composition order, clamped to `[0, 1]`.
+    /// written over its region in composition order, clamped to `[0, 1]`, and
+    /// each source on an OSRE cell of the last push folded with it.
     pub(crate) fn assemble(&self) -> Vec<f64> {
+        self.assemble_recording(None)
+    }
+
+    /// `assemble`, with every Source-vs-OSRE fold appended to `folds`,
+    /// ascending by cell.
+    fn assemble_recording(&self, mut folds: Option<&mut Vec<Value>>) -> Vec<f64> {
         let now = now();
         let mut out = self.persistent_vector.clone();
+        // The source whose value landed in each cell: the last writer.
+        let mut writer: Vec<Option<&Source>> = vec![None; out.len()];
         for source in self.composition_order() {
             let values = self.source_values(source, now);
             for (i, value) in values
@@ -573,22 +640,218 @@ impl PerceptionEngine {
                     continue;
                 }
                 out[cell as usize] = value.clamp(0.0, 1.0);
+                writer[cell as usize] = Some(source);
             }
+        }
+        for (cell, (machine, transformation)) in &self.osre_fold {
+            let Some(source) = usize::try_from(*cell).ok().and_then(|c| *writer.get(c)?) else {
+                continue;
+            };
+            let c = *cell as usize;
+            let (s, o) = (out[c], self.persistent_vector[c]);
+            let provider = source.provider();
+            let entry = self.registry.entries.get(&c);
+            let named = entry.is_some_and(|e| e.provider_ranks.contains_key(&provider));
+            let (mut by_rule, mut osre_wins) = (false, false);
+            if let Some(entry) = entry.filter(|e| named && e.rule == "PRECEDENCE") {
+                let rank = |p: &str| {
+                    entry
+                        .provider_ranks
+                        .get(p)
+                        .map_or_else(|| step::determinism_rank(p), |r| *r as f64)
+                };
+                let (osre_rank, source_rank) = (rank("machine"), rank(&provider));
+                by_rule = osre_rank != source_rank;
+                osre_wins = osre_rank > source_rank;
+            }
+            let resolved = if by_rule {
+                if osre_wins { o } else { s }
+            } else {
+                fold_unit_interval(transformation, s, o)
+            };
+            out[c] = resolved.clamp(0.0, 1.0);
+            let Some(folds) = folds.as_deref_mut() else {
+                continue;
+            };
+            let mut record = json!({
+                "cell": cell,
+                "osre": { "machine": machine, "provider": "machine", "value": o },
+                "source": { "id": source.id, "name": source.name, "kind": source.kind(), "provider": provider, "value": s },
+                "resolved": resolved,
+            });
+            if by_rule {
+                record["resolution"] = json!("declared-rule");
+                record["rule"] = json!(entry.map(|e| e.rule.clone()));
+                record["kept"] = json!(if osre_wins { "osre" } else { "source" });
+            } else {
+                record["resolution"] = json!("osre-fold");
+                record["operator"] = json!(transformation);
+                if let Some(entry) = entry {
+                    record["declaredRule"] = json!(entry.rule);
+                    if !named {
+                        record["review"] = json!("provider-unranked");
+                    }
+                }
+                record["kept"] = json!(if resolved == o && resolved == s {
+                    "both"
+                } else if resolved == o {
+                    "osre"
+                } else if resolved == s {
+                    "source"
+                } else {
+                    "combined"
+                });
+            }
+            folds.push(record);
         }
         out
     }
 
-    /// Reset's half for sources: cursors rewound, activity validated against
-    /// one clock reading (never the prior flag), every source at instant 0,
-    /// contention emptied. Membership and sensor values are untouched.
+    /// Cells written by more than one active source, resolved as `assemble`
+    /// resolves them (C++ `source_contention`). Pure.
+    fn source_contention(&self) -> Vec<Value> {
+        let now = now();
+        let size = self.persistent_vector.len() as i64;
+        let mut writers: BTreeMap<i64, Vec<&Source>> = BTreeMap::new();
+        for source in self.composition_order() {
+            let values = self.source_values(source, now);
+            for i in 0..(source.region.length.max(0) as usize).min(values.len()) {
+                let cell = source.region.offset + i as i64;
+                if (0..size).contains(&cell) {
+                    writers.entry(cell).or_default().push(source);
+                }
+            }
+        }
+        let reference = |s: &Source| json!({ "id": s.id, "name": s.name, "kind": s.kind(), "activatedAt": s.activated_at });
+        writers
+            .into_iter()
+            .filter(|(_, ws)| ws.len() > 1)
+            .map(|(cell, mut ws)| {
+                let winner = ws.pop().expect("two or more writers");
+                ws.sort_by(|a, b| (&a.name, &a.id).cmp(&(&b.name, &b.id)));
+                let winner_live = winner.kind() != "test";
+                let same_tier = ws.iter().any(|l| (l.kind() != "test") == winner_live);
+                json!({
+                    "cell": cell,
+                    "resolution": if same_tier { "incumbent" } else { "live-over-seed" },
+                    "winner": reference(winner),
+                    "suppressed": ws.iter().map(|l| reference(l)).collect::<Vec<_>>(),
+                })
+            })
+            .collect()
+    }
+
+    /// The push is the transition: record what this assembly resolved, and
+    /// count it toward each source (C++ `record_contention`).
+    pub(crate) fn record_contention(&mut self) {
+        let cells = self.source_contention();
+        let mut folds = Vec::new();
+        self.assemble_recording(Some(&mut folds));
+        let mut contended = std::collections::BTreeSet::new();
+        let mut lost = std::collections::BTreeSet::new();
+        for fold in &folds {
+            let id = fold["source"]["id"].as_str().unwrap_or_default().to_owned();
+            if fold["kept"] == "osre" {
+                lost.insert(id.clone());
+            }
+            contended.insert(id);
+        }
+        for cell in &cells {
+            contended.insert(cell["winner"]["id"].as_str().unwrap_or_default().to_owned());
+            for loser in cell["suppressed"].as_array().into_iter().flatten() {
+                let id = loser["id"].as_str().unwrap_or_default().to_owned();
+                contended.insert(id.clone());
+                lost.insert(id);
+            }
+        }
+        for id in contended {
+            let counter = self.contention.counters.entry(id.clone()).or_default();
+            counter.0 += 1;
+            if lost.contains(&id) {
+                counter.1 += 1;
+            }
+        }
+        self.contention.transition = self.global_step;
+        self.contention.cells = cells;
+        self.contention.folds = folds;
+    }
+
+    /// The next transition (C++ `advance`): each active test source steps its
+    /// cursor, a finished one looping or going inactive; each random walk
+    /// moves.
+    pub(crate) fn advance(&mut self) {
+        self.global_step += 1;
+        let ids: Vec<String> = self.sources.keys().cloned().collect();
+        for id in ids {
+            let source = &self.sources[&id];
+            if !source.active {
+                continue;
+            }
+            match &source.detail {
+                Detail::Test { inputs, loop_, .. } => {
+                    let (count, loops) = (inputs.len(), *loop_);
+                    let next = self.test_step.get(&id).copied().unwrap_or(0) + 1;
+                    if next >= count {
+                        self.test_step.insert(id.clone(), 0);
+                        if !loops {
+                            self.sources.get_mut(&id).expect("listed").active = false;
+                        }
+                    } else {
+                        self.test_step.insert(id.clone(), next);
+                    }
+                }
+                Detail::Simulated {
+                    pattern: "random-walk",
+                    ..
+                } => {
+                    let steps: Vec<f64> = (0..self.walk_state.get(&id).map_or(0, Vec::len))
+                        .map(|_| (self.uniform() * 2.0 - 1.0) * 0.05)
+                        .collect();
+                    if let Some(walk) = self.walk_state.get_mut(&id) {
+                        for (value, step) in walk.iter_mut().zip(steps) {
+                            *value = (*value + step).clamp(0.0, 1.0);
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+
+    /// The perceptual space the RE handed back becomes the persistent vector,
+    /// growing this PE to its width (C++ `update_from_perceptual_space`).
+    pub(crate) fn adopt_space(&mut self, values: &[f64]) {
+        self.ensure_capacity(values.len() as i64);
+        self.persistent_vector = vec![0.0; self.dimension];
+        for (cell, value) in self.persistent_vector.iter_mut().zip(values) {
+            *cell = *value;
+        }
+    }
+
+    /// Reset's half for sources: cursors rewound, walks restarted, activity
+    /// validated against one clock reading (never the prior flag), every
+    /// source at instant 0, contention and the OSRE fold emptied. Membership
+    /// and sensor values are untouched.
     pub(crate) fn reset_sources(&mut self) {
         let now = now();
         for (id, source) in &mut self.sources {
             self.test_step.insert(id.clone(), 0);
+            if let Detail::Simulated {
+                pattern: "random-walk",
+                dc_offset,
+                ..
+            } = source.detail
+            {
+                self.walk_state.insert(
+                    id.clone(),
+                    vec![dc_offset; source.region.length.max(0) as usize],
+                );
+            }
             source.active = source.validated(now);
             source.activated_at = 0;
         }
         self.contention = Contention::default();
+        self.osre_fold.clear();
     }
 
     pub(crate) fn contention_json(&self) -> Value {

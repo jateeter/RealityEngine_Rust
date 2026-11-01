@@ -4632,9 +4632,8 @@ mod tests {
             })
         };
         for (method, uri, surface) in [
-            ("POST", "/api/push", "POST /api/push"),
-            ("GET", "/api/push/p-1", "GET /api/push/:id"),
             ("POST", "/api/signals", "POST /api/signals"),
+            ("GET", "/api/mqtt/status", "GET /api/mqtt/status"),
             ("GET", "/api/events", "SSE /api/events"),
             ("GET", "/ws", "WS /ws"),
         ] {
@@ -4784,6 +4783,106 @@ mod tests {
         assert_eq!(
             body,
             json!({ "transition": 0, "cells": [], "folds": [], "counters": [] })
+        );
+    }
+
+    /// #20 workstream 3: a push drives the PE's RE, adopts the space it
+    /// returns, advances the sources and records the transition; what the
+    /// caller asks to see trims only the reply.
+    #[tokio::test]
+    async fn a_pe_push_drives_its_re_and_advances() {
+        let mut definition = machine_definition();
+        definition["machine"]["inputSequences"] = json!([{ "name": "Walk", "events": [[1], [0]] }]);
+        let mut engine = Engine::new(8);
+        engine.load_machine(definition).unwrap();
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let re_url = format!("http://{}", listener.local_addr().unwrap());
+        tokio::spawn(std::future::IntoFuture::into_future(axum::serve(
+            listener,
+            app(engine),
+        )));
+        let app = pe::pe_app(pe::PerceptionEngine::new(8).with_re_url(re_url));
+
+        let (_, body) = send(&app, "POST", "/api/sources/bootstrap-from-machines", None).await;
+        assert_eq!(body["created"], json!(1));
+        let (status, body) = send(&app, "POST", "/api/push", Some(json!({}))).await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(
+            (&body["success"], &body["globalStep"], &body["error"]),
+            (&json!(true), &json!(1), &Value::Null)
+        );
+        let keys: Vec<&String> = body["step"].as_object().unwrap().keys().collect();
+        assert_eq!(
+            keys,
+            [
+                "activeRegions",
+                "eventBus",
+                "machineResults",
+                "mergeBatch",
+                "perceptualSpace",
+                "perceptualSpaceIsDebugProjection",
+                "stepNumber",
+                "timestamp"
+            ]
+        );
+        // The seed's cursor moved to its second vector; the state's lastPush
+        // is the step, whole.
+        let (_, state) = send(&app, "GET", "/api/state", None).await;
+        assert_eq!(state["lastPush"]["stepNumber"], body["step"]["stepNumber"]);
+        assert_eq!(state["assembledVector"][0], json!(0));
+        let (_, contention) = send(&app, "GET", "/api/sources/contention", None).await;
+        assert_eq!(contention["transition"], json!(0));
+
+        let (_, body) = send(&app, "POST", "/api/push", Some(json!({ "compact": true }))).await;
+        assert!(body["step"].get("machineResults").is_none());
+        assert_eq!(body["globalStep"], json!(2));
+        let (_, body) = send(&app, "POST", "/api/push", Some(json!({ "only": {} }))).await;
+        assert_eq!(
+            (&body["step"]["machineResults"], &body["step"]["mergeBatch"]),
+            (&json!({}), &json!([]))
+        );
+
+        let (status, body) = send(&app, "POST", "/api/push", Some(json!({ "async": true }))).await;
+        assert_eq!(status, StatusCode::ACCEPTED);
+        let endpoint = body["statusEndpoint"].as_str().unwrap().to_owned();
+        let mut job = Value::Null;
+        for _ in 0..50 {
+            job = send(&app, "GET", &endpoint, None).await.1;
+            if job["status"] == "completed" {
+                break;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+        }
+        assert_eq!(
+            (&job["status"], &job["result"]["globalStep"]),
+            (&json!("completed"), &json!(4))
+        );
+        let (status, _) = send(&app, "GET", "/api/push/none", None).await;
+        assert_eq!(status, StatusCode::NOT_FOUND);
+
+        let (_, body) = send(
+            &app,
+            "POST",
+            "/api/auto/start",
+            Some(json!({ "intervalMs": -5 })),
+        )
+        .await;
+        assert_eq!(body, json!({ "success": true, "intervalMs": 1000 }));
+        let (_, state) = send(&app, "GET", "/api/state", None).await;
+        assert_eq!(
+            state["auto"],
+            json!({ "running": true, "intervalMs": 1000 })
+        );
+        send(&app, "POST", "/api/auto/stop", None).await;
+        let (_, state) = send(&app, "GET", "/api/state", None).await;
+        assert_eq!(state["auto"]["running"], json!(false));
+
+        // A PE whose RE does not answer reports the failed push, as C++ does.
+        let orphan = pe::pe_app(pe::PerceptionEngine::new(8).with_re_url("http://127.0.0.1:9"));
+        let (status, body) = send(&orphan, "POST", "/api/push", Some(json!({}))).await;
+        assert_eq!(
+            (status, &body["success"], &body["step"]),
+            (StatusCode::OK, &json!(false), &Value::Null)
         );
     }
 
