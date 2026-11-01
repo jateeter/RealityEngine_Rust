@@ -4677,18 +4677,13 @@ mod tests {
         let (status, body) = send(&app, "POST", "/api/reset", None).await;
         assert_eq!((status, body), (StatusCode::OK, json!({ "success": true })));
 
-        let unsupported = |surface: &str| {
-            json!({
-                "error": format!("{surface} is not implemented by this runtime"),
-                "participation": "unsupported",
-                "surface": surface,
-            })
-        };
-        for (method, uri, surface) in [("GET", "/api/mqtt/status", "GET /api/mqtt/status")] {
-            let (status, body) = send(&app, method, uri, None).await;
-            assert_eq!(status, StatusCode::NOT_IMPLEMENTED, "{method} {uri}");
-            assert_eq!(body, unsupported(surface), "{method} {uri}");
-        }
+        // Every specified PE route is served now; an integration that is not
+        // configured answers its own state (the MQTT bridge, off).
+        let (status, body) = send(&app, "GET", "/api/mqtt/status", None).await;
+        assert_eq!(
+            (status, body),
+            (StatusCode::OK, json!({ "enabled": false }))
+        );
         // The RE's routes are not the PE's to answer, nor are unspecified ones.
         for uri in ["/api/engine/stats", "/api/not-in-the-spec"] {
             let (status, body) = send(&app, "GET", uri, None).await;

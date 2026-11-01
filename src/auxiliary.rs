@@ -198,7 +198,7 @@ pub(crate) async fn diagnostic(State(engine): State<SharedEngine>, body: Bytes) 
 
 /// `strtod`'s reading of a token: leading whitespace skipped, then the longest
 /// prefix that is a number; `None` when there is none (C++ `std::stod`).
-fn leading_number(token: &str) -> Option<f64> {
+pub(crate) fn leading_number(token: &str) -> Option<f64> {
     let token = token.trim_start();
     (1..=token.len())
         .rev()
