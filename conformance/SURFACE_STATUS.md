@@ -7,7 +7,7 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 | layer | implemented | routes |
 |---|---|---|
 | RE | 78 | 79 |
-| PE | 18 | 47 |
+| PE | 19 | 47 |
 | RE-phase2 | 0 | 5 |
 
 `RE` and `PE` are the specification's implemented-contract tables; `RE-phase2` is the K-line snapshot routes it specifies outside them. A route this engine does not implement is `declared-unsupported`: it answers `501` with the participation state, as the specification rules ("An unimplemented route answers `unsupported`"). A `missing` route answers silently, which the specification forbids. The RE's routes are probed on `app`, the PE's on `pe_app`. Status says a route exists, not that it conforms: the notes name known shape defects.
@@ -201,7 +201,7 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 
 | method | path | status | tracking | notes |
 |---|---|---|---|---|
-| POST | `/api/signals` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
+| POST | `/api/signals` | implemented |  |  |
 
 ## PE: Machines Proxy
 

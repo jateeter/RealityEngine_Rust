@@ -203,6 +203,7 @@ fn router(pe: SharedPe) -> Router {
         )
         .route("/api/sources/contention", get(sources::contention))
         .route("/api/sensors/{sensor_id}", post(sources::sensor))
+        .route("/api/signals", post(sources::signal))
         .route("/api/machines", get(sources::machines))
         .route("/api/push", post(push::push_route))
         .route("/api/push/{id}", get(push::job))
