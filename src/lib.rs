@@ -3089,6 +3089,44 @@ mod tests {
         assert_eq!(op["deprecation"]["since"], "2026-01-01");
         assert_eq!(op["deprecation"]["replacedBy"], "sequence");
         assert!(op["deprecation"]["ageDays"].as_i64().unwrap() > 0);
+
+        // The counters: one joined decision for the operation, one fire for
+        // the deprecated sequence's asserted output.
+        let request = Request::builder()
+            .uri("/api/metrics")
+            .body(Body::empty())
+            .unwrap();
+        let bytes = to_bytes(
+            app.clone().oneshot(request).await.unwrap().into_body(),
+            usize::MAX,
+        )
+        .await
+        .unwrap();
+        let text = String::from_utf8(bytes.to_vec()).unwrap();
+        let line = |prefix: &str, labels: &[&str]| {
+            text.lines()
+                .find(|l| l.starts_with(prefix) && labels.iter().all(|label| l.contains(label)))
+                .unwrap_or_else(|| panic!("no {prefix} {labels:?} in\n{text}"))
+                .to_owned()
+        };
+        assert!(
+            line(
+                "ces_paging_decisions_total{",
+                &[
+                    "owner_team=\"night-shift\"",
+                    "process_status=\"error\"",
+                    "rag_status_code=\"RED\""
+                ],
+            )
+            .ends_with(" 1")
+        );
+        assert!(
+            line(
+                "ces_deprecated_fires_total{",
+                &["sequence=\"alarm\"", "replaced_by=\"sequence\""],
+            )
+            .ends_with(" 1")
+        );
     }
 
     #[tokio::test]
