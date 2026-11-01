@@ -12,9 +12,11 @@
 //!   own path. `format` is sent, or the completion contract is put in the
 //!   system prompt, by the model's family (`docs/OLLAMA_INTEGRATION.md`,
 //!   "Structured output").
-//! - **OpenAI:** `POST {base}/responses` with the bearer key, constrained by a
-//!   JSON schema built from the mapping; then the same commit. The default
-//!   base URL is HTTPS.
+//! - **OpenAI:** `POST {base}/responses`, with the bearer key when one is set,
+//!   constrained by a JSON schema built from the mapping; then the same
+//!   commit. Its provider
+//!   is the local LLM: by default localAIStack's Ollama at
+//!   `http://localhost:11434/v1`, the key optional (owner ruling, 2026-11-01).
 //! - **ACP:** no call at all. The PE records an OpenClaw handoff receipt and
 //!   answers 202; the harness commits its own completion later.
 //!
@@ -720,10 +722,13 @@ pub(crate) async fn openai(State(pe): State<SharedPe>, bytes: Bytes) -> Response
     );
     let outcome = async {
         let payload = openai_payload(&request.record, &request.body, &model, &mapping);
-        if config.openai_api_key.is_empty() {
-            return Err("OPENAI_API_KEY is not configured".to_owned());
-        }
-        let headers = [("Authorization", format!("Bearer {}", config.openai_api_key))];
+        // The key is optional: sent when set, never required (owner ruling,
+        // 2026-11-01).
+        let headers: Vec<(&str, String)> = if config.openai_api_key.is_empty() {
+            Vec::new()
+        } else {
+            vec![("Authorization", format!("Bearer {}", config.openai_api_key))]
+        };
         let raw = client::request(
             Method::POST,
             &format!("{base}/responses"),
@@ -947,7 +952,8 @@ mod tests {
 
     /// Each adapter delivers a trigger record: Ollama and OpenAI commit the
     /// reply's values through the completions path and mark it delivered;
-    /// OpenAI without a key fails it with a 502; ACP records a handoff, 202.
+    /// OpenAI needs no key, and a provider that does not answer fails the
+    /// record with a 502; ACP records a handoff, 202.
     #[tokio::test]
     async fn the_adapters_deliver_a_trigger_record() {
         let base = provider().await;
@@ -1004,23 +1010,23 @@ mod tests {
             )
         );
 
+        // A provider that does not answer fails the record with a 502.
+        let set_base = |base: &str| {
+            if let Some(config) = Arc::get_mut(&mut shared.write().unwrap().integrations) {
+                config.openai_base_url = base.to_owned();
+            }
+        };
+        set_base("http://127.0.0.1:1");
         let (status, reply) =
             send(&app, "/api/integrations/openai/dispatch", json!({"id": id})).await;
-        assert_eq!(
-            (status, &reply["error"]),
-            (
-                StatusCode::BAD_GATEWAY,
-                &json!("OPENAI_API_KEY is not configured")
-            )
-        );
+        assert_eq!(status, StatusCode::BAD_GATEWAY);
         assert_eq!(
             reply["receipt"]["providerReceipt"],
-            json!({"model": "gpt-5", "endpoint": "/responses"})
+            json!({"model": "nemotron-3-nano:4b-mlx", "endpoint": "/responses"})
         );
         assert_eq!(record(&app, &id).await["status"], json!("failed"));
-        if let Some(config) = Arc::get_mut(&mut shared.write().unwrap().integrations) {
-            config.openai_api_key = "k".into();
-        }
+        // No key is needed: the local LLM ignores it (owner ruling, 2026-11-01).
+        set_base(&base);
         let (status, reply) = send(
             &app,
             "/api/integrations/openai/dispatch",

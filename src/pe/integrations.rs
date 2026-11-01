@@ -72,8 +72,9 @@ impl Default for Integrations {
             // docs/OLLAMA_INTEGRATION.md); a universe pins OLLAMA_MODEL.
             ollama_model: "llama3.1:8b".to_owned(),
             ollama_mapping: "agent-completion-risk".to_owned(),
-            openai_base_url: "https://api.openai.com/v1".to_owned(),
-            openai_model: "gpt-5".to_owned(),
+            // The local LLM, never a cloud provider (owner ruling, 2026-11-01).
+            openai_base_url: "http://localhost:11434/v1".to_owned(),
+            openai_model: "nemotron-3-nano:4b-mlx".to_owned(),
             openai_mapping: "agent-completion-risk".to_owned(),
             openai_api_key: String::new(),
             acp_enabled: true,
@@ -437,22 +438,21 @@ pub(crate) async fn ollama_status(State(pe): State<SharedPe>) -> Answer {
 
 pub(crate) async fn openai_status(State(pe): State<SharedPe>) -> Answer {
     let config = integrations(&pe)?;
-    let (reachable, models, error) = if config.openai_api_key.is_empty() {
-        (
-            false,
-            Value::Null,
-            json!("OPENAI_API_KEY is not configured"),
-        )
+    // The key is optional: sent when set, never required (owner ruling,
+    // 2026-11-01); the local LLM ignores it.
+    let headers: Vec<(&str, String)> = if config.openai_api_key.is_empty() {
+        Vec::new()
     } else {
-        let headers = [("Authorization", format!("Bearer {}", config.openai_api_key))];
+        vec![("Authorization", format!("Bearer {}", config.openai_api_key))]
+    };
+    let (reachable, models, error) =
         match fetch_json(&format!("{}/models", config.openai_base_url), &headers).await {
             Ok(models) if models["error"].is_object() => {
                 (false, models.clone(), models["error"].clone())
             }
             Ok(models) => (true, models, Value::Null),
             Err(error) => (false, Value::Null, json!(error)),
-        }
-    };
+        };
     Ok(Json(json!({
         "baseUrl": config.openai_base_url,
         "model": config.openai_model,

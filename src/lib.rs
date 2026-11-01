@@ -5036,15 +5036,18 @@ mod tests {
             body["acp"]["completionSourceMappingId"],
             json!("acp-openclaw-completion")
         );
+        // The OpenAI route's provider is the local LLM, asked with or without
+        // a key (owner ruling, 2026-11-01); whether it answers depends on the host.
         let (_, body) = send(&app, "GET", "/api/integrations/openai/status", None).await;
         assert_eq!(
-            (&body["reachable"], &body["models"], &body["error"]),
+            (&body["baseUrl"], &body["model"], &body["hasApiKey"]),
             (
-                &json!(false),
-                &Value::Null,
-                &json!("OPENAI_API_KEY is not configured")
+                &json!("http://localhost:11434/v1"),
+                &json!("nemotron-3-nano:4b-mlx"),
+                &json!(false)
             )
         );
+        assert_ne!(body["error"], json!("OPENAI_API_KEY is not configured"));
         let (_, body) = send(&app, "GET", "/api/integrations/healthkit/status", None).await;
         assert_eq!(
             (&body["contract"]["auth"], &body["scope"]["declared"]),
