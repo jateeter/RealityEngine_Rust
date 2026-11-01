@@ -848,6 +848,19 @@ impl Event {
     }
 }
 
+/// A cell read as a member of the output chain (C++ `mv_value`): the chain
+/// bottom for anything not positive (NaN included), else the nearest integer,
+/// halves away from zero, saturated at 2^40. Rounded rather than truncated, so
+/// an arbiter-scaled 2.9999999996 folds as 3 on every runtime.
+fn chain_member(cell: f64) -> f64 {
+    const CEILING: f64 = (1u64 << 40) as f64;
+    if cell > 0.0 {
+        cell.round().min(CEILING)
+    } else {
+        0.0
+    }
+}
+
 fn fold_outputs(
     vectors: &[&[f64]],
     transformation: &str,
@@ -863,11 +876,22 @@ fn fold_outputs(
     let width = vectors.iter().map(|vector| vector.len()).max().unwrap_or(0);
     let mut result = Vec::with_capacity(width);
     for index in 0..width {
-        let cells: Vec<f64> = vectors
+        let raw: Vec<f64> = vectors
             .iter()
             .map(|vector| vector.get(index).copied().unwrap_or(0.0))
             .collect();
-        let asserted = cells.iter().filter(|cell| **cell != 0.0).count();
+        let asserted = raw.iter().filter(|cell| **cell != 0.0).count();
+        // The chain folds read each cell as a chain member, C++ `mv_value`.
+        let mut cells: Vec<f64> = raw.iter().map(|cell| chain_member(*cell)).collect();
+        if transformation == "join"
+            && let Some(top) = chain_top
+        {
+            // Clamped to the chain top when one is declared, so arrival order
+            // never decides (RealityEngine_CI#158).
+            for cell in &mut cells {
+                *cell = cell.min(top as f64);
+            }
+        }
         let value = match transformation {
             "and" => f64::from(asserted == cells.len()),
             "xor" => f64::from(asserted % 2 == 1),
@@ -4693,6 +4717,37 @@ mod tests {
                 "{uri}"
             );
         }
+    }
+
+    /// The chain folds read cells as chain members, as C++ `mv_value` does:
+    /// a lone 0.5 joins to 1 (an IFRS machine's arbitrated `[0.5, 0, 0, 0]`
+    /// presents `[1, 0, 0, 0]` on every voter), nothing positive is 0, and a
+    /// join is clamped to a declared chain top whatever the arrival order.
+    #[test]
+    fn chain_folds_read_cells_as_chain_members() {
+        let fold = |vectors: &[&[f64]], t: &str, top: Option<usize>| {
+            fold_outputs(vectors, t, top).unwrap()
+        };
+        assert_eq!(
+            fold(&[&[0.5, 0.0, 0.0, 0.0]], "join", None),
+            vec![1.0, 0.0, 0.0, 0.0]
+        );
+        assert_eq!(
+            fold(&[&[2.9999999996], &[f64::NAN], &[-1.0]], "join", None),
+            vec![3.0]
+        );
+        assert_eq!(fold(&[&[1.0], &[3.0], &[5.0]], "join", Some(3)), vec![3.0]);
+        assert_eq!(fold(&[&[5.0], &[3.0], &[1.0]], "join", Some(3)), vec![3.0]);
+        assert_eq!(fold(&[&[0.4], &[2.0]], "meet", None), vec![0.0]);
+        assert_eq!(
+            fold(&[&[1.4], &[2.6], &[0.2], &[3.0]], "discrete-median", None),
+            vec![1.0]
+        );
+        assert_eq!(
+            fold(&[&[0.6], &[0.6]], "strong-disjunction", Some(1)),
+            vec![1.0]
+        );
+        assert_eq!(fold(&[&[0.5], &[1.0]], "or", None), vec![1.0]);
     }
 
     /// #20 workstream 2: sources are declared inactive and earn activity by a
