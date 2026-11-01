@@ -379,7 +379,7 @@ fn fold_unit_interval(transformation: &str, s: f64, o: f64) -> f64 {
 }
 
 /// A lowercase id fragment (C++ `source_id_part`).
-fn id_part(value: &str) -> String {
+pub(crate) fn id_part(value: &str) -> String {
     let mut out = String::new();
     for byte in value.bytes() {
         if byte.is_ascii_alphanumeric() {
@@ -1154,9 +1154,27 @@ impl PerceptionEngine {
 
 /// `POST /api/signals`: a value from an integration, and with `triggerPush`
 /// the push it asks for, nested under `push` (`compactPush` trims it).
-pub(crate) async fn signal(State(pe): State<SharedPe>, body: Bytes) -> Answer {
-    let body = body_of(&body)?;
-    let source = write(&pe)?.ingest_signal(&body).map_err(error_response)?;
+pub(crate) async fn signal(State(pe): State<SharedPe>, body: Bytes) -> Response {
+    match body_of(&body) {
+        Ok(body) => {
+            let (status, answer) = signal_reply(&pe, &body).await;
+            (status, Json(answer)).into_response()
+        }
+        Err(error) => error.into_response(),
+    }
+}
+
+/// C++ `ingest_signal`, whole: the status and body `POST /api/signals`
+/// answers. The integrations' ingest paths route through it, as on C++.
+pub(crate) async fn signal_reply(pe: &SharedPe, body: &Value) -> (StatusCode, Value) {
+    let ingested = match pe.write() {
+        Ok(mut state) => state.ingest_signal(body),
+        Err(_) => Err(lock_error()),
+    };
+    let source = match ingested {
+        Ok(source) => source,
+        Err(error) => return (error.status, json!({ "error": error.message })),
+    };
     let mut response = json!({
         "success": true,
         "timestamp": now_ms(),
@@ -1164,10 +1182,12 @@ pub(crate) async fn signal(State(pe): State<SharedPe>, body: Bytes) -> Answer {
     });
     if body["triggerPush"].as_bool().unwrap_or(false) {
         let include = !body["compactPush"].as_bool().unwrap_or(false);
-        response["push"] = push::push_json(&pe, include, false, Value::Null).await.1;
+        response["push"] = push::push_json(pe, include, false, Value::Null).await.1;
     }
-    read(&pe)?.broadcast_state();
-    Ok(Json(response))
+    if let Ok(state) = pe.read() {
+        state.broadcast_state();
+    }
+    (StatusCode::OK, response)
 }
 
 /// `GET {re}/api/machines`, then the interning, outside the lock while the

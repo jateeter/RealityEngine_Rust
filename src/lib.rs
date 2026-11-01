@@ -4819,6 +4819,102 @@ mod tests {
         );
     }
 
+    /// #20 workstream 4, slice B: the ingest routes, through the signal path,
+    /// with no configuration loaded.
+    #[tokio::test]
+    async fn integration_ingest_lands_through_the_signal_path() {
+        let app = pe::pe_app(pe::PerceptionEngine::new(4));
+        let (status, body) = send(
+            &app,
+            "POST",
+            "/api/integrations/completions",
+            Some(json!({ "agent": "Nurse Bot", "provider": "ollama", "region": { "offset": 0, "length": 2 }, "values": [1, 0.5] })),
+        )
+        .await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(
+            body["completion"]["sensorId"],
+            json!("agent.nurse-bot.completion")
+        );
+        assert_eq!(
+            (
+                &body["signal"]["source"]["name"],
+                &body["signal"]["source"]["ttlMs"],
+                &body["signal"]["source"]["origin"]
+            ),
+            (
+                &json!("agent:ollama/Nurse Bot/completion"),
+                &json!(300000),
+                &json!("ollama")
+            )
+        );
+        let (status, body) = send(
+            &app,
+            "POST",
+            "/api/integrations/completions",
+            Some(json!({ "sourceMappingId": "none", "values": [1] })),
+        )
+        .await;
+        assert_eq!(
+            (status, body["error"].as_str()),
+            (
+                StatusCode::NOT_FOUND,
+                Some("Unknown sourceMappingId \"none\"")
+            )
+        );
+
+        let (status, body) = send(
+            &app,
+            "POST",
+            "/api/integrations/healthkit/ingest",
+            Some(json!({ "samples": [
+                { "type": "HKQuantityTypeIdentifierHeartRate", "sourceName": "Apple Watch", "value": 0.25, "sourceMapping": { "region": { "offset": 2, "length": 1 } } },
+                { "type": "HKQuantityTypeIdentifierStepCount", "value": 1 },
+            ] })),
+        )
+        .await;
+        assert_eq!(status, StatusCode::MULTI_STATUS);
+        assert_eq!(
+            body["resolved"][0]["sensorId"],
+            json!("hk.heartrate.apple-watch")
+        );
+        assert_eq!(
+            body["unmapped"][0]["reason"],
+            json!(
+                "no registry mapping (declare healthkit:HKQuantityTypeIdentifierStepCount[:<sourceName>])"
+            )
+        );
+
+        // CareKit's default mapping is not configured here.
+        let (status, body) = send(
+            &app,
+            "POST",
+            "/api/integrations/carekit/ingest",
+            Some(json!({ "taskId": "t", "value": 1 })),
+        )
+        .await;
+        assert_eq!(
+            (status, body["error"].as_str()),
+            (
+                StatusCode::BAD_REQUEST,
+                Some("Unknown sourceMappingId \"carekit-task\"")
+            )
+        );
+        let (status, body) = send(
+            &app,
+            "POST",
+            "/api/integrations/carekit/ingest",
+            Some(json!({ "sourceMapping": { "id": "x" }, "sourceMappingId": "", "taskId": "t", "value": 1, "region": { "offset": 3, "length": 1 } })),
+        )
+        .await;
+        assert_eq!(
+            (status, &body["results"][0]["sensorId"]),
+            (StatusCode::OK, &json!("carekit.task-event"))
+        );
+        let (_, state) = send(&app, "GET", "/api/state", None).await;
+        assert_eq!(state["assembledVector"], json!([1, 0.5, 0.25, 1]));
+    }
+
     /// #20 workstream 4, slice A: the integration status routes, with no
     /// configuration loaded. OpenAI is not asked without a key.
     #[tokio::test]

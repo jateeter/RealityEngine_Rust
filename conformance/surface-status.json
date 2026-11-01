@@ -101,15 +101,14 @@
       "tracking": "jateeter/RealityEngine_Rust#20"
     },
     "PE POST /api/integrations/carekit/ingest": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#20"
+      "status": "implemented"
     },
     "PE POST /api/integrations/completions": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#20"
+      "status": "implemented"
     },
     "PE POST /api/integrations/healthkit/ingest": {
-      "status": "declared-unsupported",
+      "notes": "#20 workstream 4 slice B: identical to C++. A request whose every sample is unmapped answers 400 with the ingest report {success, bridgeId, resolved, unmapped} that localHealthkitBridge INGEST_CONTRACT.md specifies, which this classifier reads as a non-envelope 4xx",
+      "status": "implemented-bad-envelope",
       "tracking": "jateeter/RealityEngine_Rust#20"
     },
     "PE POST /api/integrations/localai/bootstrap": {

@@ -7,7 +7,7 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 | layer | implemented | routes |
 |---|---|---|
 | RE | 78 | 79 |
-| PE | 26 | 47 |
+| PE | 28 | 47 |
 | RE-phase2 | 0 | 5 |
 
 `RE` and `PE` are the specification's implemented-contract tables; `RE-phase2` is the K-line snapshot routes it specifies outside them. A route this engine does not implement is `declared-unsupported`: it answers `501` with the participation state, as the specification rules ("An unimplemented route answers `unsupported`"). A `missing` route answers silently, which the specification forbids. The RE's routes are probed on `app`, the PE's on `pe_app`. Status says a route exists, not that it conforms: the notes name known shape defects.
@@ -214,7 +214,7 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 | method | path | status | tracking | notes |
 |---|---|---|---|---|
 | GET | `/api/integrations/status` | implemented |  |  |
-| POST | `/api/integrations/completions` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
+| POST | `/api/integrations/completions` | implemented |  |  |
 | GET | `/api/integrations/ollama/status` | implemented |  |  |
 | POST | `/api/integrations/ollama/dispatch` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
 | GET | `/api/integrations/openai/status` | implemented |  |  |
@@ -222,9 +222,9 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 | GET | `/api/integrations/acp/status` | implemented |  |  |
 | POST | `/api/integrations/acp/dispatch` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
 | GET | `/api/integrations/healthkit/status` | implemented |  |  |
-| POST | `/api/integrations/healthkit/ingest` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
+| POST | `/api/integrations/healthkit/ingest` | implemented-bad-envelope | jateeter/RealityEngine_Rust#20 | #20 workstream 4 slice B: identical to C++. A request whose every sample is unmapped answers 400 with the ingest report {success, bridgeId, resolved, unmapped} that localHealthkitBridge INGEST_CONTRACT.md specifies, which this classifier reads as a non-envelope 4xx |
 | GET | `/api/integrations/carekit/status` | implemented |  |  |
-| POST | `/api/integrations/carekit/ingest` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
+| POST | `/api/integrations/carekit/ingest` | implemented |  |  |
 | GET | `/api/integrations/localai/status` | implemented |  |  |
 | GET | `/api/integrations/localai/catalog` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |
 | POST | `/api/integrations/localai/bootstrap` | declared-unsupported | jateeter/RealityEngine_Rust#20 |  |

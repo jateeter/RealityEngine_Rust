@@ -24,6 +24,7 @@ use axum::routing::patch;
 use std::sync::atomic::AtomicU64;
 
 mod client;
+mod ingest;
 mod integrations;
 mod push;
 mod sources;
@@ -238,6 +239,12 @@ fn router(pe: SharedPe) -> Router {
             "/api/integrations/localai/status",
             get(integrations::localai_status),
         )
+        .route("/api/integrations/completions", post(ingest::completion))
+        .route(
+            "/api/integrations/healthkit/ingest",
+            post(ingest::healthkit),
+        )
+        .route("/api/integrations/carekit/ingest", post(ingest::carekit))
         .route("/api/events", get(streams::events))
         .route("/ws", get(streams::websocket))
         .fallback(|method: Method, uri: Uri| async move {
