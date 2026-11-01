@@ -19,7 +19,7 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 | GET | `/` | implemented |  |  |
 | GET | `/api` | implemented |  |  |
 | GET | `/api/health` | implemented |  | follows the spec {status,timestamp,version}; the three engines return {status}: RealityEngine_CI#610, owner ruling pending |
-| GET | `/api/metrics` | implemented |  | CES coverage and runtime gauges, structurally identical to C++; step-phase, paging and deprecated-fire series absent until measured (#11) |
+| GET | `/api/metrics` | implemented |  | CES coverage and runtime gauges, structurally identical to C++, with ces_paging_decisions_total, ces_deprecated_fires_total and the five universal step phases under phaseDetail (#11); C++'s own finer phases are its instrumentation and not carried |
 
 ## RE: Configuration
 
@@ -28,10 +28,10 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 | GET | `/api/config` | implemented |  |  |
 | PUT | `/api/config/dimension` | implemented |  |  |
 | PUT | `/api/config/threshold` | implemented |  |  |
-| GET | `/api/engine/config` | implemented |  | carries transitionsInhibited only; the other seven universal controls join with the behaviour they govern (historyLimit, include*, phaseDetail: jateeter/RealityEngine_Rust#11; arbitrationRetention, arbitrationWindow: #12) |
-| GET | `/api/engine/config/:control` | implemented |  | carries transitionsInhibited only; the other seven universal controls join with the behaviour they govern (historyLimit, include*, phaseDetail: jateeter/RealityEngine_Rust#11; arbitrationRetention, arbitrationWindow: #12) |
-| PUT | `/api/engine/config/:control` | implemented |  | carries transitionsInhibited only; the other seven universal controls join with the behaviour they govern (historyLimit, include*, phaseDetail: jateeter/RealityEngine_Rust#11; arbitrationRetention, arbitrationWindow: #12) |
-| DELETE | `/api/engine/config/:control` | implemented |  | carries transitionsInhibited only; the other seven universal controls join with the behaviour they govern (historyLimit, include*, phaseDetail: jateeter/RealityEngine_Rust#11; arbitrationRetention, arbitrationWindow: #12) |
+| GET | `/api/engine/config` | implemented |  | carries six of the eight universal controls (historyLimit, includeActiveRegions, includeMachineResults, includePerceptualSpace, phaseDetail, transitionsInhibited), identical to C++ on the regression corpus; arbitrationRetention and arbitrationWindow join with /api/arbitration (#12) |
+| GET | `/api/engine/config/:control` | implemented |  | carries six of the eight universal controls (historyLimit, includeActiveRegions, includeMachineResults, includePerceptualSpace, phaseDetail, transitionsInhibited), identical to C++ on the regression corpus; arbitrationRetention and arbitrationWindow join with /api/arbitration (#12) |
+| PUT | `/api/engine/config/:control` | implemented |  | carries six of the eight universal controls (historyLimit, includeActiveRegions, includeMachineResults, includePerceptualSpace, phaseDetail, transitionsInhibited), identical to C++ on the regression corpus; arbitrationRetention and arbitrationWindow join with /api/arbitration (#12) |
+| DELETE | `/api/engine/config/:control` | implemented |  | carries six of the eight universal controls (historyLimit, includeActiveRegions, includeMachineResults, includePerceptualSpace, phaseDetail, transitionsInhibited), identical to C++ on the regression corpus; arbitrationRetention and arbitrationWindow join with /api/arbitration (#12) |
 
 ## RE: Runtime Introspection
 
@@ -139,7 +139,7 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 |---|---|---|---|---|
 | POST | `/api/perception/observe` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
 | POST | `/api/perception/diagnostic` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
-| POST | `/api/perceive` | implemented |  | slices 1-3 of #11: 60 full-corpus and 60 regression-corpus steps identical to C++ on the (ISRE, OSRE) pairs, mergeBatch with governance, activeRegions, eventBus and machineResults; only and matchAlgorithmOverride are refused (slice 4) |
+| POST | `/api/perceive` | implemented |  | #11: 60 full-corpus and 60 regression-corpus steps identical to C++ on the (ISRE, OSRE) pairs, mergeBatch with governance, activeRegions, eventBus and machineResults; the only selector and matchAlgorithmOverride identical over 12 regression-corpus steps each; an unknown override is 400 here and 500 on C++; valuesPacked under compact is not emitted (SURFACE_SPEC, internal augmentation, absent on Scala too) |
 
 ## RE: Governance
 

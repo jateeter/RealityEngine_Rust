@@ -120,6 +120,12 @@ struct Coverage {
     activated: BTreeMap<(String, String, String, String), u64>,
     /// (machine id, machine name, sequence) -> asserted outputs emitted
     outputs: BTreeMap<(String, String, String), u64>,
+    /// (owner team, process status, RAG status, machine id) -> governance
+    /// decisions joined onto merge operations
+    paging: BTreeMap<(String, String, String, String), u64>,
+    /// (machine id, machine name, sequence, replaced by) -> outputs a
+    /// deprecated sequence asserted
+    deprecated: BTreeMap<(String, String, String, String), u64>,
     started_at_ms: u128,
 }
 
@@ -130,12 +136,45 @@ impl Default for Coverage {
             matched: BTreeMap::new(),
             activated: BTreeMap::new(),
             outputs: BTreeMap::new(),
+            paging: BTreeMap::new(),
+            deprecated: BTreeMap::new(),
             started_at_ms: now_ms(),
         }
     }
 }
 
 impl Coverage {
+    fn record_paging_decision(
+        &mut self,
+        owner_team: String,
+        process_status: String,
+        rag_status_code: String,
+        machine_id: String,
+    ) {
+        *self
+            .paging
+            .entry((owner_team, process_status, rag_status_code, machine_id))
+            .or_default() += 1;
+    }
+
+    fn record_deprecated_fire(
+        &mut self,
+        machine_id: &str,
+        machine_name: &str,
+        sequence_id: &str,
+        replaced_by: &str,
+    ) {
+        *self
+            .deprecated
+            .entry((
+                machine_id.to_owned(),
+                machine_name.to_owned(),
+                sequence_id.to_owned(),
+                replaced_by.to_owned(),
+            ))
+            .or_default() += 1;
+    }
+
     fn record(&mut self, id: &str, name: &str, result: &Value) {
         let machine = (id.to_owned(), name.to_owned());
         *self.steps.entry(machine.clone()).or_default() += 1;
@@ -561,7 +600,7 @@ impl Machine {
         }
     }
 
-    fn transition(&mut self, input: &[f64]) -> Value {
+    fn transition(&mut self, input: &[f64], overriding: Option<&str>) -> Value {
         let timestamp = now_ms();
         let mut sequence_results = serde_json::Map::new();
         let mut all_outputs: Vec<(String, Output, Vec<String>)> = Vec::new();
@@ -586,7 +625,7 @@ impl Machine {
                 let Some(event) = sequence.events.get_mut(&event_id) else {
                     continue;
                 };
-                let matched_event = event.matches(input, &self.match_algorithm);
+                let matched_event = event.matches(input, &self.match_algorithm, overriding);
                 if !matched_event {
                     if !event.initial {
                         event.active = false;
@@ -695,7 +734,7 @@ impl Machine {
     /// no state change, nothing recorded (SURFACE_SPEC.md,
     /// "`transitionsInhibited`"; the arbiter metadata zeroed as C++ and LSP do).
     fn present(&mut self, input: &[f64], coverage: &mut Coverage) -> Value {
-        let result = self.respond(input);
+        let result = self.respond(input, None);
         if !self.transitions_inhibited {
             coverage.record(&self.id, &self.name, &result);
         }
@@ -704,7 +743,7 @@ impl Machine {
 
     /// The transition result for `input`, without recording coverage: the step
     /// composes machines in parallel and records their coverage after the join.
-    fn respond(&mut self, input: &[f64]) -> Value {
+    fn respond(&mut self, input: &[f64], overriding: Option<&str>) -> Value {
         if self.transitions_inhibited {
             let empty: serde_json::Map<String, Value> = self
                 .sequences
@@ -731,7 +770,7 @@ impl Machine {
                 },
             });
         }
-        self.transition(input)
+        self.transition(input, overriding)
     }
 }
 
@@ -740,16 +779,17 @@ impl Event {
     /// the element's `comparatorType`, else the machine's `matchAlgorithm`,
     /// else `gte`; `t` is the element's `threshold`, else the comparator's
     /// default. `gte` binarizes both sides at `t`: a `0` means "must be off".
-    fn matches(&self, input: &[f64], machine_algorithm: &str) -> bool {
+    /// An explicit override (`matchAlgorithmOverride`) applies above all three.
+    fn matches(&self, input: &[f64], machine_algorithm: &str, overriding: Option<&str>) -> bool {
         if input.len() != self.elements.len() {
             return false;
         }
         self.elements.iter().zip(input).all(|(element, &actual)| {
-            let comparator = if element.comparator.is_empty() {
+            let comparator = overriding.unwrap_or(if element.comparator.is_empty() {
                 machine_algorithm
             } else {
                 &element.comparator
-            };
+            });
             let value = element.value;
             match comparator {
                 "equals" | "custom" => actual == value,
@@ -1084,26 +1124,48 @@ impl Engine {
     /// SURFACE_SPEC.md, "`/api/engine/config`": every control this engine
     /// carries, sorted by name, each in the five-field shape.
     ///
-    /// Only controls this engine acts on are carried. The rest of the universal
-    /// set governs behaviour Rust does not have yet: `historyLimit`, the three
-    /// `include*` step-response filters and `phaseDetail` need the step path
-    /// (RealityEngine_Rust#11), and `arbitrationRetention`/`arbitrationWindow`
-    /// need `/api/arbitration` (#12). The spec's rule is that "a control that
-    /// reports a value it does not act on is worse than an absent one", so each
-    /// joins this list with the behaviour it governs.
+    /// Only controls this engine acts on are carried: "a control that reports a
+    /// value it does not act on is worse than an absent one".
+    /// `arbitrationRetention` and `arbitrationWindow` join with
+    /// `/api/arbitration` (#12).
     fn controls(&self) -> Vec<Value> {
+        let control = |name: &str, value: Value, default: Value| json!({ "name": name, "scope": "engine", "value": value, "default": default, "mutable": true });
+        let c = &self.steps.controls;
         let inhibited: serde_json::Map<String, Value> = self
             .machines
             .values()
             .map(|machine| (machine.id.clone(), json!(machine.transitions_inhibited)))
             .collect();
-        vec![json!({
-            "name": "transitionsInhibited",
-            "scope": "machine",
-            "value": inhibited,
-            "default": false,
-            "mutable": true,
-        })]
+        vec![
+            control(
+                "historyLimit",
+                json!(c.history_limit),
+                json!(step::HISTORY_LIMIT_DEFAULT),
+            ),
+            control(
+                "includeActiveRegions",
+                json!(c.include_active_regions),
+                json!(true),
+            ),
+            control(
+                "includeMachineResults",
+                json!(c.include_machine_results),
+                json!(true),
+            ),
+            control(
+                "includePerceptualSpace",
+                json!(c.include_perceptual_space),
+                json!(true),
+            ),
+            control("phaseDetail", json!(c.phase_detail), json!(false)),
+            json!({
+                "name": "transitionsInhibited",
+                "scope": "machine",
+                "value": inhibited,
+                "default": false,
+                "mutable": true,
+            }),
+        ]
     }
 
     fn control(&self, name: &str) -> Result<Value, EngineError> {
@@ -1113,25 +1175,54 @@ impl Engine {
             .ok_or_else(|| EngineError::not_found(format!("Unknown control: {name}")))
     }
 
-    /// `PUT /api/engine/config/:control`. For the machine-scoped control a body
-    /// naming a machine sets that machine (404 if absent); one omitting it sets
-    /// every machine, as C++ does.
+    /// `PUT /api/engine/config/:control`: a write that lands nowhere is an
+    /// error, never a 200. For the machine-scoped control a body naming a
+    /// machine sets that machine (404 if absent); one omitting it sets every
+    /// machine, as C++ does.
     fn set_control(&mut self, name: &str, body: &Value) -> Result<Value, EngineError> {
         self.control(name)?;
-        let value = body["value"].as_bool().ok_or_else(|| {
-            EngineError::bad_request(format!("{name} requires a boolean `value`"))
-        })?;
-        match body["machine"].as_str() {
-            Some(id) => {
-                self.machines
-                    .get_mut(id)
-                    .ok_or_else(|| EngineError::not_found(format!("Machine not found: {id}")))?
-                    .transitions_inhibited = value;
+        let value = &body["value"];
+        let boolean = || {
+            value.as_bool().ok_or_else(|| {
+                EngineError::bad_request(format!("{name} requires a boolean `value`"))
+            })
+        };
+        let controls = &mut self.steps.controls;
+        match name {
+            "historyLimit" => {
+                // Refused rather than cast: -1 as a size bounds nothing.
+                let limit = value
+                    .as_f64()
+                    .filter(|n| *n >= 0.0 && n.fract() == 0.0)
+                    .ok_or_else(|| {
+                        EngineError::bad_request(
+                            "historyLimit requires a non-negative whole-number `value`",
+                        )
+                    })?;
+                controls.history_limit = limit as usize;
+                self.steps.trim_history();
             }
-            None => self
-                .machines
-                .values_mut()
-                .for_each(|m| m.transitions_inhibited = value),
+            "includeActiveRegions" => controls.include_active_regions = boolean()?,
+            "includeMachineResults" => controls.include_machine_results = boolean()?,
+            "includePerceptualSpace" => controls.include_perceptual_space = boolean()?,
+            "phaseDetail" => controls.phase_detail = boolean()?,
+            _ => {
+                let value = boolean()?;
+                match body["machine"].as_str() {
+                    Some(id) => {
+                        self.machines
+                            .get_mut(id)
+                            .ok_or_else(|| {
+                                EngineError::not_found(format!("Machine not found: {id}"))
+                            })?
+                            .transitions_inhibited = value;
+                    }
+                    None => self
+                        .machines
+                        .values_mut()
+                        .for_each(|m| m.transitions_inhibited = value),
+                }
+            }
         }
         self.control(name)
     }
@@ -1139,9 +1230,28 @@ impl Engine {
     /// `DELETE /api/engine/config/:control`: restore the declared default.
     fn reset_control(&mut self, name: &str) -> Result<Value, EngineError> {
         self.control(name)?;
-        self.machines
-            .values_mut()
-            .for_each(|m| m.transitions_inhibited = false);
+        let controls = &mut self.steps.controls;
+        let defaults = step::StepControls::default();
+        match name {
+            "historyLimit" => {
+                controls.history_limit = defaults.history_limit;
+                self.steps.trim_history();
+            }
+            "includeActiveRegions" => {
+                controls.include_active_regions = defaults.include_active_regions;
+            }
+            "includeMachineResults" => {
+                controls.include_machine_results = defaults.include_machine_results;
+            }
+            "includePerceptualSpace" => {
+                controls.include_perceptual_space = defaults.include_perceptual_space;
+            }
+            "phaseDetail" => controls.phase_detail = defaults.phase_detail,
+            _ => self
+                .machines
+                .values_mut()
+                .for_each(|m| m.transitions_inhibited = false),
+        }
         self.control(name)
     }
 
@@ -1149,11 +1259,9 @@ impl Engine {
     /// (names, HELP and TYPE text, label order and series order as C++'s
     /// `CesCoverageRegistry::to_prometheus_text`), then the runtime gauges.
     ///
-    /// Not emitted, because nothing here measures them yet:
-    /// `ces_paging_decisions_total` (governance), `ces_deprecated_fires_total`
-    /// (sequence deprecation) and the `re_step_phase_*` lines (the step path and
-    /// `phaseDetail`, #11). Absent rather than zero: zero would claim a
-    /// measurement.
+    /// The step phases are present only while `phaseDetail` is on: absent
+    /// rather than zero, since zero would claim a measurement.
+    /// `re_step_phase_detail` is always present.
     fn metrics_text(&self) -> String {
         use std::fmt::Write;
         let esc = |v: &str| {
@@ -1246,12 +1354,41 @@ impl Engine {
                 labels(&[("machine", name), ("machine_id", id)])
             );
         }
+        out.push_str("# HELP ces_paging_decisions_total Number of governance-resolved paging decisions issued by the engine.\n# TYPE ces_paging_decisions_total counter\n");
+        for ((team, status, rag, id), n) in &c.paging {
+            let name = self.machines.get(id).map_or("", |m| m.name.as_str());
+            let _ = writeln!(
+                out,
+                "ces_paging_decisions_total{} {n}",
+                labels(&[
+                    ("owner_team", team),
+                    ("process_status", status),
+                    ("rag_status_code", rag),
+                    ("machine_id", id),
+                    ("machine", name)
+                ])
+            );
+        }
+        out.push_str("# HELP ces_deprecated_fires_total Number of times a deprecated sequence emitted output.\n# TYPE ces_deprecated_fires_total counter\n");
+        for ((id, name, seq, replaced_by), n) in &c.deprecated {
+            let _ = writeln!(
+                out,
+                "ces_deprecated_fires_total{} {n}",
+                labels(&[
+                    ("machine", name),
+                    ("machine_id", id),
+                    ("sequence", seq),
+                    ("replaced_by", replaced_by)
+                ])
+            );
+        }
         // Zero baselines, so a dashboard can plot every machine before it fires.
         for m in self.machines.values() {
             let l = labels(&[("machine", &m.name), ("machine_id", &m.id)]);
             let _ = writeln!(out, "ces_vector_matched_total{l} 0");
             let _ = writeln!(out, "ces_vector_activated_total{l} 0");
             let _ = writeln!(out, "ces_sequence_outputs_total{l} 0");
+            let _ = writeln!(out, "ces_deprecated_fires_total{l} 0");
             if !c.steps.keys().any(|(id, _)| id == &m.id) {
                 let _ = writeln!(out, "ces_machine_steps_total{l} 0");
             }
@@ -1342,6 +1479,30 @@ impl Engine {
             "re_runtime_mapping_version",
             "Monotonic version bumped on every add/remove_machine.",
             self.mapping_version.to_string(),
+        );
+        let controls = &self.steps.controls;
+        if controls.phase_detail {
+            out.push_str("# HELP re_step_phase_seconds_total Cumulative wall clock per phase of a step.\n# TYPE re_step_phase_seconds_total counter\n");
+            for (phase, spent) in step::STEP_PHASES.iter().zip(controls.phase_time) {
+                let _ = writeln!(
+                    out,
+                    "re_step_phase_seconds_total{} {:.9}",
+                    labels(&[("phase", phase)]),
+                    spent.as_secs_f64()
+                );
+            }
+            out.push_str("# HELP re_step_phase_detail_steps_total Steps the universal step phases were measured over.\n# TYPE re_step_phase_detail_steps_total counter\n");
+            let _ = writeln!(
+                out,
+                "re_step_phase_detail_steps_total{base} {}",
+                controls.measured_steps
+            );
+        }
+        gauge(
+            &mut out,
+            "re_step_phase_detail",
+            "Whether step phase timing (phaseDetail) is on.",
+            u8::from(controls.phase_detail).to_string(),
         );
         out
     }
@@ -2254,19 +2415,27 @@ mod tests {
     /// SURFACE_SPEC.md, "`/api/engine/config`": the five-field shape, sorted by
     /// name, with only the controls this engine acts on.
     #[tokio::test]
-    async fn engine_config_carries_transitions_inhibited() {
+    async fn engine_config_carries_the_controls_this_engine_acts_on() {
         let (app, id) = loaded_app();
         let (status, body) = send(&app, "GET", "/api/engine/config", None).await;
         assert_eq!(status, StatusCode::OK);
+        let engine = |name: &str, value: Value| json!({ "name": name, "scope": "engine", "value": value, "default": value, "mutable": true });
         assert_eq!(
             body,
-            json!({ "controls": [{
-                "name": "transitionsInhibited",
-                "scope": "machine",
-                "value": { id.clone(): false },
-                "default": false,
-                "mutable": true,
-            }] })
+            json!({ "controls": [
+                engine("historyLimit", json!(250)),
+                engine("includeActiveRegions", json!(true)),
+                engine("includeMachineResults", json!(true)),
+                engine("includePerceptualSpace", json!(true)),
+                engine("phaseDetail", json!(false)),
+                {
+                    "name": "transitionsInhibited",
+                    "scope": "machine",
+                    "value": { id.clone(): false },
+                    "default": false,
+                    "mutable": true,
+                },
+            ] })
         );
         // Byte order matches C++ (std::map keys): default, mutable, name, scope, value.
         let request = Request::builder()
@@ -2286,8 +2455,269 @@ mod tests {
             "field order"
         );
         // A universal control this engine does not act on yet is absent, not faked.
-        let (status, _) = send(&app, "GET", "/api/engine/config/historyLimit", None).await;
+        let (status, _) = send(&app, "GET", "/api/engine/config/arbitrationRetention", None).await;
         assert_eq!(status, StatusCode::NOT_FOUND);
+    }
+
+    /// Each engine control acts: the include defaults shape the next push, a
+    /// request's own flag still overrides, historyLimit bounds the step
+    /// history, and a bad value is refused rather than stored.
+    #[tokio::test]
+    async fn the_step_controls_act_and_restore_their_defaults() {
+        let (app, _) = loaded_app();
+        let config = |name: &str| format!("/api/engine/config/{name}");
+        let push = |body: Value| {
+            let app = app.clone();
+            async move { send(&app, "POST", "/api/perceive", Some(body)).await.1 }
+        };
+        for name in [
+            "includeMachineResults",
+            "includePerceptualSpace",
+            "includeActiveRegions",
+        ] {
+            let (status, body) =
+                send(&app, "PUT", &config(name), Some(json!({ "value": false }))).await;
+            assert_eq!(
+                (status, &body["value"]),
+                (StatusCode::OK, &json!(false)),
+                "{name}"
+            );
+        }
+        let step = push(json!({ "vector": [1] })).await;
+        let keys: Vec<&str> = step
+            .as_object()
+            .unwrap()
+            .keys()
+            .map(String::as_str)
+            .collect();
+        assert_eq!(keys, ["eventBus", "mergeBatch", "stepNumber", "timestamp"]);
+        let step = push(json!({ "vector": [1], "includeMachineResults": true })).await;
+        assert!(
+            step["machineResults"].is_object(),
+            "the request overrides the default"
+        );
+        for name in [
+            "includeMachineResults",
+            "includePerceptualSpace",
+            "includeActiveRegions",
+        ] {
+            let (_, body) = send(&app, "DELETE", &config(name), None).await;
+            assert_eq!(body["value"], json!(true), "{name}");
+        }
+        assert!(push(json!({ "vector": [1] })).await["activeRegions"].is_array());
+
+        for bad in [json!(-1), json!(1.5), json!("2")] {
+            let (status, _) = send(
+                &app,
+                "PUT",
+                &config("historyLimit"),
+                Some(json!({ "value": bad })),
+            )
+            .await;
+            assert_eq!(status, StatusCode::BAD_REQUEST, "{bad}");
+        }
+        let (status, _) = send(
+            &app,
+            "PUT",
+            &config("phaseDetail"),
+            Some(json!({ "value": 1 })),
+        )
+        .await;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        send(
+            &app,
+            "PUT",
+            &config("historyLimit"),
+            Some(json!({ "value": 2 })),
+        )
+        .await;
+        let (_, history) = send(&app, "GET", "/api/perceptual-simulation/history", None).await;
+        let numbers: Vec<_> = history["history"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|s| s["stepNumber"].clone())
+            .collect();
+        assert_eq!(
+            numbers,
+            [json!(2), json!(1)],
+            "narrowed at once, newest kept"
+        );
+        let (_, body) = send(&app, "DELETE", &config("historyLimit"), None).await;
+        assert_eq!(body["value"], json!(250));
+    }
+
+    /// SURFACE_SPEC.md, "`phaseDetail`: step phase timing": absent while off,
+    /// one measured step per push while on, counters that survive a reset.
+    #[tokio::test]
+    async fn phase_detail_times_the_five_step_phases() {
+        let (app, _) = loaded_app();
+        let metrics = || {
+            let app = app.clone();
+            async move {
+                let request = Request::builder()
+                    .uri("/api/metrics")
+                    .body(Body::empty())
+                    .unwrap();
+                let bytes = to_bytes(app.oneshot(request).await.unwrap().into_body(), usize::MAX)
+                    .await
+                    .unwrap();
+                String::from_utf8(bytes.to_vec()).unwrap()
+            }
+        };
+        send(
+            &app,
+            "POST",
+            "/api/perceive",
+            Some(json!({ "vector": [1] })),
+        )
+        .await;
+        let text = metrics().await;
+        assert!(
+            text.contains("re_step_phase_detail{runtime=\"rust\"} 0"),
+            "{text}"
+        );
+        assert!(
+            !text.contains("re_step_phase_seconds_total"),
+            "absent while off"
+        );
+        send(
+            &app,
+            "PUT",
+            "/api/engine/config/phaseDetail",
+            Some(json!({ "value": true })),
+        )
+        .await;
+        send(
+            &app,
+            "POST",
+            "/api/perceive",
+            Some(json!({ "vector": [1] })),
+        )
+        .await;
+        send(&app, "POST", "/api/engine/reset", None).await;
+        send(
+            &app,
+            "POST",
+            "/api/perceive",
+            Some(json!({ "vector": [0] })),
+        )
+        .await;
+        let text = metrics().await;
+        assert!(
+            text.contains("re_step_phase_detail{runtime=\"rust\"} 1"),
+            "{text}"
+        );
+        assert!(
+            text.contains("re_step_phase_detail_steps_total{runtime=\"rust\"} 2"),
+            "{text}"
+        );
+        for phase in step::STEP_PHASES {
+            assert!(
+                text.contains(&format!(
+                    "re_step_phase_seconds_total{{runtime=\"rust\",phase=\"{phase}\"}} "
+                )),
+                "{phase} in {text}"
+            );
+        }
+        send(&app, "DELETE", "/api/engine/config/phaseDetail", None).await;
+        assert!(!metrics().await.contains("re_step_phase_seconds_total"));
+    }
+
+    /// SURFACE_SPEC.md, "`only` selector": presence selects, an unknown id
+    /// selects nothing, and a name resolves through machineResults.
+    #[tokio::test]
+    async fn the_only_selector_keeps_what_it_attributes() {
+        let mut engine = Engine::new(8);
+        engine.load_machine(rival("writer-a", 1.0)).unwrap();
+        engine.load_machine(rival("writer-b", 1.0)).unwrap();
+        let app = app(engine);
+        let push = |only: Value| {
+            let app = app.clone();
+            async move {
+                send(
+                    &app,
+                    "POST",
+                    "/api/perceive",
+                    Some(json!({ "vector": [1], "only": only })),
+                )
+                .await
+                .1
+            }
+        };
+        let names = |step: &Value, field: &str| -> Vec<String> {
+            let mut out: Vec<String> = match &step[field] {
+                Value::Object(results) => results
+                    .values()
+                    .map(|r| r["machineName"].as_str().unwrap().to_owned())
+                    .collect(),
+                Value::Array(ops) => ops
+                    .iter()
+                    .map(|op| op["machineName"].as_str().unwrap_or("").to_owned())
+                    .collect(),
+                _ => Vec::new(),
+            };
+            out.sort();
+            out
+        };
+        let all = push(Value::Null).await;
+        assert_eq!(names(&all, "machineResults"), ["writer-a", "writer-b"]);
+        let one = push(json!({ "machineNames": ["writer-b"] })).await;
+        assert_eq!(names(&one, "machineResults"), ["writer-b"]);
+        assert_eq!(one["activeRegions"].as_array().unwrap().len(), 1);
+        assert!(
+            one["mergeBatch"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .all(|op| op["machineName"] == "writer-b")
+        );
+        assert_eq!(
+            one["perceptualSpace"], all["perceptualSpace"],
+            "the computation is unchanged"
+        );
+        for nothing in [json!({}), json!({ "sequenceIds": ["no-such-sequence"] })] {
+            let none = push(nothing.clone()).await;
+            assert_eq!(none["machineResults"], json!({}), "{nothing}");
+            assert_eq!(none["mergeBatch"], json!([]), "{nothing}");
+            assert_eq!(none["activeRegions"], json!([]), "{nothing}");
+        }
+    }
+
+    /// An explicit `matchAlgorithmOverride` applies above every element's own
+    /// comparator; an unknown one is refused.
+    #[tokio::test]
+    async fn match_algorithm_override_applies_above_the_elements() {
+        let (app, id) = loaded_app();
+        let matched = |step: &Value| {
+            step["machineResults"][&id]["transitionResult"]["sequenceResults"]["sequence"]["matchedEvents"].clone()
+        };
+        // `start` asks `equals 1`; 0.7 matches it only under gte.
+        let (_, step) = send(
+            &app,
+            "POST",
+            "/api/perceive",
+            Some(json!({ "vector": [0.7] })),
+        )
+        .await;
+        assert_eq!(matched(&step), json!([]));
+        let (_, step) = send(
+            &app,
+            "POST",
+            "/api/perceive",
+            Some(json!({ "vector": [0.7], "matchAlgorithmOverride": "GTE" })),
+        )
+        .await;
+        assert_eq!(matched(&step), json!(["start"]));
+        let (status, body) = send(
+            &app,
+            "POST",
+            "/api/perceive",
+            Some(json!({ "vector": [1], "matchAlgorithmOverride": "fuzzy" })),
+        )
+        .await;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(body["error"], "Unknown comparator type: fuzzy");
     }
 
     #[tokio::test]
@@ -2659,6 +3089,44 @@ mod tests {
         assert_eq!(op["deprecation"]["since"], "2026-01-01");
         assert_eq!(op["deprecation"]["replacedBy"], "sequence");
         assert!(op["deprecation"]["ageDays"].as_i64().unwrap() > 0);
+
+        // The counters: one joined decision for the operation, one fire for
+        // the deprecated sequence's asserted output.
+        let request = Request::builder()
+            .uri("/api/metrics")
+            .body(Body::empty())
+            .unwrap();
+        let bytes = to_bytes(
+            app.clone().oneshot(request).await.unwrap().into_body(),
+            usize::MAX,
+        )
+        .await
+        .unwrap();
+        let text = String::from_utf8(bytes.to_vec()).unwrap();
+        let line = |prefix: &str, labels: &[&str]| {
+            text.lines()
+                .find(|l| l.starts_with(prefix) && labels.iter().all(|label| l.contains(label)))
+                .unwrap_or_else(|| panic!("no {prefix} {labels:?} in\n{text}"))
+                .to_owned()
+        };
+        assert!(
+            line(
+                "ces_paging_decisions_total{",
+                &[
+                    "owner_team=\"night-shift\"",
+                    "process_status=\"error\"",
+                    "rag_status_code=\"RED\""
+                ],
+            )
+            .ends_with(" 1")
+        );
+        assert!(
+            line(
+                "ces_deprecated_fires_total{",
+                &["sequence=\"alarm\"", "replaced_by=\"sequence\""],
+            )
+            .ends_with(" 1")
+        );
     }
 
     #[tokio::test]
@@ -2805,18 +3273,6 @@ mod tests {
             body["error"],
             "Provide exactly one of: vector, sparseVector, domainVectors"
         );
-        let (status, _) = send(
-            &app,
-            "POST",
-            "/api/perceive",
-            Some(json!({ "vector": [1], "only": { "machineNames": ["x"] } })),
-        )
-        .await;
-        assert_eq!(
-            status,
-            StatusCode::BAD_REQUEST,
-            "an unimplemented selector is refused, not ignored"
-        );
         let (_, step) = send(&app, "POST", "/api/perceive", Some(json!({ "domainVectors": [{ "offset": 0, "values": [1] }], "compact": true, "includePerceptualSpace": false, "includeActiveRegions": false }))).await;
         let keys: Vec<&str> = step
             .as_object()
@@ -2932,14 +3388,19 @@ mod tests {
                 "missing `{line}` in\n{text}"
             );
         }
-        // Not measured here, so absent rather than zero.
-        for absent in [
-            "re_step_phase",
-            "ces_paging_decisions_total",
-            "ces_deprecated_fires_total",
-        ] {
-            assert!(!text.contains(absent), "{absent} present");
-        }
+        // phaseDetail is off, so its phases are absent rather than zero; the
+        // gauge saying so is always there.
+        assert!(!text.contains("re_step_phase_seconds_total"), "{text}");
+        assert!(
+            text.contains("re_step_phase_detail{runtime=\"rust\"} 0"),
+            "{text}"
+        );
+        assert!(
+            text.contains(&format!(
+                "ces_deprecated_fires_total{{runtime=\"rust\",{labels}}} 0"
+            )),
+            "the zero baseline: {text}"
+        );
     }
 
     #[tokio::test]
@@ -3269,7 +3730,7 @@ mod tests {
         for (comparator, value, threshold, input, accepts) in cases {
             let event = event_with(comparator, value, threshold);
             assert_eq!(
-                event.matches(&[input], "gte"),
+                event.matches(&[input], "gte", None),
                 accepts,
                 "{comparator} value {value} threshold {threshold:?} input {input}"
             );
@@ -3280,11 +3741,11 @@ mod tests {
     fn comparator_precedence_is_element_then_machine_then_gte() {
         // No element comparator: the machine's matchAlgorithm applies.
         let event = event_with("", 1.0, None);
-        assert!(!event.matches(&[0.95], "equals"));
-        assert!(event.matches(&[0.95], "gte"));
+        assert!(!event.matches(&[0.95], "equals", None));
+        assert!(event.matches(&[0.95], "gte", None));
         // The element's own comparatorType wins over the machine's.
         let event = event_with("gte", 1.0, None);
-        assert!(event.matches(&[0.95], "equals"));
+        assert!(event.matches(&[0.95], "equals", None));
 
         // A matchAlgorithm on the event itself is not read, as in every engine.
         let mut definition = machine_definition();
