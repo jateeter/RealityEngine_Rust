@@ -139,7 +139,7 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `84b2a658cb73`.
 |---|---|---|---|---|
 | POST | `/api/perception/observe` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
 | POST | `/api/perception/diagnostic` | declared-unsupported | jateeter/RealityEngine_Rust#13 |  |
-| POST | `/api/perceive` | implemented |  | slice 1 of #11: 40 full-corpus steps identical to C++ on machineResults and activeRegions; mergeBatch lacks governance/deprecation, eventBus is [], so the 2 SEVERITY cells resolve by value (slice 2); only and matchAlgorithmOverride are refused (slice 4) |
+| POST | `/api/perceive` | implemented |  | slices 1-2 of #11: 60 full-corpus steps identical to C++ on the (ISRE, OSRE) pairs, mergeBatch with governance, activeRegions, eventBus and machineResults; only and matchAlgorithmOverride are refused (slice 4) |
 
 ## RE: Governance
 
