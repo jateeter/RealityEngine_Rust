@@ -588,10 +588,14 @@ pub(crate) async fn enable(State(pe): State<SharedPe>, body: Bytes) -> Answer {
     }
     let (host, port) = host_and_port(url, 1883);
     let registry = registry_from(&body["mappings"])?;
-    let client_id = read(&pe)?.mqtt.as_ref().map_or_else(
-        || "reality-engine-pe".to_owned(),
-        |b| b.client.config.client_id.clone(),
-    );
+    // A running bridge's id is kept; otherwise this PE's own (MQTT_CLIENT_ID),
+    // never one shared with another PE.
+    let client_id = read(&pe)?
+        .mqtt
+        .as_ref()
+        .map_or_else(client::default_client_id, |b| {
+            b.client.config.client_id.clone()
+        });
     let nonempty = |key: &str| {
         body[key]
             .as_str()
