@@ -5,7 +5,7 @@ use axum::{
     extract::{Path, State, rejection::JsonRejection},
     http::{Method, StatusCode, Uri},
     response::{IntoResponse, Response},
-    routing::{get, post, put},
+    routing::{delete, get, post, put},
 };
 use serde_json::{Value, json};
 use std::{
@@ -20,6 +20,7 @@ use std::{
 
 mod arbitration;
 pub mod instance_clock;
+mod machine_routes;
 mod machine_view;
 mod simulation;
 mod step;
@@ -74,6 +75,7 @@ struct Output {
     timestamp: u128,
 }
 
+#[derive(Clone)]
 struct Event {
     id: String,
     initial: bool,
@@ -87,6 +89,7 @@ struct Event {
     predecessor_chain: Vec<String>,
 }
 
+#[derive(Clone)]
 struct Sequence {
     id: String,
     /// As declared; `unnamed` when not, as C++ loads it.
@@ -101,6 +104,7 @@ struct Sequence {
     replaced_by: String,
 }
 
+#[derive(Clone)]
 struct Machine {
     id: String,
     name: String,
@@ -239,6 +243,9 @@ pub struct Engine {
     clock: InstanceClock,
     /// The step path: the perceptual space, the trajectories, step completion (#11).
     steps: step::StepState,
+    /// Checkpoints by machine id, then checkpoint id: each a copy of the
+    /// machine as it was running (`/api/machines/:id/checkpoints`).
+    checkpoints: BTreeMap<String, BTreeMap<String, machine_routes::Checkpoint>>,
     /// The declared rule for each contended output cell.
     arbitration: step::ArbitrationRegistry,
 }
@@ -706,9 +713,11 @@ impl Machine {
             _ => !all_outputs.is_empty(),
         };
         let picked = if has_output {
-            all_outputs.first().map(|(sequence_id, output, provenance)| {
+            all_outputs.first().map(|(_, output, provenance)| {
+                // The pick is a new output, minted per transition, as every
+                // engine mints it; `sources` names the outputs it came from.
                 json!({
-                    "id": output.id,
+                    "id": format!("machine-output-{}", new_machine_id().trim_start_matches("machine-")),
                     "vector": output.vector,
                     "metadata": {
                         "arbiter": true,
@@ -717,7 +726,6 @@ impl Machine {
                     },
                     "timestamp": timestamp,
                     "provenance": provenance,
-                    "sequenceId": sequence_id,
                 })
             })
         } else {
@@ -917,6 +925,14 @@ impl Engine {
         if machine.id.is_empty() || self.machines.contains_key(&machine.id) {
             machine.id = new_machine_id();
         }
+        let summary = machine.summary();
+        self.admit(machine);
+        Ok(summary)
+    }
+
+    /// Makes `machine` resident under its own id, replacing any machine
+    /// holding it, and widens the space to its mapping.
+    fn admit(&mut self, mut machine: Machine) {
         machine.raw["id"] = json!(machine.id);
         let mapping = machine.raw.get("perceptualMapping");
         if let Some(mapping) = mapping {
@@ -931,10 +947,8 @@ impl Engine {
                 )
                 .max(integer(input.and_then(|region| region.get("offset")), 0));
         }
-        let summary = machine.summary();
         self.machines.insert(machine.id.clone(), machine);
         self.mapping_version += 1;
-        Ok(summary)
     }
 
     pub fn load_directory(&mut self, directory: &FsPath) -> Result<usize, EngineError> {
@@ -1616,8 +1630,13 @@ impl Engine {
             )));
         }
         self.step += 1;
-        let result = machine.present(input, &mut self.coverage);
+        let mut result = machine.present(input, &mut self.coverage);
         self.record_history(result.clone());
+        // The transition response carries no machineId, as C++ and LSP answer
+        // the single-machine routes: the caller named the machine.
+        if let Some(object) = result.as_object_mut() {
+            object.remove("machineId");
+        }
         Ok(result)
     }
 
@@ -2001,10 +2020,39 @@ pub fn app(engine: Engine) -> Router {
         .route("/api/machines/json/{name}", get(load_machine_by_name))
         .route(
             "/api/machines/{id}",
-            get(get_machine).delete(delete_machine),
+            get(get_machine)
+                .put(machine_routes::replace)
+                .patch(machine_routes::patch)
+                .delete(delete_machine),
         )
         .route("/api/machines/{id}/process", post(process_machine))
         .route("/api/machines/{id}/export", get(machine_view::export))
+        .route(
+            "/api/machines/{id}/process-universal",
+            post(machine_routes::process_universal),
+        )
+        .route(
+            "/api/machines/process-universal/all",
+            post(machine_routes::process_universal_all),
+        )
+        .route("/api/machines/{id}/whatif", post(machine_routes::whatif))
+        .route(
+            "/api/machines/{id}/whatif-universal",
+            post(machine_routes::whatif_universal),
+        )
+        .route("/api/machines/json/import", post(machine_routes::import))
+        .route(
+            "/api/machines/{id}/checkpoints",
+            get(machine_routes::checkpoints).post(machine_routes::checkpoint),
+        )
+        .route(
+            "/api/machines/{machine}/checkpoints/{checkpoint}/restore",
+            post(machine_routes::restore),
+        )
+        .route(
+            "/api/machines/{machine}/checkpoints/{checkpoint}",
+            delete(machine_routes::delete_checkpoint),
+        )
         .route("/api/machine-graph", get(machine_view::machine_graph))
         .route("/api/buses/semantic", get(machine_view::semantic_buses))
         .route("/api/buses/semantic/{id}", get(machine_view::semantic_bus))
@@ -2940,20 +2988,19 @@ mod tests {
                 "surface": surface,
             })
         };
-        // A literal route, a template filled in, a path this engine serves
-        // under another method, and a phase-2 route.
+        // A literal route, templates filled in, and a phase-2 route.
         for (method, uri, surface) in [
             ("GET", "/api/sampler/stats", "GET /api/sampler/stats"),
             ("GET", "/api/sequences/s", "GET /api/sequences/:id"),
             (
                 "POST",
-                "/api/machines/m/checkpoints/c/restore",
-                "POST /api/machines/:machineId/checkpoints/:cpId/restore",
+                "/api/sequences/s/vectors",
+                "POST /api/sequences/:id/vectors",
             ),
             (
-                "PUT",
-                &format!("/api/machines/{id}"),
-                "PUT /api/machines/:id",
+                "POST",
+                "/api/sequences/s/reset",
+                "POST /api/sequences/:id/reset",
             ),
             (
                 "DELETE",
@@ -4301,5 +4348,148 @@ mod tests {
         let (_, graph) = send(&app, "GET", "/api/machine-graph", None).await;
         assert_eq!(graph["nodes"].as_array().unwrap().len(), 2);
         assert_eq!(graph["edges"], json!([]));
+    }
+
+    /// #13 slice 2: what-if persists nothing, the universal drive advances,
+    /// a checkpoint restores, PATCH keeps the machine's control state, and a
+    /// definition that is not one is refused.
+    #[tokio::test]
+    async fn the_machine_family_drives_patches_and_restores() {
+        let (app, id) = loaded_app();
+        let active = |app: Router, id: String| async move {
+            let (_, body) = send(&app, "GET", &format!("/api/machines/{id}"), None).await;
+            body["machine"]["sequences"][0]["events"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter(|e| e["isActive"] == json!(true))
+                .map(|e| e["id"].as_str().unwrap().to_owned())
+                .collect::<Vec<_>>()
+        };
+        let universal = json!({ "universalInputSpace": [1, 0, 0] });
+        let (_, whatif) = send(
+            &app,
+            "POST",
+            &format!("/api/machines/{id}/whatif-universal"),
+            Some(universal.clone()),
+        )
+        .await;
+        assert_eq!(
+            whatif["sequenceResults"]["sequence"]["matchedEvents"],
+            json!(["start"])
+        );
+        assert!(whatif.get("machineId").is_none());
+        assert_eq!(
+            active(app.clone(), id.clone()).await,
+            ["start"],
+            "a what-if persists nothing"
+        );
+
+        let (_, cp) = send(
+            &app,
+            "POST",
+            &format!("/api/machines/{id}/checkpoints"),
+            Some(json!({ "label": "start" })),
+        )
+        .await;
+        let cp = cp["checkpointId"].as_str().unwrap().to_owned();
+        let (_, list) = send(
+            &app,
+            "GET",
+            &format!("/api/machines/{id}/checkpoints"),
+            None,
+        )
+        .await;
+        assert_eq!(list[0]["label"], "start");
+
+        let (_, drive) = send(
+            &app,
+            "POST",
+            &format!("/api/machines/{id}/process-universal"),
+            Some(universal),
+        )
+        .await;
+        assert_eq!(
+            drive["inputEvent"],
+            json!([1]),
+            "sliced at the input region"
+        );
+        assert_eq!(active(app.clone(), id.clone()).await, ["finish", "start"]);
+        send(
+            &app,
+            "POST",
+            &format!("/api/machines/{id}/checkpoints/{cp}/restore"),
+            None,
+        )
+        .await;
+        assert_eq!(
+            active(app.clone(), id.clone()).await,
+            ["start"],
+            "restored as it was running"
+        );
+        let (status, _) = send(
+            &app,
+            "POST",
+            &format!("/api/machines/{id}/checkpoints/nope/restore"),
+            None,
+        )
+        .await;
+        assert_eq!(status, StatusCode::NOT_FOUND);
+        let (_, gone) = send(
+            &app,
+            "DELETE",
+            &format!("/api/machines/{id}/checkpoints/{cp}"),
+            None,
+        )
+        .await;
+        assert_eq!(gone, json!({ "success": true }));
+
+        send(
+            &app,
+            "PUT",
+            "/api/engine/config/transitionsInhibited",
+            Some(json!({ "machine": id, "value": true })),
+        )
+        .await;
+        let (_, patched) = send(
+            &app,
+            "PATCH",
+            &format!("/api/machines/{id}"),
+            Some(json!({ "description": "d", "metadata": { "k": 1 } })),
+        )
+        .await;
+        assert_eq!(patched["machine"]["description"], "d");
+        assert_eq!(patched["machine"]["metadata"]["k"], json!(1));
+        let (_, control) = send(&app, "GET", "/api/engine/config/transitionsInhibited", None).await;
+        assert_eq!(
+            control["value"][&id],
+            json!(true),
+            "PATCH keeps the machine's control state"
+        );
+
+        let (status, _) = send(
+            &app,
+            "PUT",
+            &format!("/api/machines/{id}"),
+            Some(json!({ "version": "1.0.0", "machine": 7 })),
+        )
+        .await;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        let (_, imported) = send(
+            &app,
+            "POST",
+            "/api/machines/json/import",
+            Some(machine_definition()),
+        )
+        .await;
+        assert_ne!(imported["machine"]["id"], json!(id), "import mints an id");
+        let (_, all) = send(
+            &app,
+            "POST",
+            "/api/machines/process-universal/all",
+            Some(json!({ "universalInputSpace": [0] })),
+        )
+        .await;
+        assert_eq!(all["results"].as_object().unwrap().len(), 2);
     }
 }
