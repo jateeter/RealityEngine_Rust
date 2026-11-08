@@ -15,12 +15,21 @@ http-body-util = "0.1.5"
 # system's roots as C++ verifies against OpenSSL's default paths; `ring`, so no
 # C toolchain beyond the one `cc` already needs.
 hyper-rustls = { version = "0.27.10", default-features = false, features = ["http1", "native-tokio", "ring", "tls12"] }
-hyper-util = { version = "0.1.21", features = ["client-legacy", "http1", "tokio"] }
+hyper-util = { version = "0.1.21", features = ["client-legacy", "http1", "server", "service", "tokio"] }
+# Lane TLS (RealityEngine_CI#668, #72): the server side of the TLS port. hyper's
+# http1 server with upgrades (so /ws works), over tokio-rustls on `ring`.
+hyper = { version = "1.12.0", features = ["http1", "server"] }
+tokio-rustls = { version = "0.26.6", default-features = false, features = ["ring"] }
+# The system's roots for an external party when the lane is on (hyper-rustls'
+# native-tokio already brings it).
+rustls-native-certs = "0.8"
 # `fcntl`: the instance lock is a POSIX record lock, which `instance_uuids.py live` can see.
 libc = "0.2.191"
 # The fallback when the system has no roots: an empty store, so plain HTTP
 # still works and only HTTPS fails, at its handshake.
 rustls = { version = "0.23.46", default-features = false, features = ["ring", "std", "tls12"] }
+# PEM certificates, keys and CRLs (`PemObject`), for lane TLS.
+rustls-pki-types = { version = "1.15.1", features = ["std"] }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.145"
 tokio = { version = "1.48.0", features = ["macros", "rt-multi-thread", "net", "sync", "time"] }

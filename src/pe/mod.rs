@@ -349,7 +349,24 @@ pub async fn serve() -> Result<(), Box<dyn std::error::Error>> {
         eprintln!("perception-engine: boot bootstrap {summary}");
     }
     mqtt::start_from_environment(&pe);
+    // Lane TLS (RealityEngine_CI#668, #72): RE_TLS_CERT set means TLS 1.3 on
+    // this port with no plaintext listener. The PE has device routes, so the
+    // handshake requests a certificate and verifies any presented, and every
+    // other route answers 403 without one. A bad configuration stops the PE.
+    let tls = match crate::tls::Settings::serving()? {
+        Some(settings) => Some(crate::tls::server_config(&settings, false)?),
+        None => None,
+    };
     let listener = tokio::net::TcpListener::bind(("0.0.0.0", port)).await?;
-    axum::serve(listener, router(pe)).await?;
+    match tls {
+        Some(config) => {
+            eprintln!(
+                "perception-engine: {}",
+                crate::tls::startup_line(port, true)
+            );
+            crate::tls::serve(listener, router(pe), config, true).await?;
+        }
+        None => axum::serve(listener, router(pe)).await?,
+    }
     Ok(())
 }

@@ -36,12 +36,65 @@ fn connector() -> HttpsConnector<HttpConnector> {
         .clone()
 }
 
+/// Lane TLS (RealityEngine_CI#668, #72): with the lane on (`RE_TLS_CA` set),
+/// an https call to an internal peer verifies against the lane CA alone (and
+/// its CRL) and presents this instance's certificate; any other host gets the
+/// system's roots; both held to the profile (TLS 1.3, its suites and groups).
+/// Built once each; a configuration that cannot be loaded is an error on the
+/// call, never an unverified one. With the lane off: `None`, and the
+/// connector above stands.
+fn lane_connector(internal: bool) -> Option<Result<HttpsConnector<HttpConnector>, String>> {
+    static INTERNAL: OnceLock<Result<HttpsConnector<HttpConnector>, String>> = OnceLock::new();
+    static EXTERNAL: OnceLock<Result<HttpsConnector<HttpConnector>, String>> = OnceLock::new();
+    if !crate::tls::lane_on() {
+        return None;
+    }
+    let build = |config: Result<rustls::ClientConfig, String>| {
+        config.map(|c| {
+            hyper_rustls::HttpsConnectorBuilder::new()
+                .with_tls_config(c)
+                .https_or_http()
+                .enable_http1()
+                .build()
+        })
+    };
+    let slot = if internal { &INTERNAL } else { &EXTERNAL };
+    Some(
+        slot.get_or_init(|| {
+            if internal {
+                let ca = std::env::var("RE_TLS_CA").unwrap_or_default();
+                let crl = std::env::var("RE_TLS_CRL")
+                    .ok()
+                    .filter(|v| !v.trim().is_empty());
+                let own = crate::tls::Settings::serving().ok().flatten();
+                build(crate::tls::internal_client_config(
+                    ca.trim(),
+                    &crl,
+                    own.as_ref(),
+                ))
+            } else {
+                build(crate::tls::external_client_config())
+            }
+        })
+        .clone(),
+    )
+}
+
 /// Send `request`: the status and the body, or why nothing answered.
 async fn send(
     request: axum::http::Request<Full<Bytes>>,
 ) -> Result<(axum::http::StatusCode, Bytes), String> {
     let what = format!("{} {}", request.method(), request.uri());
-    let client = Client::builder(TokioExecutor::new()).build::<_, Full<Bytes>>(connector());
+    let https = request.uri().scheme_str() == Some("https");
+    let host = request.uri().host().unwrap_or_default().to_owned();
+    // Each call still builds its own client over the connector (see
+    // `connector`): rustls resumes the TLS 1.3 session, so a repeated call to the
+    // same peer is an abbreviated handshake rather than a full one.
+    let connector = match (https, lane_connector(crate::tls::is_internal_host(&host))) {
+        (true, Some(lane)) => lane.map_err(|e| format!("{what}: {e}"))?,
+        _ => connector(),
+    };
+    let client = Client::builder(TokioExecutor::new()).build::<_, Full<Bytes>>(connector);
     let response = tokio::time::timeout(TIMEOUT, client.request(request))
         .await
         .map_err(|_| format!("{what}: timed out"))?

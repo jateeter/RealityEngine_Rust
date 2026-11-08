@@ -28,6 +28,7 @@ mod runtime;
 mod sequences;
 mod simulation;
 mod step;
+pub mod tls;
 
 use instance_clock::InstanceClock;
 
@@ -2438,8 +2439,21 @@ pub async fn serve() -> Result<(), Box<dyn std::error::Error>> {
         .ok()
         .and_then(|value| value.parse::<u16>().ok())
         .unwrap_or(5801);
+    // Lane TLS (RealityEngine_CI#668, #72): RE_TLS_CERT set means TLS 1.3 with
+    // a client certificate required at the handshake, and no plaintext
+    // listener. A configuration that cannot be loaded stops the RE.
+    let tls = match tls::Settings::serving()? {
+        Some(settings) => Some(tls::server_config(&settings, true)?),
+        None => None,
+    };
     let listener = tokio::net::TcpListener::bind(("0.0.0.0", port)).await?;
-    axum::serve(listener, app(engine_from_environment()?)).await?;
+    match tls {
+        Some(config) => {
+            eprintln!("reality-engine: {}", tls::startup_line(port, false));
+            tls::serve(listener, app(engine_from_environment()?), config, false).await?;
+        }
+        None => axum::serve(listener, app(engine_from_environment()?)).await?,
+    }
     Ok(())
 }
 
