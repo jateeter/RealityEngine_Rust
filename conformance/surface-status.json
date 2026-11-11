@@ -202,6 +202,9 @@
       "notes": "instance and lamport per RealityEngine_CI#296 (allocated UUID, persisted reservation, fcntl instance lock); the clock ticks once per committed step, pushed or simulated (#11)",
       "status": "implemented"
     },
+    "RE GET /api/engine/clones": {
+      "status": "implemented"
+    },
     "RE GET /api/engine/config": {
       "notes": "all eight universal controls, identical to C++ on the regression corpus",
       "status": "implemented"
@@ -251,6 +254,9 @@
     },
     "RE GET /api/machines/:id/export": {
       "notes": "#13 slice 1: identical to C++ on the regression corpus (load-time output timestamps aside), fresh, after 20 steps and after a reset; regression-export-parity.py passes jointly with C++",
+      "status": "implemented"
+    },
+    "RE GET /api/machines/cloneable": {
       "status": "implemented"
     },
     "RE GET /api/machines/json/:name": {
@@ -305,7 +311,13 @@
     "RE PATCH /api/runtime/options": {
       "status": "implemented"
     },
+    "RE POST /api/engine/clone/machine/:machineId": {
+      "status": "implemented"
+    },
     "RE POST /api/engine/process": {
+      "status": "implemented"
+    },
+    "RE POST /api/engine/recycle/machine/:cloneId": {
       "status": "implemented"
     },
     "RE POST /api/engine/reset": {
@@ -449,9 +461,9 @@
   },
   "schema": 1,
   "spec": {
-    "commit": "84b2a658cb73a35e7c0e9860c3f8319985cdd3a7",
+    "commit": "bcb604bf1f2e84dd7ad2577ec6c74f2b228d7d9d",
     "path": "SURFACE_SPEC.md",
     "repository": "jateeter/RealityEngine_CI",
-    "sha256": "75568299943fdd5d924ed341fcebe9d807dda6619dbaa510d76031265e398497"
+    "sha256": "e77345ea97fbfda0868097203dc61c08708bc6d11ef46df33871375a6fcd99d5"
   }
 }

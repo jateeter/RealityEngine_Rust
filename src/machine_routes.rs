@@ -94,17 +94,36 @@ impl Engine {
         machine.id = id.to_owned();
         if let Some(previous) = self.machines.remove(id) {
             machine.transitions_inhibited = previous.transitions_inhibited;
+            // A replaced corpus machine keeps its file: the id names the same
+            // machine (SURFACE_SPEC.md, "Cloneable machines").
+            machine.source_file = previous.source_file;
         }
         self.admit(machine);
         self.machines[id].to_json(true)
     }
 
+    /// A clone changes only through recycle (SURFACE_SPEC.md, "POST
+    /// /api/engine/clone/machine/:machineId").
+    fn refuse_clone(&self, id: &str) -> Result<(), EngineError> {
+        if self.clone_space.is_clone(id) {
+            return Err(EngineError {
+                status: StatusCode::CONFLICT,
+                message: "a clone changes only through POST /api/engine/recycle/machine/:cloneId"
+                    .to_owned(),
+            });
+        }
+        Ok(())
+    }
+
     fn replace_machine(&mut self, id: &str, body: Value) -> Result<Value, EngineError> {
+        self.refuse_clone(id)?;
         let machine = Machine::from_json(body)?;
         Ok(json!({ "success": true, "machine": self.readmit(id, machine) }))
     }
 
     fn patch_machine(&mut self, id: &str, body: &Value) -> Result<Value, EngineError> {
+        self.resident(id)?;
+        self.refuse_clone(id)?;
         let mut declaration = self.resident(id)?.raw.clone();
         for key in ["name", "description"] {
             if let Some(text) = body[key].as_str() {
