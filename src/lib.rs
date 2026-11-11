@@ -20,6 +20,7 @@ use std::{
 
 mod arbitration;
 mod auxiliary;
+mod clones;
 pub mod instance_clock;
 mod machine_routes;
 mod machine_view;
@@ -132,6 +133,17 @@ struct Machine {
     /// SURFACE_SPEC.md, "`transitionsInhibited`": `true` accepts a Reality
     /// Event and does not pass it forward. Default `false`.
     transitions_inhibited: bool,
+    /// The corpus file this machine was loaded from, by file name, or empty
+    /// for a machine registered from a request body. Cloneability reads it
+    /// (SURFACE_SPEC.md, "Cloneable machines"): a document handoff names its
+    /// source by file stem and a bus edge its target by file name, and neither
+    /// can be recovered from the normalised id. Not serialised.
+    source_file: String,
+    /// Set on a clone only: the template, the assetID and the dispatch
+    /// envelope. Serialised only when set.
+    clone_of: Option<String>,
+    asset_id: String,
+    envelope_id: String,
 }
 
 /// CES coverage, as C++'s `CesCoverageRegistry` keeps it: counters since the
@@ -266,6 +278,14 @@ pub struct Engine {
     arbitration: step::ArbitrationRegistry,
     /// The sampler's bookkeeping (`/api/sampler/*`); an engine reset keeps it.
     sampler: auxiliary::Sampler,
+    /// Live clones and block generations (SURFACE_SPEC.md, "Cloneable
+    /// machines"). A restart loses them all.
+    clone_space: clones::Space,
+    /// `clone.maxActive`: the bound on live clones of one template.
+    clone_max_active: usize,
+    /// The id this instance was launched as (`INSTANCE_ID`, e.g. `rust-1`):
+    /// the middle segment of every clone id. Without it nothing is cloned.
+    engine_instance: String,
 }
 
 /// The id a corpus file's machine gets, on every engine: `machine-` and the
@@ -592,6 +612,10 @@ impl Machine {
             raw: machine_value.clone(),
             sequences,
             transitions_inhibited: false,
+            source_file: String::new(),
+            clone_of: None,
+            asset_id: String::new(),
+            envelope_id: String::new(),
         })
     }
 
@@ -927,6 +951,7 @@ impl Engine {
             threshold: 0.5,
             qdrant_url: "http://localhost:4333".to_owned(),
             collection_name: "reality-events".to_owned(),
+            clone_max_active: clones::MAX_ACTIVE_DEFAULT,
             ..Self::default()
         }
     }
@@ -1022,13 +1047,15 @@ impl Engine {
                         path.display()
                     ))
                 })?;
+            let id = canonical_machine_id(file_id);
             if let Some(object) = definition.as_object_mut() {
-                object.insert("id".to_owned(), json!(canonical_machine_id(file_id)));
+                object.insert("id".to_owned(), json!(id));
             }
             self.load_machine(definition).map_err(|error| EngineError {
                 status: error.status,
                 message: format!("{}: {}", path.display(), error.message),
             })?;
+            self.record_source_file(&id, &path);
             loaded += 1;
         }
         Ok(loaded)
@@ -1126,7 +1153,19 @@ impl Engine {
         // Validate before replacing, so a bad file leaves the resident machine.
         Machine::from_json(definition.clone())?;
         self.machines.remove(&id);
-        self.load_machine(definition)
+        let summary = self.load_machine(definition)?;
+        self.record_source_file(&id, &path);
+        Ok(summary)
+    }
+
+    /// Keeps the corpus file name on the machine just loaded under `id`.
+    fn record_source_file(&mut self, id: &str, path: &FsPath) {
+        if let (Some(machine), Some(name)) = (
+            self.machines.get_mut(id),
+            path.file_name().and_then(|f| f.to_str()),
+        ) {
+            machine.source_file = name.to_owned();
+        }
     }
 
     /// `GET /api/machines`: every resident machine, in canonical order, in
@@ -1223,6 +1262,11 @@ impl Engine {
                 json!(arbitration::WINDOW_DEFAULT),
             ),
             control(
+                "clone.maxActive",
+                json!(self.clone_max_active),
+                json!(clones::MAX_ACTIVE_DEFAULT),
+            ),
+            control(
                 "historyLimit",
                 json!(c.history_limit),
                 json!(step::HISTORY_LIMIT_DEFAULT),
@@ -1300,6 +1344,20 @@ impl Engine {
                 let latest = self.steps.completed();
                 self.steps.prune_arbitration(latest);
             }
+            "clone.maxActive" => {
+                // Lowering it below the live count refuses new clones of that
+                // template until the count falls; it never recycles one.
+                let bound = value
+                    .as_f64()
+                    .filter(|n| *n >= 0.0 && *n <= clones::BLOCKS as f64 && n.fract() == 0.0)
+                    .ok_or_else(|| {
+                        EngineError::bad_request(format!(
+                            "clone.maxActive requires a whole-number `value` in [0, {}]",
+                            clones::BLOCKS
+                        ))
+                    })?;
+                self.clone_max_active = bound as usize;
+            }
             "historyLimit" => {
                 // Refused rather than cast: -1 as a size bounds nothing.
                 let limit = value
@@ -1353,6 +1411,7 @@ impl Engine {
                 let latest = self.steps.completed();
                 self.steps.prune_arbitration(latest);
             }
+            "clone.maxActive" => self.clone_max_active = clones::MAX_ACTIVE_DEFAULT,
             "historyLimit" => {
                 controls.history_limit = defaults.history_limit;
                 self.steps.trim_history();
@@ -1983,6 +2042,9 @@ async fn delete_machine(
     Path(id): Path<String>,
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     let mut state = engine.write().map_err(|_| error_response(lock_error()))?;
+    if state.clone_space.is_clone(&id) {
+        return Err(clones::clone_refused());
+    }
     if state.remove_machine(&id) {
         Ok(Json(json!({ "success": true, "id": id })))
     } else {
@@ -2074,6 +2136,16 @@ pub fn app(engine: Engine) -> Router {
         .route("/api/config/threshold", put(put_threshold))
         .route("/api/machines", get(list_machines).post(add_machine))
         .route("/api/machines/json/list", get(machine_catalog))
+        .route("/api/machines/cloneable", get(clones::cloneable))
+        .route(
+            "/api/engine/clone/machine/{machine_id}",
+            post(clones::clone_machine),
+        )
+        .route(
+            "/api/engine/recycle/machine/{clone_id}",
+            post(clones::recycle),
+        )
+        .route("/api/engine/clones", get(clones::clones))
         .route("/api/machines/json/{name}", get(load_machine_by_name))
         .route(
             "/api/machines/{id}",
@@ -2407,6 +2479,9 @@ pub fn engine_from_environment() -> Result<Engine, EngineError> {
     );
     let mut engine = Engine::new(dimension);
     engine.clock = clock;
+    // SURFACE_SPEC.md, "POST /api/engine/clone/machine/:machineId": the id
+    // this instance was launched as, the middle segment of a clone id.
+    engine.engine_instance = std::env::var("INSTANCE_ID").unwrap_or_default();
     // SURFACE_SPEC.md, "GET /api/config": the Qdrant store's address and
     // collection, as C++, LSP and Scala report them.
     if let Ok(url) = std::env::var("QDRANT_URL") {
@@ -2669,6 +2744,7 @@ mod tests {
             json!({ "controls": [
                 engine("arbitrationRetention", json!(false)),
                 engine("arbitrationWindow", json!(1)),
+                engine("clone.maxActive", json!(8)),
                 engine("historyLimit", json!(250)),
                 engine("includeActiveRegions", json!(true)),
                 engine("includeMachineResults", json!(true)),

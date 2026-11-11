@@ -152,7 +152,7 @@ impl Machine {
     /// C++ `Machine::to_json(full)`.
     pub(crate) fn to_json(&self, full: bool) -> Value {
         let sequences = self.sequences_in_order();
-        json!({
+        let mut out = json!({
             "id": self.id,
             "name": self.name,
             "description": self.description,
@@ -177,7 +177,15 @@ impl Machine {
                 .collect::<Vec<_>>(),
             "metadata": self.metadata(),
             "perceptualMapping": self.mapping(),
-        })
+        });
+        // Only clones carry these three (SURFACE_SPEC.md, "POST
+        // /api/engine/clone/machine/:machineId").
+        if let Some(template) = &self.clone_of {
+            out["cloneOf"] = json!(template);
+            out["assetId"] = json!(self.asset_id);
+            out["envelopeId"] = json!(self.envelope_id);
+        }
+        out
     }
 
     /// C++ `corpus_document`: the full form, as the corpus declares a machine —
