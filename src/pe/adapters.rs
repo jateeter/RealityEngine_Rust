@@ -1033,7 +1033,7 @@ mod tests {
         assert_eq!(status, StatusCode::BAD_GATEWAY);
         assert_eq!(
             reply["receipt"]["providerReceipt"],
-            json!({"model": "nemotron-3-nano:4b-mlx", "endpoint": "/responses"})
+            json!({"model": "nemotron-3-nano:4b", "endpoint": "/responses"})
         );
         assert_eq!(record(&app, &id).await["status"], json!("failed"));
         // No key is needed: the local LLM ignores it (owner ruling, 2026-11-01).
@@ -1135,7 +1135,7 @@ mod tests {
             json!(["a", "b", "a"])
         );
         let record = json!({"envelope": {}});
-        let nemotron = openai_payload(&record, &json!({}), "nemotron-3-nano:4b-mlx", &mapping);
+        let nemotron = openai_payload(&record, &json!({}), "nemotron-3-nano:4b", &mapping);
         assert_eq!(nemotron["text"], Value::Null);
         assert_eq!(
             nemotron["instructions"],
@@ -1156,7 +1156,7 @@ mod tests {
             &mapping,
         );
         assert_eq!(explicit["text"], openai_text_format(&mapping));
-        assert!(!supports_structured_output("nemotron-3-nano:4b-mlx"));
+        assert!(!supports_structured_output("nemotron-3-nano:4b"));
         assert!(supports_structured_output("gemma3:4b"));
     }
 }
