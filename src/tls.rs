@@ -268,21 +268,82 @@ pub fn is_internal_host(raw: &str) -> bool {
 #[derive(Clone, Copy, Debug)]
 pub struct PeerVerified(pub bool);
 
-/// For a port with device routes: 403 without a verified certificate, except
-/// on [`PE_DEVICE_ROUTES`].
-pub async fn require_client_certificate(request: Request, next: Next) -> Response {
-    let verified = request
-        .extensions()
-        .get::<PeerVerified>()
-        .is_some_and(|p| p.0);
-    if verified || PE_DEVICE_ROUTES.contains(&request.uri().path()) {
-        return next.run(request).await;
-    }
+/// HEALTHKIT_CLIENT_CERTIFICATE_REQUIRED (owner, 2026-11-12): the sources that
+/// must present a client certificate on the device routes too (PIM's scope
+/// pushes), comma-separated. C++, LSP, Scala and the TypeScript PE read the same.
+pub fn certificate_sources(raw: Option<&str>) -> Vec<String> {
+    raw.unwrap_or("")
+        .split(',')
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(String::from)
+        .collect()
+}
+
+/// A device route's source: the query's `bridgeId` (status), else the body's
+/// `source`, else its `bridgeId` (scope, ingest), else the configured bridge.
+fn device_source(query: Option<&str>, body: &[u8]) -> String {
+    let named = |v: Option<&serde_json::Value>| {
+        v.and_then(|v| v.as_str())
+            .filter(|s| !s.is_empty())
+            .map(String::from)
+    };
+    let from_query = query.and_then(|q| {
+        q.split('&')
+            .filter_map(|kv| kv.split_once('='))
+            .find(|(k, _)| *k == "bridgeId")
+            .map(|(_, v)| v.to_string())
+            .filter(|v| !v.is_empty())
+    });
+    let json: serde_json::Value = serde_json::from_slice(body).unwrap_or(serde_json::Value::Null);
+    from_query
+        .or_else(|| named(json.get("source")))
+        .or_else(|| named(json.get("bridgeId")))
+        .unwrap_or_else(|| {
+            std::env::var("HEALTHKIT_BRIDGE_ID").unwrap_or_else(|_| "healthkit-ios-bridge".into())
+        })
+}
+
+fn forbidden() -> Response {
     Response::builder()
         .status(StatusCode::FORBIDDEN)
         .header(header::CONTENT_TYPE, "application/json")
         .body(Body::from(CLIENT_CERTIFICATE_REQUIRED))
         .expect("a static response")
+}
+
+/// For a port with device routes: 403 without a verified certificate, except
+/// on [`PE_DEVICE_ROUTES`] for a source that need not present one.
+pub async fn require_client_certificate(request: Request, next: Next) -> Response {
+    let verified = request
+        .extensions()
+        .get::<PeerVerified>()
+        .is_some_and(|p| p.0);
+    if verified {
+        return next.run(request).await;
+    }
+    if !PE_DEVICE_ROUTES.contains(&request.uri().path()) {
+        return forbidden();
+    }
+    let required = certificate_sources(
+        std::env::var("HEALTHKIT_CLIENT_CERTIFICATE_REQUIRED")
+            .ok()
+            .as_deref(),
+    );
+    if required.is_empty() {
+        return next.run(request).await;
+    }
+    // Read the body for its source, then hand the request on whole.
+    let (parts, body) = request.into_parts();
+    let Ok(bytes) = axum::body::to_bytes(body, 16 * 1024 * 1024).await else {
+        return forbidden();
+    };
+    let source = device_source(parts.uri.query(), &bytes);
+    if required.contains(&source) {
+        return forbidden();
+    }
+    next.run(Request::from_parts(parts, Body::from(bytes)))
+        .await
 }
 
 pub fn startup_line(port: u16, device_routes: bool) -> String {
@@ -349,6 +410,29 @@ mod tests {
     use std::path::{Path, PathBuf};
     use std::process::Command;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    #[test]
+    fn certificate_sources_are_a_trimmed_comma_list() {
+        assert_eq!(
+            certificate_sources(Some(" pim , other,")),
+            vec!["pim", "other"]
+        );
+        assert!(certificate_sources(None).is_empty());
+    }
+
+    #[test]
+    fn a_device_requests_source_is_the_query_then_the_body_then_the_bridge() {
+        assert_eq!(device_source(Some("bridgeId=phone-2"), b""), "phone-2");
+        assert_eq!(
+            device_source(None, br#"{"source":"pim","bridgeId":"phone"}"#),
+            "pim"
+        );
+        assert_eq!(
+            device_source(None, br#"{"source":"","bridgeId":"phone"}"#),
+            "phone"
+        );
+        assert_eq!(device_source(None, b"not json"), "healthkit-ios-bridge");
+    }
 
     fn openssl() -> String {
         [
