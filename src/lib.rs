@@ -5174,7 +5174,7 @@ mod tests {
                 &json!(false),
                 &Value::Null,
                 &json!(0),
-                &json!("nemotron-3-nano:4b-mlx")
+                &json!("nemotron-3-nano:4b")
             )
         );
         assert_eq!(
@@ -5188,7 +5188,7 @@ mod tests {
             (&body["baseUrl"], &body["model"], &body["hasApiKey"]),
             (
                 &json!("http://localhost:11434/v1"),
-                &json!("nemotron-3-nano:4b-mlx"),
+                &json!("nemotron-3-nano:4b"),
                 &json!(false)
             )
         );
