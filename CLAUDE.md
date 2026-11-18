@@ -1,12 +1,12 @@
 # RealityEngine_Rust Guidance
 
-Last reviewed: 2026-11-04
+Last reviewed: 2026-11-18
 
 See `/Users/johnt/workspace/GitHub/CLAUDE.md` for the integrated application map. Update both this file and the root map when the Rust engine's role, validation tiers, ports or parity responsibilities change.
 
 ## Role
 
-This repo is the Rust Reality Engine. It is a **non-voting conformance follower** (RealityEngine_CI#607): measured against the behaviour C++, LSP and Scala agree on, never a fourth vote. It implements the RE surface outside phase 2 and the first slice of a PE (#20); where it stands is `conformance/SURFACE_STATUS.md` and `RealityEngine_CI/docs/RUST_RUNTIME_EVALUATION.md`, and the repair plan is this repo's #2. Default ports 5801 (RE, `reality-engine`) and 5800 (PE, `perception-engine`).
+This repo is the Rust Reality Engine. It is a **non-voting conformance follower** (RealityEngine_CI#607): measured against the behaviour C++, LSP and Scala agree on, never a fourth vote. It **ships in release-v0.0.2** as the image `re-rust` (owner, 2026-11-13; RealityEngine_CI#772), still a follower: shipping is not voting. Every native regression run includes it (R3), and its verdict is shown beside the voters' parity results in `summary.md` without counting (owner, 2026-11-18; RealityEngine_CI#793). It implements the RE surface outside phase 2 and the first slice of a PE (#20); where it stands is `conformance/SURFACE_STATUS.md` and `RealityEngine_CI/docs/RUST_RUNTIME_EVALUATION.md`, and the repair plan is this repo's #2. Default ports 5801 (RE, `reality-engine`) and 5800 (PE, `perception-engine`).
 
 ## Codebase Map
 

@@ -1,6 +1,13 @@
 # RealityEngine_Rust
 An implementation of the RealityEngine in the Rust Language providing black-box equivalence to other RealityEngine implementations.
 
+**Status.** Rust ships in `release-v0.0.2` as the image `re-rust`. It is a
+**non-voting conformance follower** (RealityEngine_CI `docs/QUORUM_CONTRACT.md`):
+it is held to what the C++, LSP and Scala engines agree on and never votes.
+Every native regression run includes it, and its verdict is shown beside the
+voters' parity results; a Rust divergence is reported, never counted. Where it
+stands against the specification is `conformance/SURFACE_STATUS.md`.
+
 ## Build and run
 
 ```sh
