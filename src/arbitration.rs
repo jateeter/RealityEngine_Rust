@@ -94,13 +94,14 @@ impl Engine {
         })
     }
 
-    fn retained_step_json(&self, step: u64, lamport: u64, records: &[ArbitrationRecord]) -> Value {
+    fn retained_step_json(
+        &self,
+        step: u64,
+        at: (u64, u64),
+        records: &[ArbitrationRecord],
+    ) -> Value {
         let mut body = self.arbitration_body(records, true);
-        body["clock"] = json!({
-            "instance": self.clock.instance(),
-            "lamport": lamport,
-            "step": step,
-        });
+        body["clock"] = self.clock_json(at, step);
         body
     }
 
@@ -122,13 +123,13 @@ impl Engine {
             if n as i64 > completed {
                 return Err(EngineError::not_found(format!("step {n} has not resolved")));
             }
-            let Some((lamport, records)) = self.steps.retained.get(&n) else {
+            let Some((at, records)) = self.steps.retained.get(&n) else {
                 return Err(fail(
                     StatusCode::GONE,
                     format!("step {n} is no longer retained"),
                 ));
             };
-            return Ok(self.retained_step_json(n, *lamport, records));
+            return Ok(self.retained_step_json(n, *at, records));
         }
         if controls.arbitration_retention {
             let first = (completed - controls.arbitration_window as i64 + 1).max(0);
@@ -137,7 +138,7 @@ impl Engine {
                 .retained
                 .iter()
                 .filter(|(step, _)| (**step as i64) >= first && (**step as i64) <= completed)
-                .map(|(step, (lamport, records))| self.retained_step_json(*step, *lamport, records))
+                .map(|(step, (at, records))| self.retained_step_json(*step, *at, records))
                 .collect();
             return Ok(json!(steps));
         }

@@ -38,7 +38,19 @@ mod streams;
 /// The auto-push interval C++ reports before any `POST /api/auto/start`.
 const AUTO_INTERVAL_MS: u64 = 1000;
 
+/// The PE's participant clock (RealityEngine_CI#600): its own UUID
+/// (`PE_INSTANCE_UUID`), lock and marks, booted in [`serve`] before the PE
+/// calls anyone. Until then (tests) a minted, unpersisted one stands in.
+static PE_CLOCK: std::sync::OnceLock<Arc<crate::instance_clock::InstanceClock>> =
+    std::sync::OnceLock::new();
+
+pub(crate) fn participant_clock() -> &'static Arc<crate::instance_clock::InstanceClock> {
+    PE_CLOCK.get_or_init(|| Arc::new(crate::instance_clock::InstanceClock::minted()))
+}
+
 pub struct PerceptionEngine {
+    /// (lamport, commit) at the newest completed push: a push is the PE's commit.
+    last_push_clock: (u64, u64),
     dimension: usize,
     global_step: u64,
     persistent_vector: Vec<f64>,
@@ -83,6 +95,7 @@ pub struct PerceptionEngine {
 impl PerceptionEngine {
     pub fn new(dimension: usize) -> Self {
         Self {
+            last_push_clock: (0, 0),
             dimension,
             global_step: 0,
             persistent_vector: vec![0.0; dimension],
@@ -183,6 +196,21 @@ async fn root() -> Json<Value> {
     Json(json!({ "service": "Perception Engine (Rust)", "status": "running" }))
 }
 
+/// `GET /api/clock`: `{instance, lamport, commit, step}` at the newest completed
+/// push (commit counting completed pushes, step the globalStep), and `headers`.
+async fn clock(State(pe): State<SharedPe>) -> Answer {
+    let state = read(&pe)?;
+    let clock = participant_clock();
+    let (lamport, commit) = state.last_push_clock;
+    Ok(Json(json!({
+        "instance": clock.instance(),
+        "lamport": lamport,
+        "commit": commit,
+        "step": state.global_step,
+        "headers": crate::participant_clock::headers_json(clock),
+    })))
+}
+
 async fn health() -> Json<Value> {
     Json(json!({ "status": "healthy", "timestamp": now_ms(), "version": VERSION }))
 }
@@ -210,6 +238,7 @@ fn router(pe: SharedPe) -> Router {
     Router::new()
         .route("/", get(root))
         .route("/api/health", get(health))
+        .route("/api/clock", get(clock))
         .route("/api/state", get(state))
         .route("/api/config", patch(config))
         .route("/api/reset", post(reset))
@@ -298,6 +327,10 @@ fn router(pe: SharedPe) -> Router {
             unsupported_or(Layer::Pe, &method, &uri, StatusCode::METHOD_NOT_ALLOWED)
         })
         .layer(axum::middleware::map_response(ecmascript_numbers))
+        .layer(axum::middleware::from_fn_with_state(
+            Arc::clone(participant_clock()),
+            crate::participant_clock::server,
+        ))
         .with_state(pe)
 }
 
@@ -330,8 +363,22 @@ pub async fn serve() -> Result<(), Box<dyn std::error::Error>> {
         .and_then(|value| value.parse::<usize>().ok())
         .unwrap_or(7680);
     let re_url = std::env::var("RE_URL").unwrap_or_else(|_| "http://localhost:5801".to_owned());
+    // The PE's own clock, booted before it calls anyone (#600): every request
+    // a receive, every response and call to an internal peer a send.
+    let clock = crate::instance_clock::InstanceClock::boot_var("PE_INSTANCE_UUID")?;
+    eprintln!(
+        "perception-engine: participant {}, lamport {}, commit {}",
+        clock.instance(),
+        clock.lamport(),
+        clock.commit()
+    );
+    let booted = (clock.lamport(), clock.commit());
+    PE_CLOCK
+        .set(Arc::new(clock))
+        .map_err(|_| "the PE clock was already in use before boot")?;
     eprintln!("perception-engine: port {port}, perceptionDimension {dimension}, RE {re_url}");
     let mut engine = PerceptionEngine::new(dimension).with_re_url(re_url.clone());
+    engine.last_push_clock = booted;
     let machines_dir = std::env::var("MACHINES_DIR")
         .unwrap_or_else(|_| "../RealityEngine_Machines/machines".to_owned());
     engine.registry = step::ArbitrationRegistry::load(std::path::Path::new(&machines_dir));

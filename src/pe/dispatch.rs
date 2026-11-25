@@ -439,6 +439,9 @@ impl PerceptionEngine {
                 "error": null,
                 "semantics": semantics,
                 "replayOf": null,
+                // The PE's clock when it stored the record (#600); a
+                // completion names it as causedBy.
+                "clock": crate::participant_clock::event_json(super::participant_clock()),
             });
             self.dispatch.envelopes_created += 1;
             self.broadcast(&json!({
@@ -546,6 +549,7 @@ impl PerceptionEngine {
         replay["providerReceipt"] = Value::Null;
         replay["error"] = Value::Null;
         replay["replayOf"] = json!(id);
+        replay["clock"] = crate::participant_clock::event_json(super::participant_clock());
         replay["createdAt"] = json!(now);
         replay["updatedAt"] = json!(now);
         if fresh_ids {

@@ -214,7 +214,12 @@ pub(crate) async fn step(State(engine): State<SharedEngine>) -> Answer {
     Ok(Json(
         match state.simulation_step().map_err(error_response)? {
             None => json!({ "done": true, "success": true }),
-            Some(step) => json!({ "success": true, "step": step.to_json(true, true, true, None) }),
+            Some(step) => {
+                // The committed step's clock (#600), as on POST /api/perceive.
+                let mut out = step.to_json(true, true, true, None);
+                out["clock"] = state.clock_json(state.last_commit, step.step_number);
+                json!({ "success": true, "step": out })
+            }
         },
     ))
 }

@@ -169,7 +169,18 @@ pub(crate) async fn ingest_completion(pe: &SharedPe, body: &Value) -> (StatusCod
     if !status.is_success() {
         return (status, reply);
     }
+    // The completion's clock and causedBy (#600): the dispatch's clock while
+    // its record is in the ledger, else the sender's well-formed echo, else null.
+    let own = text(body, "dispatchId").and_then(|id| {
+        pe.read()
+            .ok()
+            .and_then(|state| state.dispatch.records.get(id).map(|r| r["clock"].clone()))
+    });
+    let caused_by = crate::participant_clock::caused_by(own.as_ref(), &body["causedBy"]);
+    let completion_clock = crate::participant_clock::event_json(super::participant_clock());
     let mut completion = json!({
+        "clock": completion_clock,
+        "causedBy": caused_by,
         "provider": provider,
         "agent": agent,
         "sensorId": sensor_id,
@@ -192,6 +203,8 @@ pub(crate) async fn ingest_completion(pe: &SharedPe, body: &Value) -> (StatusCod
             "sourceMappingId": mapping_id,
             "correlationId": correlation,
             "envelopeId": envelope,
+            "clock": completion_clock,
+            "causedBy": caused_by,
             "timestamp": now_ms(),
         }),
     );

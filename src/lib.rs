@@ -24,6 +24,7 @@ mod clones;
 pub mod instance_clock;
 mod machine_routes;
 mod machine_view;
+pub mod participant_clock;
 pub mod pe;
 mod runtime;
 mod sequences;
@@ -263,8 +264,13 @@ pub struct Engine {
     coverage: Coverage,
     /// Bumped on every machine added or removed (`re_runtime_mapping_version`).
     mapping_version: u64,
-    /// The instance's Lamport clock (RealityEngine_CI#296). Never reset.
-    clock: InstanceClock,
+    /// The instance's participant clock (RealityEngine_CI#296, #600). Never
+    /// reset; shared with the request middleware, which ticks it on every
+    /// receive and send.
+    clock: Arc<InstanceClock>,
+    /// (lamport, commit) at the newest committed step: what
+    /// `GET /api/engine/clock` and the step's reply report.
+    last_commit: (u64, u64),
     /// The step path: the perceptual space, the trajectories, step completion (#11).
     steps: step::StepState,
     /// Checkpoints by machine id, then checkpoint id: each a copy of the
@@ -1698,15 +1704,28 @@ impl Engine {
         json!({ "history": self.history })
     }
 
-    /// SURFACE_SPEC.md, "The instance clock": `{instance, lamport, step}` for
-    /// the newest committed step (and, with `arbitration::clock_json`, for
-    /// each retained step). Only the step path (`POST /api/perceive`)
+    /// SURFACE_SPEC.md, "The instance clock": `{instance, lamport, commit,
+    /// step}` for the newest committed step, plus `headers`, the inbound
+    /// `RE-Clock` headers since boot. Only the step path (`POST /api/perceive`)
     /// commits a step, as in C++ (`onStepCommitted`); the process routes do not.
     fn clock(&self) -> Value {
+        let mut out = self.clock_json(self.last_commit, self.steps.completed());
+        let (received, missing, rejected) = self.clock.header_counts();
+        out["headers"] = json!({ "received": received, "missing": missing, "rejected": rejected });
+        out
+    }
+
+    /// `{instance, lamport, commit, step}`: a committed step's clock.
+    pub(crate) fn clock_json(
+        &self,
+        (lamport, commit): (u64, u64),
+        step: impl serde::Serialize,
+    ) -> Value {
         json!({
             "instance": self.clock.instance(),
-            "lamport": self.clock.lamport(),
-            "step": self.steps.completed(),
+            "lamport": lamport,
+            "commit": commit,
+            "step": step,
         })
     }
 
@@ -2126,6 +2145,7 @@ async fn reset(
 }
 
 pub fn app(engine: Engine) -> Router {
+    let clock = Arc::clone(&engine.clock);
     let state = Arc::new(RwLock::new(engine));
     Router::new()
         .route("/", get(root))
@@ -2266,6 +2286,10 @@ pub fn app(engine: Engine) -> Router {
             unsupported_or(Layer::Re, &method, &uri, StatusCode::METHOD_NOT_ALLOWED)
         })
         .layer(axum::middleware::map_response(ecmascript_numbers))
+        .layer(axum::middleware::from_fn_with_state(
+            clock,
+            participant_clock::server,
+        ))
         .with_state(state)
 }
 
@@ -2473,12 +2497,14 @@ pub fn engine_from_environment() -> Result<Engine, EngineError> {
         message,
     })?;
     eprintln!(
-        "reality-engine: instance {}, lamport {}",
+        "reality-engine: instance {}, lamport {}, commit {}",
         clock.instance(),
-        clock.lamport()
+        clock.lamport(),
+        clock.commit()
     );
     let mut engine = Engine::new(dimension);
-    engine.clock = clock;
+    engine.last_commit = (clock.lamport(), clock.commit());
+    engine.clock = Arc::new(clock);
     // SURFACE_SPEC.md, "POST /api/engine/clone/machine/:machineId": the id
     // this instance was launched as, the middle segment of a clone id.
     engine.engine_instance = std::env::var("INSTANCE_ID").unwrap_or_default();
@@ -2812,7 +2838,10 @@ mod tests {
             .keys()
             .map(String::as_str)
             .collect();
-        assert_eq!(keys, ["eventBus", "mergeBatch", "stepNumber", "timestamp"]);
+        assert_eq!(
+            keys,
+            ["clock", "eventBus", "mergeBatch", "stepNumber", "timestamp"]
+        );
         let step = push(json!({ "vector": [1], "includeMachineResults": true })).await;
         assert!(
             step["machineResults"].is_object(),
@@ -3304,18 +3333,26 @@ mod tests {
         assert_eq!(history["history"][0]["stepNumber"], 0);
         assert_eq!(history["history"].as_array().unwrap().len(), 1);
 
-        // The clock ticked once per committed step.
+        // commit ticked once per committed step; lamport also ticks on every
+        // receive and send, so it is at least commit (#600).
         let (_, clock) = send(&app, "GET", "/api/engine/clock", None).await;
         assert_eq!(
-            (clock["lamport"].clone(), clock["step"].clone()),
+            (clock["commit"].clone(), clock["step"].clone()),
             (json!(2), json!(1))
         );
-        // A reset restarts the numbering and the histories; the clock keeps its value.
+        assert!(clock["lamport"].as_u64().unwrap() >= 2, "{clock}");
+        // A reset restarts the numbering and the histories; the clock keeps its
+        // lamport and commit.
+        let kept = (clock["lamport"].clone(), clock["commit"].clone());
         send(&app, "POST", "/api/engine/reset", None).await;
         let (_, clock) = send(&app, "GET", "/api/engine/clock", None).await;
         assert_eq!(
-            (clock["lamport"].clone(), clock["step"].clone()),
-            (json!(2), json!(-1))
+            (
+                clock["lamport"].clone(),
+                clock["commit"].clone(),
+                clock["step"].clone()
+            ),
+            (kept.0, kept.1, json!(-1))
         );
         let (status, _) = send(&app, "GET", "/api/engine/steps/0/pair?timeoutMs=0", None).await;
         assert_eq!(status, StatusCode::REQUEST_TIMEOUT);
@@ -3598,7 +3635,10 @@ mod tests {
             .keys()
             .map(String::as_str)
             .collect();
-        assert_eq!(keys, ["eventBus", "mergeBatch", "stepNumber", "timestamp"]);
+        assert_eq!(
+            keys,
+            ["clock", "eventBus", "mergeBatch", "stepNumber", "timestamp"]
+        );
     }
 
     #[tokio::test]
@@ -3713,7 +3753,8 @@ mod tests {
             "the default window is one"
         );
         assert_eq!(steps[0]["clock"]["step"], json!(3));
-        let (_, clock) = send(&app, "GET", "/api/engine/clock", None).await;
+        let (_, mut clock) = send(&app, "GET", "/api/engine/clock", None).await;
+        clock.as_object_mut().unwrap().remove("headers");
         assert_eq!(steps[0]["clock"], clock, "the clock it committed at");
         config("arbitrationWindow", json!(2)).await;
         push(1.0).await;
@@ -3764,7 +3805,10 @@ mod tests {
         assert_eq!(status, StatusCode::OK);
         let instance = before["instance"].as_str().unwrap();
         assert!(instance_clock::canonical_uuid(instance), "{instance}");
-        assert_eq!(before["lamport"], 0);
+        assert_eq!(
+            (&before["lamport"], &before["commit"]),
+            (&json!(0), &json!(0))
+        );
         assert_eq!(before["step"], -1);
         // Neither process route commits a step, and a reset leaves the clock.
         let uri = format!("/api/machines/{id}/process");
@@ -3777,7 +3821,11 @@ mod tests {
         )
         .await;
         send(&app, "POST", "/api/engine/reset", None).await;
-        let (_, after) = send(&app, "GET", "/api/engine/clock", None).await;
+        let (_, mut after) = send(&app, "GET", "/api/engine/clock", None).await;
+        // `headers` counts the requests in between; the clock itself is unmoved.
+        let mut before = before;
+        before.as_object_mut().unwrap().remove("headers");
+        after.as_object_mut().unwrap().remove("headers");
         assert_eq!(after, before);
     }
 
@@ -5312,6 +5360,7 @@ mod tests {
             keys,
             [
                 "activeRegions",
+                "clock",
                 "eventBus",
                 "machineResults",
                 "mergeBatch",
