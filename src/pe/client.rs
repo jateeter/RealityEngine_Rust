@@ -82,11 +82,25 @@ fn lane_connector(internal: bool) -> Option<Result<HttpsConnector<HttpConnector>
 
 /// Send `request`: the status and the body, or why nothing answered.
 async fn send(
-    request: axum::http::Request<Full<Bytes>>,
+    mut request: axum::http::Request<Full<Bytes>>,
 ) -> Result<(axum::http::StatusCode, Bytes), String> {
     let what = format!("{} {}", request.method(), request.uri());
     let https = request.uri().scheme_str() == Some("https");
     let host = request.uri().host().unwrap_or_default().to_owned();
+    // A call to an internal peer is a send under the PE's clock, and its
+    // response a receive; an external party is never stamped (#600).
+    let clock = super::participant_clock();
+    let clocked = match crate::participant_clock::stamp(clock, &host) {
+        Some(header) => {
+            if let Ok(value) = axum::http::HeaderValue::from_str(&header) {
+                request
+                    .headers_mut()
+                    .insert(crate::participant_clock::HEADER, value);
+            }
+            true
+        }
+        None => false,
+    };
     // Each call still builds its own client over the connector (see
     // `connector`): rustls resumes the TLS 1.3 session, so a repeated call to the
     // same peer is an abbreviated handshake rather than a full one.
@@ -100,6 +114,9 @@ async fn send(
         .map_err(|_| format!("{what}: timed out"))?
         .map_err(|error| format!("{what}: {error}"))?;
     let status = response.status();
+    if clocked {
+        crate::participant_clock::receive_response(clock, response.headers());
+    }
     let body = response
         .into_body()
         .collect()

@@ -7,6 +7,9 @@
     "PE GET /": {
       "status": "implemented"
     },
+    "PE GET /api/clock": {
+      "status": "implemented"
+    },
     "PE GET /api/dispatch/ledger": {
       "status": "implemented"
     },
@@ -461,9 +464,9 @@
   },
   "schema": 1,
   "spec": {
-    "commit": "bcb604bf1f2e84dd7ad2577ec6c74f2b228d7d9d",
+    "commit": "a43d0e12ebe46498ae296bc2ddef2354746d6ca7",
     "path": "SURFACE_SPEC.md",
     "repository": "jateeter/RealityEngine_CI",
-    "sha256": "e77345ea97fbfda0868097203dc61c08708bc6d11ef46df33871375a6fcd99d5"
+    "sha256": "a3e923ad4cd505ce48ed7350013b488a444e5a3d9fc189a94064833128fd4adb"
   }
 }

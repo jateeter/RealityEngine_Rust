@@ -172,7 +172,8 @@ pub(crate) struct StepState {
     pub(crate) last_arbitration: Vec<ArbitrationRecord>,
     /// Retained steps' records, keyed by step, with the Lamport value each
     /// committed at, while `arbitrationRetention` is on.
-    pub(crate) retained: BTreeMap<u64, (u64, Vec<ArbitrationRecord>)>,
+    /// step -> ((lamport, commit) at its commit, its records).
+    pub(crate) retained: BTreeMap<u64, ((u64, u64), Vec<ArbitrationRecord>)>,
     /// Each pushed step, as `POST /api/perceive` answered it, for
     /// `GET /api/engine/stream`.
     pub(crate) stream: tokio::sync::broadcast::Sender<String>,
@@ -233,10 +234,10 @@ impl StepState {
         self.completed.send_replace(step as i64);
     }
 
-    fn retain_arbitration(&mut self, step: u64, lamport: u64, records: &[ArbitrationRecord]) {
+    fn retain_arbitration(&mut self, step: u64, at: (u64, u64), records: &[ArbitrationRecord]) {
         let controls = &self.controls;
         if controls.arbitration_retention && controls.arbitration_window > 0 {
-            self.retained.insert(step, (lamport, records.to_vec()));
+            self.retained.insert(step, (at, records.to_vec()));
             self.prune_arbitration(step as i64);
         }
     }
@@ -629,7 +630,7 @@ fn days_since(date: &str) -> i64 {
 
 /// A committed step, before the caller's include flags shape it.
 pub(crate) struct Step {
-    step_number: u64,
+    pub(crate) step_number: u64,
     timestamp: u128,
     machine_results: serde_json::Map<String, Value>,
     active_regions: Vec<Value>,
@@ -1155,17 +1156,17 @@ impl Engine {
 
         boundary(2);
 
-        // The commit: the clock ticks for the step and the pair is appended;
-        // then the completion is published.
-        let lamport = self.clock.tick().map_err(|message| EngineError {
+        // The commit: commit and lamport tick together for the step and the
+        // pair is appended; then the completion is published (#600).
+        let at = self.clock.commit_step().map_err(|message| EngineError {
             status: StatusCode::INTERNAL_SERVER_ERROR,
             message,
         })?;
+        self.last_commit = at;
         self.steps.commit(isre, osre);
         // Retained before the completion is published, so an observer woken
         // for step n finds n's records already there.
-        self.steps
-            .retain_arbitration(step_number, lamport, &records);
+        self.steps.retain_arbitration(step_number, at, &records);
         self.steps.last_arbitration = records;
         boundary(3);
         self.steps.publish(step_number);
@@ -1298,12 +1299,15 @@ pub(crate) async fn perceive(
     let include_active_regions = flag("includeActiveRegions", defaults.include_active_regions);
     let input = assemble_input(&body, state.space_width()).map_err(error_response)?;
     let step = state.perceive(&input, overriding).map_err(error_response)?;
-    let out = step.to_json(
+    let mut out = step.to_json(
         include_machine_results,
         include_perceptual_space,
         include_active_regions,
         only.as_ref(),
     );
+    // The committed step's clock, so a PE can key what it records by the RE's
+    // (instance, commit) (SURFACE_SPEC "Identity, clock and parity", #600).
+    out["clock"] = state.clock_json(state.last_commit, step.step_number);
     // No subscriber is not an error: the step stands whether or not anyone
     // is watching.
     if let Ok(bytes) = ecmascript_json(&out) {

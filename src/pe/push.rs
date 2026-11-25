@@ -317,6 +317,10 @@ async fn transition(pe: &SharedPe, include_machine_results: bool, only: &Value) 
             state.adopt_space(&space);
         }
         state.advance();
+        // A completed push is the PE's commit (#600).
+        if let Ok(at) = super::participant_clock().commit_step() {
+            state.last_push_clock = at;
+        }
         state.last_push = step.clone();
         state.record_perception_events();
         // On the whole step, before the caller's selector narrows the reply.
