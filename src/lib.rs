@@ -289,6 +289,9 @@ pub struct Engine {
     clone_space: clones::Space,
     /// `clone.maxActive`: the bound on live clones of one template.
     clone_max_active: usize,
+    /// `GET /api/machines/json/:name` serves the list form instead of the full
+    /// form (RealityEngine_CI#886).
+    machine_json_summary: bool,
     /// The id this instance was launched as (`INSTANCE_ID`, e.g. `rust-1`):
     /// the middle segment of every clone id. Without it nothing is cloned.
     engine_instance: String,
@@ -958,6 +961,7 @@ impl Engine {
             qdrant_url: "http://localhost:4333".to_owned(),
             collection_name: "reality-events".to_owned(),
             clone_max_active: clones::MAX_ACTIVE_DEFAULT,
+            machine_json_summary: false,
             ..Self::default()
         }
     }
@@ -1161,7 +1165,16 @@ impl Engine {
         self.machines.remove(&id);
         let summary = self.load_machine(definition)?;
         self.record_source_file(&id, &path);
-        Ok(summary)
+        // The full form, as `GET /api/machines/:id` serves it; with
+        // machineJsonSummary on, the list form, as `GET /api/machines` lists
+        // it (RealityEngine_CI#886). It served the load summary, which has no
+        // sequences.
+        let full = !self.machine_json_summary;
+        Ok(self
+            .machines
+            .get(&id)
+            .map(|m| m.to_json(full))
+            .unwrap_or(summary))
     }
 
     /// Keeps the corpus file name on the machine just loaded under `id`.
@@ -1292,6 +1305,11 @@ impl Engine {
                 json!(c.include_perceptual_space),
                 json!(true),
             ),
+            control(
+                "machineJsonSummary",
+                json!(self.machine_json_summary),
+                json!(false),
+            ),
             control("phaseDetail", json!(c.phase_detail), json!(false)),
             json!({
                 "name": "transitionsInhibited",
@@ -1380,6 +1398,7 @@ impl Engine {
             "includeActiveRegions" => controls.include_active_regions = boolean()?,
             "includeMachineResults" => controls.include_machine_results = boolean()?,
             "includePerceptualSpace" => controls.include_perceptual_space = boolean()?,
+            "machineJsonSummary" => self.machine_json_summary = boolean()?,
             "phaseDetail" => controls.phase_detail = boolean()?,
             _ => {
                 let value = boolean()?;
@@ -1431,6 +1450,7 @@ impl Engine {
             "includePerceptualSpace" => {
                 controls.include_perceptual_space = defaults.include_perceptual_space;
             }
+            "machineJsonSummary" => self.machine_json_summary = false,
             "phaseDetail" => controls.phase_detail = defaults.phase_detail,
             _ => self
                 .machines
@@ -2775,6 +2795,7 @@ mod tests {
                 engine("includeActiveRegions", json!(true)),
                 engine("includeMachineResults", json!(true)),
                 engine("includePerceptualSpace", json!(true)),
+                engine("machineJsonSummary", json!(false)),
                 engine("phaseDetail", json!(false)),
                 {
                     "name": "transitionsInhibited",
