@@ -29,9 +29,12 @@ use crate::{
     step::TrajectoryEntry,
 };
 
+/// A retained step. Its clock is the instance that committed it and its
+/// lamport (RealityEngine_CI#904).
 #[derive(Clone, Debug)]
 pub(crate) struct Retained {
     step: u64,
+    instance: String,
     lamport: u64,
     isre: TrajectoryEntry,
     osre: TrajectoryEntry,
@@ -46,6 +49,11 @@ pub(crate) struct Retention {
     /// A restore sets it; otherwise the base is taken at the first step.
     base_set: bool,
     steps: VecDeque<Retained>,
+    /// What a restore re-established, `(kline, arbitration)`, until the next
+    /// step (#904): a capture returns it, so restore then capture is an
+    /// identity. Its clocks keep the instance that committed those steps,
+    /// which on a sandbox replica is the source, never the replica.
+    restored: Option<(Value, Value)>,
 }
 
 fn all_actives(machines: &BTreeMap<String, Machine>) -> Vec<ActiveEntry> {
@@ -59,12 +67,14 @@ impl Retention {
         self.base.clear();
         self.base_set = false;
         self.steps.clear();
+        self.restored = None;
     }
 
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn on_step(
         &mut self,
         step: u64,
+        instance: &str,
         lamport: u64,
         isre: TrajectoryEntry,
         osre: TrajectoryEntry,
@@ -72,12 +82,14 @@ impl Retention {
         machines: &BTreeMap<String, Machine>,
         limit: usize,
     ) {
+        self.restored = None;
         if self.steps.is_empty() && !self.base_set {
             self.base = machines.values().flat_map(kline::initial_actives).collect();
             self.base_set = true;
         }
         self.steps.push_back(Retained {
             step,
+            instance: instance.to_owned(),
             lamport,
             isre,
             osre,
@@ -92,11 +104,13 @@ impl Retention {
         }
     }
 
-    /// After a corpus restore: nothing retained, and the restored list is the base.
-    fn restore(&mut self, base: Vec<ActiveEntry>) {
-        self.base = base;
+    /// After any restore: nothing retained, the live list is the next step's
+    /// base, and the restored K-line is the restore point until that step.
+    fn restore(&mut self, live: Vec<ActiveEntry>, kline: Value, arbitration: Value) {
+        self.base = live;
         self.base_set = true;
         self.steps.clear();
+        self.restored = Some((kline, arbitration));
     }
 
     fn at(&self, step: u64) -> Option<&Retained> {
@@ -390,6 +404,45 @@ impl Engine {
             }
         }
         self.refresh_corpus_facts();
+        if self.retention.steps.is_empty()
+            && let Some((kline, arbitration)) = self.retention.restored.clone()
+        {
+            // Right after a restore (#904): the restored K-line, when the
+            // request asks for its scope and span or leaves them out.
+            let scope_given = body["scope"].is_array() || body["scope"] == "corpus";
+            let restored_scope: Option<BTreeSet<String>> = kline["scope"].as_array().map(|a| {
+                a.iter()
+                    .filter_map(|n| n.as_str().map(str::to_owned))
+                    .collect()
+            });
+            let same_scope = match &scope {
+                Some(s) => restored_scope.as_ref() == Some(s),
+                None => !scope_given || restored_scope.is_none(),
+            };
+            let span_is = |end: &str, v: Option<u64>| {
+                v.is_none_or(|v| kline["span"][end].as_f64() == Some(v as f64))
+            };
+            if !(same_scope && span_is("from", ends[0]) && span_is("to", ends[1])) {
+                return Err(fail(
+                    StatusCode::GONE,
+                    "no step is retained since the restore; only the restored snapshot is capturable"
+                        .to_owned(),
+                ));
+            }
+            let (controls, machine_controls, machine_overrides) = self.snapshot_state();
+            let mut snapshot = json!({
+                "format": "re-snapshot/1",
+                "corpus": { "algorithm": "sha256/resident-declared-v1", "fingerprint": self.corpus_fingerprint,
+                            "machines": self.machines.len() },
+                "controls": controls,
+                "machineControls": machine_controls,
+                "machineOverrides": machine_overrides,
+                "kline": kline,
+                "arbitration": arbitration,
+            });
+            snapshot["digest"] = json!(digest_of(&snapshot));
+            return Ok(snapshot);
+        }
         let r = &self.retention;
         let Some(newest) = r.steps.back().map(|s| s.step) else {
             return Err(fail(StatusCode::GONE, "no step is retained".to_owned()));
@@ -473,9 +526,8 @@ impl Engine {
                 "contributions": contribs,
             }));
         }
-        let instance = self.clock.instance().to_owned();
         let clock =
-            |s: &Retained| json!({ "instance": instance, "lamport": s.lamport, "step": s.step });
+            |s: &Retained| json!({ "instance": s.instance, "lamport": s.lamport, "step": s.step });
         let (controls, machine_controls, machine_overrides) = self.snapshot_state();
         let arbitration = if self.steps.controls.arbitration_retention {
             Value::Array(
@@ -565,7 +617,6 @@ impl Engine {
                 .filter_map(|n| n.as_str().map(str::to_owned))
                 .collect()
         };
-        let mut after = Vec::new();
         let mut by_machine: BTreeMap<String, Vec<(String, String, bool)>> = BTreeMap::new();
         for e in kl["activeAfter"].as_array().into_iter().flatten() {
             let s = |k: &str| e[k].as_str().unwrap_or_default().to_owned();
@@ -574,12 +625,6 @@ impl Engine {
                 .entry(s("machine"))
                 .or_default()
                 .push((s("sequence"), s("event"), jm));
-            after.push(ActiveEntry {
-                machine: s("machine"),
-                sequence: s("sequence"),
-                event: s("event"),
-                just_matched: jm,
-            });
         }
         for m in self.machines.values_mut() {
             if !scope.contains(&m.name) {
@@ -603,6 +648,14 @@ impl Engine {
                 }
             }
         }
+        // Any restore is a retention boundary (#904): the next step starts from
+        // the live list, and until it the restored snapshot is what a capture
+        // returns.
+        self.retention.restore(
+            all_actives(&self.machines),
+            kl.clone(),
+            snap["arbitration"].clone(),
+        );
         if corpus {
             let to = kl["span"]["to"].as_f64().unwrap_or(0.0) as u64;
             let pairs = kl["pairs"].as_array().cloned().unwrap_or_default();
@@ -611,7 +664,6 @@ impl Engine {
                 pairs.iter().map(|p| entry_from(&p["osre"])).collect(),
                 to,
             );
-            self.retention.restore(after);
         }
         if self.klines.controls.capture
             && let Err(e) = self.klines.on_reset()

@@ -1199,8 +1199,10 @@ impl Engine {
         // Snapshot retention (#287): every retained step's active list,
         // contributions and clock, whether or not K-line capture is on.
         let limit = self.steps.controls.history_limit;
+        let instance = self.clock.instance().to_owned();
         self.retention.on_step(
             step_number,
+            &instance,
             at.0,
             pair.0.clone(),
             pair.1.clone(),
