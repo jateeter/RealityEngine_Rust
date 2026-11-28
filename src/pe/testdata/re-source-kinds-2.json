@@ -1,0 +1,185 @@
+{
+  "format": "re-source-kinds",
+  "version": 2,
+  "purpose": "The source kinds a Perception Engine records in re-isre-composition/1, the PE half of a K-line (RealityEngine_CI SURFACE_SPEC.md, 'The PE half: ISRE composition'). Version 2 (owner, 2026-11-27) adds the `simulated` kind, which ARBITER_CONTRACT.md maps to the `synthetic` surface (measured), and the `openai` sensor provider (generated); every version 1 kind and provider reads unchanged. This version is never edited: a change is re-source-kinds-3.json with a mapping from this one.",
+  "classes": [
+    "deterministic",
+    "measured",
+    "generated"
+  ],
+  "providerMapping": {
+    "openclaw": "acp",
+    "ollama": "localai",
+    "localaistack": "localai"
+  },
+  "kinds": [
+    {
+      "kind": "test",
+      "meaning": "A machine-derived interned source: the corpus's own input sequence, written into its machine's input region.",
+      "class": "deterministic"
+    },
+    {
+      "kind": "sensor",
+      "meaning": "A value delivered to a sensor source by an integration, recorded under the provider its origin maps to.",
+      "providers": [
+        {
+          "provider": "mqtt",
+          "class": "measured"
+        },
+        {
+          "provider": "healthkit",
+          "class": "measured"
+        },
+        {
+          "provider": "carekit",
+          "class": "measured"
+        },
+        {
+          "provider": "signal",
+          "class": "measured"
+        },
+        {
+          "provider": "acp",
+          "class": "generated"
+        },
+        {
+          "provider": "mcp",
+          "class": "generated"
+        },
+        {
+          "provider": "localai",
+          "class": "generated"
+        },
+        {
+          "provider": "openai",
+          "class": "generated"
+        }
+      ]
+    },
+    {
+      "kind": "simulated",
+      "meaning": "A PE-generated simulated source (the default kind when a source declares no type): queue-supplied synthetic input, reproducible under replay.",
+      "class": "measured"
+    },
+    {
+      "kind": "feedback",
+      "meaning": "The PE's Source-vs-OSRE fold kept the OSRE(k-1) term for the cell: a machine's output fed back into the next ISRE.",
+      "class": "deterministic"
+    },
+    {
+      "kind": "none",
+      "meaning": "Nothing wrote the cell that step. Recorded by omission from a step's sources.",
+      "class": null
+    }
+  ],
+  "unknownProvider": {
+    "provider": "unattributed",
+    "class": "generated"
+  },
+  "mappingFromPrevious": [
+    {
+      "from": {
+        "kind": "test"
+      },
+      "to": {
+        "kind": "test"
+      }
+    },
+    {
+      "from": {
+        "kind": "sensor",
+        "provider": "mqtt"
+      },
+      "to": {
+        "kind": "sensor",
+        "provider": "mqtt"
+      }
+    },
+    {
+      "from": {
+        "kind": "sensor",
+        "provider": "healthkit"
+      },
+      "to": {
+        "kind": "sensor",
+        "provider": "healthkit"
+      }
+    },
+    {
+      "from": {
+        "kind": "sensor",
+        "provider": "carekit"
+      },
+      "to": {
+        "kind": "sensor",
+        "provider": "carekit"
+      }
+    },
+    {
+      "from": {
+        "kind": "sensor",
+        "provider": "signal"
+      },
+      "to": {
+        "kind": "sensor",
+        "provider": "signal"
+      }
+    },
+    {
+      "from": {
+        "kind": "sensor",
+        "provider": "acp"
+      },
+      "to": {
+        "kind": "sensor",
+        "provider": "acp"
+      }
+    },
+    {
+      "from": {
+        "kind": "sensor",
+        "provider": "mcp"
+      },
+      "to": {
+        "kind": "sensor",
+        "provider": "mcp"
+      }
+    },
+    {
+      "from": {
+        "kind": "sensor",
+        "provider": "localai"
+      },
+      "to": {
+        "kind": "sensor",
+        "provider": "localai"
+      }
+    },
+    {
+      "from": {
+        "kind": "sensor",
+        "provider": "unattributed"
+      },
+      "to": {
+        "kind": "sensor",
+        "provider": "unattributed"
+      }
+    },
+    {
+      "from": {
+        "kind": "feedback"
+      },
+      "to": {
+        "kind": "feedback"
+      }
+    },
+    {
+      "from": {
+        "kind": "none"
+      },
+      "to": {
+        "kind": "none"
+      }
+    }
+  ]
+}

@@ -425,8 +425,10 @@ mod tests {
     use super::*;
 
     fn taxonomy() -> Taxonomy {
-        let dir = Taxonomy::dir_for("../RealityEngine_Machines/machines");
-        Taxonomy::load(&dir, TAXONOMY_VERSION).expect("the corpus carries re-source-kinds/2")
+        // A pinned copy of the corpus file (RealityEngine_Machines
+        // schemas/source-kinds/), so the test runs without a sibling checkout.
+        let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("src/pe/testdata");
+        Taxonomy::load(&dir, TAXONOMY_VERSION).expect("the pinned re-source-kinds/2 parses")
     }
 
     #[test]
