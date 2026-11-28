@@ -6,9 +6,9 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `cde83db453ee`.
 
 | layer | implemented | routes |
 |---|---|---|
-| RE | 87 | 93 |
+| RE | 92 | 93 |
 | PE | 46 | 48 |
-| RE-phase2 | 0 | 5 |
+| RE-phase2 | 5 | 5 |
 
 `RE` and `PE` are the specification's implemented-contract tables; `RE-phase2` is the K-line snapshot routes it specifies outside them. A route this engine does not implement is `declared-unsupported`: it answers `501` with the participation state, as the specification rules ("An unimplemented route answers `unsupported`"). A `missing` route answers silently, which the specification forbids. The RE's routes are probed on `app`, the PE's on `pe_app`. Status says a route exists, not that it conforms: the notes name known shape defects.
 
@@ -81,11 +81,11 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `cde83db453ee`.
 | GET | `/api/klines/stats` | implemented |  | #81: a port of C++ kline.cpp (RealityEngine_CI#603); live parity with the voters is its acceptance |
 | GET | `/api/klines/:id` | implemented |  | #81: a port of C++ kline.cpp (RealityEngine_CI#603); live parity with the voters is its acceptance |
 | POST | `/api/klines/export` | implemented |  | #81: a port of C++ kline.cpp (RealityEngine_CI#603); live parity with the voters is its acceptance |
-| POST | `/api/runtime/snapshot` | declared-unsupported | #81 | runtime snapshots: phase 2 of #81, after the K-line store |
-| GET | `/api/runtime/snapshots` | declared-unsupported | #81 | runtime snapshots: phase 2 of #81, after the K-line store |
-| GET | `/api/runtime/snapshot/:id` | declared-unsupported | #81 | runtime snapshots: phase 2 of #81, after the K-line store |
-| DELETE | `/api/runtime/snapshot/:id` | declared-unsupported | #81 | runtime snapshots: phase 2 of #81, after the K-line store |
-| POST | `/api/runtime/restore` | declared-unsupported | #81 | runtime snapshots: phase 2 of #81, after the K-line store |
+| POST | `/api/runtime/snapshot` | implemented |  | #81: a port of C++ snapshot.cpp (RealityEngine_CI#287); live cross-runtime restore is its acceptance |
+| GET | `/api/runtime/snapshots` | implemented |  | #81: a port of C++ snapshot.cpp (RealityEngine_CI#287); live cross-runtime restore is its acceptance |
+| GET | `/api/runtime/snapshot/:id` | implemented |  | #81: a port of C++ snapshot.cpp (RealityEngine_CI#287); live cross-runtime restore is its acceptance |
+| DELETE | `/api/runtime/snapshot/:id` | implemented |  | #81: a port of C++ snapshot.cpp (RealityEngine_CI#287); live cross-runtime restore is its acceptance |
+| POST | `/api/runtime/restore` | implemented |  | #81: a port of C++ snapshot.cpp (RealityEngine_CI#287); live cross-runtime restore is its acceptance |
 | POST | `/api/engine/process` | implemented |  |  |
 | POST | `/api/engine/reset` | implemented |  |  |
 
@@ -282,8 +282,8 @@ Specification: `jateeter/RealityEngine_CI` `SURFACE_SPEC.md` at `cde83db453ee`.
 
 | method | path | status | tracking | notes |
 |---|---|---|---|---|
-| POST | `/api/runtime/snapshot` | declared-unsupported | jateeter/RealityEngine_Rust#2 (K-line snapshots, spec phase 2; no item yet) |  |
-| GET | `/api/runtime/snapshots` | declared-unsupported | jateeter/RealityEngine_Rust#2 (K-line snapshots, spec phase 2; no item yet) |  |
-| GET | `/api/runtime/snapshot/:id` | declared-unsupported | jateeter/RealityEngine_Rust#2 (K-line snapshots, spec phase 2; no item yet) |  |
-| POST | `/api/runtime/restore` | declared-unsupported | jateeter/RealityEngine_Rust#2 (K-line snapshots, spec phase 2; no item yet) |  |
-| DELETE | `/api/runtime/snapshot/:id` | declared-unsupported | jateeter/RealityEngine_Rust#2 (K-line snapshots, spec phase 2; no item yet) |  |
+| POST | `/api/runtime/snapshot` | implemented |  |  |
+| GET | `/api/runtime/snapshots` | implemented |  |  |
+| GET | `/api/runtime/snapshot/:id` | implemented |  |  |
+| POST | `/api/runtime/restore` | implemented |  |  |
+| DELETE | `/api/runtime/snapshot/:id` | implemented |  |  |

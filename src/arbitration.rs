@@ -94,7 +94,7 @@ impl Engine {
         })
     }
 
-    fn retained_step_json(
+    pub(crate) fn retained_step_json(
         &self,
         step: u64,
         at: (u64, u64),

@@ -176,11 +176,11 @@ pub(crate) struct Op {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-struct ActiveEntry {
-    machine: String,
-    sequence: String,
-    event: String,
-    just_matched: bool,
+pub(crate) struct ActiveEntry {
+    pub(crate) machine: String,
+    pub(crate) sequence: String,
+    pub(crate) event: String,
+    pub(crate) just_matched: bool,
 }
 
 /// What the tracker reads at a step's completion point.
@@ -207,7 +207,7 @@ fn region_of(mapping: Option<&Value>) -> Region {
 }
 
 /// The machine's (input, output) regions, when it declares a mapping.
-fn regions(m: &Machine) -> Option<(Region, Region)> {
+pub(crate) fn regions(m: &Machine) -> Option<(Region, Region)> {
     let mapping = m.raw.get("perceptualMapping").filter(|v| v.is_object())?;
     Some((
         region_of(mapping.get("input")),
@@ -232,7 +232,7 @@ fn entry_json(e: &TrajectoryEntry, keep: &[Region]) -> Value {
     json!({ "stepNumber": e.step_number, "length": e.length, "nonZero": nz })
 }
 
-fn actives_json(mut list: Vec<ActiveEntry>) -> Value {
+pub(crate) fn actives_json(mut list: Vec<ActiveEntry>) -> Value {
     list.sort_by(|a, b| {
         (&a.machine, &a.sequence, &a.event).cmp(&(&b.machine, &b.sequence, &b.event))
     });
@@ -300,7 +300,7 @@ fn difference_of(event: &Event, machine_algorithm: &str, input: &[f64], region: 
     })
 }
 
-fn initial_actives(m: &Machine) -> Vec<ActiveEntry> {
+pub(crate) fn initial_actives(m: &Machine) -> Vec<ActiveEntry> {
     let mut out = Vec::new();
     for (sid, seq) in &m.sequences {
         for (eid, ev) in &seq.events {
@@ -317,7 +317,7 @@ fn initial_actives(m: &Machine) -> Vec<ActiveEntry> {
     out
 }
 
-fn actives_of(m: &Machine) -> Vec<ActiveEntry> {
+pub(crate) fn actives_of(m: &Machine) -> Vec<ActiveEntry> {
     let mut out = Vec::new();
     for (sid, seq) in &m.sequences {
         for (eid, ev) in &seq.events {
