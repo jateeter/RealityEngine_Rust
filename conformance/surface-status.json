@@ -160,6 +160,11 @@
       "notes": "#13 slice 2: identical to C++ on the regression corpus (minted ids and timestamps aside)",
       "status": "implemented"
     },
+    "RE DELETE /api/runtime/snapshot/:id": {
+      "notes": "runtime snapshots: phase 2 of #81, after the K-line store",
+      "status": "declared-unsupported",
+      "tracking": "#81"
+    },
     "RE DELETE /api/sequences/:id": {
       "notes": "#13 slice 3: identical to C++ (minted ids and timestamps aside)",
       "status": "implemented"
@@ -239,6 +244,22 @@
       "notes": "follows the spec {status,timestamp,version}; the three engines return {status}: RealityEngine_CI#610, owner ruling pending",
       "status": "implemented"
     },
+    "RE GET /api/klines": {
+      "notes": "#81: a port of C++ kline.cpp (RealityEngine_CI#603); live parity with the voters is its acceptance",
+      "status": "implemented"
+    },
+    "RE GET /api/klines/:id": {
+      "notes": "#81: a port of C++ kline.cpp (RealityEngine_CI#603); live parity with the voters is its acceptance",
+      "status": "implemented"
+    },
+    "RE GET /api/klines/open": {
+      "notes": "#81: a port of C++ kline.cpp (RealityEngine_CI#603); live parity with the voters is its acceptance",
+      "status": "implemented"
+    },
+    "RE GET /api/klines/stats": {
+      "notes": "#81: a port of C++ kline.cpp (RealityEngine_CI#603); live parity with the voters is its acceptance",
+      "status": "implemented"
+    },
     "RE GET /api/machine-graph": {
       "notes": "#13 slice 1: identical to C++ on the regression corpus (load-time output timestamps aside), fresh, after 20 steps and after a reset",
       "status": "implemented"
@@ -286,6 +307,16 @@
     "RE GET /api/runtime/options": {
       "status": "implemented"
     },
+    "RE GET /api/runtime/snapshot/:id": {
+      "notes": "runtime snapshots: phase 2 of #81, after the K-line store",
+      "status": "declared-unsupported",
+      "tracking": "#81"
+    },
+    "RE GET /api/runtime/snapshots": {
+      "notes": "runtime snapshots: phase 2 of #81, after the K-line store",
+      "status": "declared-unsupported",
+      "tracking": "#81"
+    },
     "RE GET /api/runtime/storage-footprint": {
       "status": "implemented"
     },
@@ -324,6 +355,10 @@
       "status": "implemented"
     },
     "RE POST /api/engine/reset": {
+      "status": "implemented"
+    },
+    "RE POST /api/klines/export": {
+      "notes": "#81: a port of C++ kline.cpp (RealityEngine_CI#603); live parity with the voters is its acceptance",
       "status": "implemented"
     },
     "RE POST /api/machines": {
@@ -388,6 +423,16 @@
     },
     "RE POST /api/perceptual-simulation/stop": {
       "status": "implemented"
+    },
+    "RE POST /api/runtime/restore": {
+      "notes": "runtime snapshots: phase 2 of #81, after the K-line store",
+      "status": "declared-unsupported",
+      "tracking": "#81"
+    },
+    "RE POST /api/runtime/snapshot": {
+      "notes": "runtime snapshots: phase 2 of #81, after the K-line store",
+      "status": "declared-unsupported",
+      "tracking": "#81"
     },
     "RE POST /api/sampler/sample": {
       "status": "implemented"
@@ -464,9 +509,9 @@
   },
   "schema": 1,
   "spec": {
-    "commit": "a43d0e12ebe46498ae296bc2ddef2354746d6ca7",
+    "commit": "cde83db453ee20ce876c67a2b2f727d9ae65243e",
     "path": "SURFACE_SPEC.md",
     "repository": "jateeter/RealityEngine_CI",
-    "sha256": "a3e923ad4cd505ce48ed7350013b488a444e5a3d9fc189a94064833128fd4adb"
+    "sha256": "5a987e46a292420c2102ff832c32b17c872ca3870286ab81f9e59b5a4119ec2b"
   }
 }
