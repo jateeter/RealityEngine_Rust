@@ -640,6 +640,57 @@ impl PerceptionEngine {
         self.assemble_recording(None)
     }
 
+    /// Each written input cell's winner in the assembly just resolved (C++
+    /// `PerceptionEngine::composition`): the last writer in composition
+    /// order; a folded cell whose fold kept the OSRE term, or an OSRE cell no
+    /// source wrote, is feedback. Read after `record_contention`.
+    pub(crate) fn composition(&self) -> Vec<super::isre::Winner> {
+        let now = now();
+        let n = self.persistent_vector.len();
+        let mut writer: Vec<Option<&Source>> = vec![None; n];
+        for source in self.composition_order() {
+            let values = self.source_values(source, now);
+            for i in 0..(source.region.length.max(0) as usize).min(values.len()) {
+                let cell = source.region.offset + i as i64;
+                if cell >= 0 && (cell as usize) < n {
+                    writer[cell as usize] = Some(source);
+                }
+            }
+        }
+        let kept: BTreeMap<i64, String> = self
+            .contention
+            .folds
+            .iter()
+            .filter_map(|f| Some((f["cell"].as_i64()?, f["kept"].as_str()?.to_owned())))
+            .collect();
+        let mut out = Vec::new();
+        for (c, w) in writer.iter().enumerate() {
+            let cell = c as i64;
+            let osre_cell = self.osre_fold.contains_key(&cell);
+            let feedback = super::isre::Winner {
+                cell,
+                feedback: true,
+                ..Default::default()
+            };
+            match w {
+                Some(_) if osre_cell && kept.get(&cell).is_some_and(|k| k == "osre") => {
+                    out.push(feedback)
+                }
+                Some(s) => out.push(super::isre::Winner {
+                    cell,
+                    feedback: false,
+                    id: s.id.clone(),
+                    kind: s.kind().to_owned(),
+                    origin: s.origin().to_owned(),
+                    caused_by: Value::Null,
+                }),
+                None if osre_cell => out.push(feedback),
+                None => {}
+            }
+        }
+        out
+    }
+
     /// `assemble`, with every Source-vs-OSRE fold appended to `folds`,
     /// ascending by cell.
     fn assemble_recording(&self, mut folds: Option<&mut Vec<Value>>) -> Vec<f64> {

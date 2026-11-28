@@ -399,6 +399,9 @@ pub(crate) struct Store {
     appends: u64,
     warnings: Arc<Mutex<Vec<String>>>,
     last_controls: Controls,
+    /// The control that bounds this store, named in its budget warning: the
+    /// PE's ISRE composition store shares the format (`isreStoreMaxBytes`).
+    budget_name: Option<&'static str>,
 }
 
 impl Store {
@@ -554,7 +557,12 @@ impl Store {
 
     /// Appends the step's lines (records and events, in order) and makes them
     /// durable before returning.
-    fn append(&mut self, lines: &[Value], fingerprint: &str, commit: u64) -> Result<(), String> {
+    pub(crate) fn append(
+        &mut self,
+        lines: &[Value],
+        fingerprint: &str,
+        commit: u64,
+    ) -> Result<(), String> {
         if lines.is_empty() {
             return Ok(());
         }
@@ -651,11 +659,31 @@ impl Store {
         j
     }
 
+    /// This store, its budget warnings naming `name`.
+    pub(crate) fn with_budget_name(mut self, name: &'static str) -> Self {
+        self.budget_name = Some(name);
+        self
+    }
+
+    /// Every record whose commit lies in `[from, to]` (`to` None: no bound),
+    /// ascending: (commit, its stored line, its segment).
+    pub(crate) fn lines_between(&self, from: u64, to: Option<u64>) -> Vec<(u64, String, String)> {
+        self.metas
+            .iter()
+            .filter(|m| m.close_commit >= from && to.is_none_or(|t| m.close_commit <= t))
+            .map(|m| (m.close_commit, self.raw_at(m), m.segment.clone()))
+            .collect()
+    }
+
+    pub(crate) fn len(&self) -> usize {
+        self.metas.len()
+    }
+
     fn record(&self, id: &str) -> Option<Value> {
         self.by_id.get(id).map(|i| self.record_at(&self.metas[*i]))
     }
 
-    fn stats(&self, controls: &Controls) -> Value {
+    pub(crate) fn stats(&self, controls: &Controls) -> Value {
         let mut by_outcome: BTreeMap<String, u64> = BTreeMap::new();
         let mut by_machine: BTreeMap<String, BTreeMap<String, u64>> = BTreeMap::new();
         for m in &self.metas {
@@ -691,14 +719,15 @@ impl Store {
             .count();
         if sealed > controls.store_max_bytes && unexported > 0 {
             vec![format!(
-                "klineStoreMaxBytes reached: {unexported} unexported sealed segment(s) are kept; export them to free space"
+                "{} reached: {unexported} unexported sealed segment(s) are kept; export them to free space",
+                self.budget_name.unwrap_or("klineStoreMaxBytes")
             )]
         } else {
             Vec::new()
         }
     }
 
-    fn mark_exported(&mut self, names: &BTreeSet<String>) -> Result<(), String> {
+    pub(crate) fn mark_exported(&mut self, names: &BTreeSet<String>) -> Result<(), String> {
         for s in &mut self.segments {
             if names.contains(&s.name) {
                 s.exported = true;
@@ -710,7 +739,7 @@ impl Store {
         Ok(())
     }
 
-    fn refresh_warnings(&mut self, controls: &Controls) {
+    pub(crate) fn refresh_warnings(&mut self, controls: &Controls) {
         self.last_controls = controls.clone();
         let w = self.compute_warnings(controls);
         if let Ok(mut cache) = self.warnings.lock() {
@@ -718,11 +747,11 @@ impl Store {
         }
     }
 
-    fn cached_warnings(&self) -> Vec<String> {
+    pub(crate) fn cached_warnings(&self) -> Vec<String> {
         self.warnings.lock().map(|w| w.clone()).unwrap_or_default()
     }
 
-    fn enforce_budget(&mut self, controls: &Controls) -> Result<(), String> {
+    pub(crate) fn enforce_budget(&mut self, controls: &Controls) -> Result<(), String> {
         let sealed_bytes = |segs: &[Segment]| -> u64 {
             segs.iter()
                 .filter(|s| s.sealed && !s.archived)
