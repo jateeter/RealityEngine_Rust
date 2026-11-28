@@ -46,6 +46,12 @@
     "PE GET /api/integrations/status": {
       "status": "implemented"
     },
+    "PE GET /api/isre-composition": {
+      "status": "implemented"
+    },
+    "PE GET /api/isre-composition/stats": {
+      "status": "implemented"
+    },
     "PE GET /api/machines": {
       "notes": "#20 workstream 2: served. The surface probe has no RE behind it, so it answers the proxy's 502; beside an RE it returns the RE's GET /api/machines as answered, identical to the C++ PE on the regression corpus",
       "status": "implemented-error",
@@ -114,6 +120,9 @@
       "status": "implemented"
     },
     "PE POST /api/integrations/openai/dispatch": {
+      "status": "implemented"
+    },
+    "PE POST /api/isre-composition/export": {
       "status": "implemented"
     },
     "PE POST /api/mqtt/disable": {
@@ -429,6 +438,9 @@
       "notes": "#81: a port of C++ snapshot.cpp (RealityEngine_CI#287); live cross-runtime restore is its acceptance",
       "status": "implemented"
     },
+    "RE POST /api/runtime/snapshots/nearest": {
+      "status": "implemented"
+    },
     "RE POST /api/sampler/sample": {
       "status": "implemented"
     },
@@ -495,13 +507,16 @@
     },
     "RE-phase2 POST /api/runtime/snapshot": {
       "status": "implemented"
+    },
+    "RE-phase2 POST /api/runtime/snapshots/nearest": {
+      "status": "implemented"
     }
   },
   "schema": 1,
   "spec": {
-    "commit": "cde83db453ee20ce876c67a2b2f727d9ae65243e",
+    "commit": "1b05c2f916a9f578a9d747d5600115bf8f1dc051",
     "path": "SURFACE_SPEC.md",
     "repository": "jateeter/RealityEngine_CI",
-    "sha256": "5a987e46a292420c2102ff832c32b17c872ca3870286ab81f9e59b5a4119ec2b"
+    "sha256": "888bde38971a12c3f98cc9e9bbfb0c1f262dc127c2bf1cbaf28b28e65a7fa421"
   }
 }
