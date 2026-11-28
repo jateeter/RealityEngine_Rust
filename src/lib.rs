@@ -5384,7 +5384,9 @@ mod tests {
             (status, body),
             (
                 StatusCode::OK,
-                json!({ "success": true, "matchAlgorithm": "equals" })
+                // With the ISRE composition controls in force (#603).
+                json!({ "success": true, "matchAlgorithm": "equals",
+                        "isreCapture": false, "isreStoreMaxBytes": 2147483648_u64 })
             )
         );
         // The exact name only, as C++ reads it; a non-string is ignored.

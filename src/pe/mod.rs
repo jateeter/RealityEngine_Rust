@@ -28,6 +28,7 @@ mod client;
 mod dispatch;
 mod ingest;
 mod integrations;
+mod isre;
 mod localai;
 mod metrics;
 mod mqtt;
@@ -90,6 +91,9 @@ pub struct PerceptionEngine {
     dispatch: dispatch::Dispatch,
     /// The MQTT bridge, while one runs.
     mqtt: Option<Arc<mqtt::Bridge>>,
+    /// The PE half of K-lines (RealityEngine_CI#603): one ISRE composition
+    /// record per completed push, in this PE's store.
+    isre: isre::Recorder,
 }
 
 impl PerceptionEngine {
@@ -119,6 +123,7 @@ impl PerceptionEngine {
             catalog: dispatch::MachineCatalog::default(),
             dispatch: dispatch::Dispatch::default(),
             mqtt: None,
+            isre: isre::Recorder::default(),
         }
     }
 
@@ -143,6 +148,32 @@ impl PerceptionEngine {
     /// C++ `match_algorithm_from_string`: the exact name, or a 500. A
     /// non-string value is ignored.
     fn configure(&mut self, body: &Value) -> Result<Value, EngineError> {
+        // The ISRE composition controls (RealityEngine_CI#603): validated
+        // before anything changes, so a refused request changes nothing.
+        let capture = &body["isreCapture"];
+        let max_bytes = &body["isreStoreMaxBytes"];
+        if !capture.is_null() && !capture.is_boolean() {
+            return Err(EngineError::bad_request("isreCapture requires a boolean"));
+        }
+        if !max_bytes.is_null()
+            && !max_bytes
+                .as_f64()
+                .is_some_and(|n| n >= 0.0 && n <= isre::STORE_MAX_MAX as f64 && n.fract() == 0.0)
+        {
+            return Err(EngineError::bad_request(format!(
+                "isreStoreMaxBytes requires a whole number in [0, {}]",
+                isre::STORE_MAX_MAX
+            )));
+        }
+        if capture == &json!(true) && !self.isre.has_taxonomy() {
+            return Err(EngineError {
+                status: StatusCode::CONFLICT,
+                message: format!(
+                    "isreCapture requires re-source-kinds/{} in the corpus",
+                    isre::TAXONOMY_VERSION
+                ),
+            });
+        }
         if let Some(name) = body["matchAlgorithm"].as_str() {
             self.match_algorithm = match name {
                 "gte" => "gte",
@@ -154,7 +185,17 @@ impl PerceptionEngine {
                 }
             };
         }
-        Ok(json!({ "success": true, "matchAlgorithm": self.match_algorithm }))
+        if let Some(on) = capture.as_bool() {
+            self.isre.capture = on;
+        }
+        if let Some(n) = max_bytes.as_f64() {
+            self.isre.store_max_bytes = n as u64;
+            self.isre.refresh_budget();
+        }
+        Ok(
+            json!({ "success": true, "matchAlgorithm": self.match_algorithm,
+                   "isreCapture": self.isre.capture, "isreStoreMaxBytes": self.isre.store_max_bytes }),
+        )
     }
 
     /// The run state, and nothing of the RE's.
@@ -211,8 +252,64 @@ async fn clock(State(pe): State<SharedPe>) -> Answer {
     })))
 }
 
-async fn health() -> Json<Value> {
-    Json(json!({ "status": "healthy", "timestamp": now_ms(), "version": VERSION }))
+async fn health(State(pe): State<SharedPe>) -> Json<Value> {
+    let mut body = json!({ "status": "healthy", "timestamp": now_ms(), "version": VERSION });
+    // The ISRE composition store's budget warnings, when there are any.
+    if let Ok(state) = pe.read() {
+        let warnings = state.isre.health_warnings();
+        if !warnings.is_empty() {
+            body["warnings"] = json!(warnings);
+        }
+    }
+    Json(body)
+}
+
+/// `GET /api/isre-composition?from=&to=&limit=`: records in commit order.
+async fn isre_list(
+    State(pe): State<SharedPe>,
+    axum::extract::Query(query): axum::extract::Query<std::collections::HashMap<String, String>>,
+) -> Answer {
+    let whole = |key: &str| -> Result<Option<u64>, ()> {
+        match query.get(key).filter(|v| !v.is_empty()) {
+            None => Ok(None),
+            Some(v) => v.parse::<u64>().map(Some).map_err(|_| ()),
+        }
+    };
+    let (Ok(from), Ok(to), Ok(limit)) = (whole("from"), whole("to"), whole("limit")) else {
+        return Err(error_response(EngineError::bad_request(
+            "from, to and limit are non-negative integers",
+        )));
+    };
+    let state = read(&pe)?;
+    Ok(Json(state.isre.list(
+        from.unwrap_or(0),
+        to,
+        limit.unwrap_or(100) as usize,
+    )))
+}
+
+async fn isre_stats(State(pe): State<SharedPe>) -> Answer {
+    Ok(Json(read(&pe)?.isre.stats()))
+}
+
+/// `POST /api/isre-composition/export {from, to}`: a `re-isre-bundle/1`.
+async fn isre_export(State(pe): State<SharedPe>, body: Bytes) -> axum::response::Response {
+    use axum::response::IntoResponse;
+    let body: Value = serde_json::from_slice(&body).unwrap_or(Value::Null);
+    let from = body["from"].as_f64().map_or(0, |n| n.max(0.0) as u64);
+    let to = body["to"].as_f64().map(|n| n.max(0.0) as u64);
+    let mut state = match write(&pe) {
+        Ok(state) => state,
+        Err(error) => return error.into_response(),
+    };
+    match state.isre.export_bundle(from, to) {
+        Ok(bundle) => (
+            [(axum::http::header::CONTENT_TYPE, "application/x-ndjson")],
+            bundle,
+        )
+            .into_response(),
+        Err(message) => error_response(EngineError::internal(message)).into_response(),
+    }
 }
 
 async fn state(State(pe): State<SharedPe>) -> Answer {
@@ -252,6 +349,9 @@ fn router(pe: SharedPe) -> Router {
             post(sources::bootstrap),
         )
         .route("/api/sources/contention", get(sources::contention))
+        .route("/api/isre-composition", get(isre_list))
+        .route("/api/isre-composition/stats", get(isre_stats))
+        .route("/api/isre-composition/export", post(isre_export))
         .route("/api/sensors/{sensor_id}", post(sources::sensor))
         .route("/api/signals", post(sources::signal))
         .route("/api/machines", get(sources::machines))
@@ -379,6 +479,8 @@ pub async fn serve() -> Result<(), Box<dyn std::error::Error>> {
     eprintln!("perception-engine: port {port}, perceptionDimension {dimension}, RE {re_url}");
     let mut engine = PerceptionEngine::new(dimension).with_re_url(re_url.clone());
     engine.last_push_clock = booted;
+    // The PE half of K-lines (#603): the store opens whatever capture says.
+    engine.isre = isre::recorder_from_environment(participant_clock().instance())?;
     let machines_dir = std::env::var("MACHINES_DIR")
         .unwrap_or_else(|_| "../RealityEngine_Machines/machines".to_owned());
     engine.registry = step::ArbitrationRegistry::load(std::path::Path::new(&machines_dir));

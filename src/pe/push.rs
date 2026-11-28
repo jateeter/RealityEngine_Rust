@@ -277,13 +277,21 @@ async fn execute(pe: &SharedPe, include_machine_results: bool, only: &Value) -> 
 /// C++ `execute_push`: one transition, and the reply trimmed to what the
 /// caller asked to see.
 async fn transition(pe: &SharedPe, include_machine_results: bool, only: &Value) -> Value {
-    let (vector, match_algorithm, re_url) = {
+    let (vector, match_algorithm, re_url, isre) = {
         let Ok(mut state) = pe.write() else {
             return failure(pe, lock_error().message);
         };
         let vector = state.assemble();
         state.record_contention();
-        (vector, state.match_algorithm, state.re_url.clone())
+        // The step's ISRE composition, taken from the assembly just resolved
+        // (RealityEngine_CI#603); recorded once the RE answers with its clock.
+        let isre = state.isre.capture.then(|| {
+            (
+                state.composition(),
+                state.contention_json()["folds"].clone(),
+            )
+        });
+        (vector, state.match_algorithm, state.re_url.clone(), isre)
     };
     // C++ reads the catalog on every push: the fold and trigger dispatch
     // need each merge entry's machine as it is now.
@@ -320,6 +328,17 @@ async fn transition(pe: &SharedPe, include_machine_results: bool, only: &Value) 
         // A completed push is the PE's commit (#600).
         if let Ok(at) = super::participant_clock().commit_step() {
             state.last_push_clock = at;
+        }
+        // Recording is a stored message, a tick of its own (#603).
+        if let Some((cells, folds)) = &isre
+            && let Ok(lamport) = super::participant_clock().send()
+        {
+            let pe_clock =
+                json!({ "instance": super::participant_clock().instance(), "lamport": lamport });
+            if let Err(error) = state.isre.record(&step["clock"], pe_clock, cells, folds) {
+                eprintln!("perception-engine: ISRE composition capture stopped: {error}");
+                state.isre.capture = false;
+            }
         }
         state.last_push = step.clone();
         state.record_perception_events();
