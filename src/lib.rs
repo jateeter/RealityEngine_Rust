@@ -30,6 +30,7 @@ pub mod pe;
 mod runtime;
 mod sequences;
 mod simulation;
+mod snapshot;
 mod step;
 pub mod tls;
 
@@ -131,6 +132,10 @@ struct Machine {
     output_merge: String,
     output_alphabet_top: Option<usize>,
     raw: Value,
+    /// The machine object as its corpus file or request body declared it,
+    /// without what ingestion assigns (no `id`): the corpus fingerprint's input
+    /// (SURFACE_SPEC "Corpus fingerprint").
+    declared: Value,
     sequences: BTreeMap<String, Sequence>,
     /// SURFACE_SPEC.md, "`transitionsInhibited`": `true` accepts a Reality
     /// Event and does not pass it forward. Default `false`.
@@ -302,6 +307,10 @@ pub struct Engine {
     /// the `mapping_version` it was computed at.
     corpus_fingerprint: String,
     fingerprint_version: Option<u64>,
+    /// Runtime snapshots (RealityEngine_CI#287, #81): every retained step's
+    /// active list, contributions and clock, and the snapshot store.
+    retention: snapshot::Retention,
+    snapshots: snapshot::Snapshots,
 }
 
 /// The id a corpus file's machine gets, on every engine: `machine-` and the
@@ -626,6 +635,13 @@ impl Machine {
                 .and_then(Value::as_u64)
                 .and_then(|top| usize::try_from(top).ok()),
             raw: machine_value.clone(),
+            declared: {
+                let mut d = machine_value.clone();
+                if let Some(o) = d.as_object_mut() {
+                    o.remove("id");
+                }
+                d
+            },
             sequences,
             transitions_inhibited: false,
             source_file: String::new(),
@@ -893,6 +909,20 @@ impl Event {
 /// bottom for anything not positive (NaN included), else the nearest integer,
 /// halves away from zero, saturated at 2^40. Rounded rather than truncated, so
 /// an arbiter-scaled 2.9999999996 folds as 3 on every runtime.
+/// Every `outputMergeTransformation` the fold knows.
+const OUTPUT_MERGES: [&str; 10] = [
+    "or",
+    "and",
+    "xor",
+    "nor",
+    "nand",
+    "meet",
+    "join",
+    "discrete-median",
+    "strong-conjunction",
+    "strong-disjunction",
+];
+
 fn chain_member(cell: f64) -> f64 {
     const CEILING: f64 = (1u64 << 40) as f64;
     if cell > 0.0 {
@@ -1907,6 +1937,7 @@ impl Engine {
             machine.reset();
         }
         self.steps.reset();
+        self.retention.on_reset();
     }
 
     fn health(&self) -> Value {
@@ -1956,8 +1987,8 @@ impl Engine {
         let mut declared = Vec::new();
         let mut longest = 1;
         for m in self.machines.values() {
-            let body = if m.raw.is_object() {
-                m.raw.clone()
+            let body = if m.declared.is_object() {
+                m.declared.clone()
             } else {
                 json!({ "name": m.name })
             };
@@ -2550,6 +2581,13 @@ pub fn app(engine: Engine) -> Router {
         .route("/api/engine/history", get(engine_history))
         .route("/api/engine/clock", get(engine_clock))
         .route("/api/arbitration", get(arbitration::arbitration))
+        .route("/api/runtime/snapshot", post(snapshot::capture))
+        .route("/api/runtime/snapshots", get(snapshot::list))
+        .route(
+            "/api/runtime/snapshot/{id}",
+            get(snapshot::get).delete(snapshot::delete),
+        )
+        .route("/api/runtime/restore", post(snapshot::restore))
         .route("/api/klines", get(klines_list))
         .route("/api/klines/open", get(klines_open))
         .route("/api/klines/stats", get(klines_stats))
@@ -2828,6 +2866,8 @@ pub fn engine_from_environment() -> Result<Engine, EngineError> {
     // K-lines (#603, #81): the store opens whatever capture says, so the
     // routes always answer from it.
     engine.klines = kline_tracker(&engine.clock)?;
+    // RE_SNAPSHOT_STORE: memory (default), file:<dir>, off; never a boot failure.
+    engine.snapshots = snapshot::Snapshots::from_environment();
     // SURFACE_SPEC.md, "POST /api/engine/clone/machine/:machineId": the id
     // this instance was launched as, the middle segment of a clone id.
     engine.engine_instance = std::env::var("INSTANCE_ID").unwrap_or_default();
@@ -3650,39 +3690,28 @@ mod tests {
         assert_eq!(config["matchThreshold"], json!(0.5));
     }
 
+    /// Every RE route is now served (the snapshot routes were the last), so
+    /// the unsupported fallback has nothing left to declare on the RE; an
+    /// unknown route is the router's own 404 or 405, never a declaration.
     #[tokio::test]
-    async fn an_unimplemented_specified_route_declares_unsupported() {
+    async fn every_specified_re_route_is_served() {
         let (app, id) = loaded_app();
-        let unsupported = |surface: &str| {
-            json!({
-                "error": format!("{surface} is not implemented by this runtime"),
-                "participation": "unsupported",
-                "surface": surface,
-            })
-        };
-        // The phase-2 snapshot routes are all that is left unimplemented:
-        // literal routes of two methods, and a template filled in.
-        for (method, uri, surface) in [
-            (
-                "POST",
-                "/api/runtime/snapshot",
-                "POST /api/runtime/snapshot",
-            ),
-            (
-                "GET",
-                "/api/runtime/snapshots",
-                "GET /api/runtime/snapshots",
-            ),
-            ("POST", "/api/runtime/restore", "POST /api/runtime/restore"),
-            (
-                "DELETE",
-                "/api/runtime/snapshot/s",
-                "DELETE /api/runtime/snapshot/:id",
-            ),
+        for (method, uri) in [
+            ("POST", "/api/runtime/snapshot"),
+            ("GET", "/api/runtime/snapshots"),
+            ("POST", "/api/runtime/restore"),
+            ("DELETE", "/api/runtime/snapshot/abc"),
         ] {
             let (status, body) = send(&app, method, uri, Some(json!({}))).await;
-            assert_eq!(status, StatusCode::NOT_IMPLEMENTED, "{method} {uri}");
-            assert_eq!(body, unsupported(surface), "{method} {uri}");
+            assert_ne!(
+                status,
+                StatusCode::NOT_IMPLEMENTED,
+                "{method} {uri}: {body}"
+            );
+            assert!(
+                body.get("participation").is_none(),
+                "{method} {uri}: {body}"
+            );
         }
         // A served route still answers, and anything the spec does not define
         // is the router's own 404 or 405, not a declaration.
@@ -3698,6 +3727,106 @@ mod tests {
         // The engine answers for its own routes only, not the PE's.
         let (status, _) = send(&app, "GET", "/api/sources", None).await;
         assert_eq!(status, StatusCode::NOT_FOUND);
+    }
+
+    /// Runtime snapshots (RealityEngine_CI#287, #81): a snapshot over the
+    /// retained steps round-trips through a reset (same digest, same next
+    /// OSRE as an engine that was never reset), a tampered body is refused
+    /// 422, another corpus 409, a span outside retention 410, and an unknown
+    /// id 404.
+    #[tokio::test]
+    async fn a_snapshot_round_trips_through_a_reset() {
+        let (app, _) = loaded_app();
+        let push = |v: f64| {
+            let app = app.clone();
+            async move {
+                send(
+                    &app,
+                    "POST",
+                    "/api/perceive",
+                    Some(json!({ "vector": [v] })),
+                )
+                .await
+                .1
+            }
+        };
+        let (status, body) = send(&app, "POST", "/api/runtime/snapshot", Some(json!({}))).await;
+        assert_eq!(
+            (status, body["error"].clone()),
+            (StatusCode::GONE, json!("no step is retained"))
+        );
+        push(1.0).await; // step 0: `finish` armed
+        let (status, taken) = send(&app, "POST", "/api/runtime/snapshot", Some(json!({}))).await;
+        assert_eq!(status, StatusCode::OK, "{taken}");
+        let id = taken["id"].as_str().unwrap().to_owned();
+        assert_eq!(taken["digest"], json!(format!("sha256:{id}")));
+        assert_eq!(taken["span"], json!({ "from": 0, "to": 0 }));
+        let (_, snap) = send(&app, "GET", &format!("/api/runtime/snapshot/{id}"), None).await;
+        assert_eq!(snap["format"], "re-snapshot/1");
+        assert_eq!(snap["kline"]["activeAfter"][0]["event"], "finish", "{snap}");
+        let (_, listed) = send(&app, "GET", "/api/runtime/snapshots", None).await;
+        assert_eq!(listed["snapshots"][0]["id"], json!(id));
+
+        // Never reset: step 1 with 0 fires `finish`.
+        let reference = push(0.0).await;
+        send(&app, "POST", "/api/engine/reset", Some(json!({}))).await;
+        let (status, restored) = send(
+            &app,
+            "POST",
+            "/api/runtime/restore",
+            Some(json!({ "id": id })),
+        )
+        .await;
+        assert_eq!(status, StatusCode::OK, "{restored}");
+        assert_eq!(restored, json!({ "digest": snap["digest"], "step": 0 }));
+        let replayed = push(0.0).await;
+        assert_eq!(replayed["stepNumber"], reference["stepNumber"]);
+        // A restored event starts a fresh predecessor chain (SURFACE_SPEC
+        // "Restore"): the OSRE values match; provenance does not carry.
+        for key in ["region", "values", "sequenceIds"] {
+            assert_eq!(
+                replayed["mergeBatch"][0][key], reference["mergeBatch"][0][key],
+                "{key}"
+            );
+        }
+
+        let mut tampered = snap.clone();
+        tampered["kline"]["span"]["to"] = json!(9);
+        let (status, _) = send(
+            &app,
+            "POST",
+            "/api/runtime/restore",
+            Some(json!({ "snapshot": tampered })),
+        )
+        .await;
+        assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+        let mut other = snap.clone();
+        other["corpus"]["fingerprint"] = json!("0");
+        other["digest"] = json!(snapshot::digest_of(&other));
+        let (status, body) = send(
+            &app,
+            "POST",
+            "/api/runtime/restore",
+            Some(json!({ "snapshot": other })),
+        )
+        .await;
+        assert_eq!(
+            (status, body["error"].clone()),
+            (StatusCode::CONFLICT, json!("corpus mismatch"))
+        );
+        let (status, _) = send(
+            &app,
+            "POST",
+            "/api/runtime/snapshot",
+            Some(json!({ "from": 99 })),
+        )
+        .await;
+        assert_eq!(status, StatusCode::GONE);
+        let (status, _) = send(&app, "GET", "/api/runtime/snapshot/abc", None).await;
+        assert_eq!(status, StatusCode::NOT_FOUND);
+        let (status, body) =
+            send(&app, "DELETE", &format!("/api/runtime/snapshot/{id}"), None).await;
+        assert_eq!((status, body), (StatusCode::OK, json!({ "deleted": id })));
     }
 
     /// The test machine, renamed and writing `value` to the same output cell.

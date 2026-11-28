@@ -161,9 +161,8 @@
       "status": "implemented"
     },
     "RE DELETE /api/runtime/snapshot/:id": {
-      "notes": "runtime snapshots: phase 2 of #81, after the K-line store",
-      "status": "declared-unsupported",
-      "tracking": "#81"
+      "notes": "#81: a port of C++ snapshot.cpp (RealityEngine_CI#287); live cross-runtime restore is its acceptance",
+      "status": "implemented"
     },
     "RE DELETE /api/sequences/:id": {
       "notes": "#13 slice 3: identical to C++ (minted ids and timestamps aside)",
@@ -308,14 +307,12 @@
       "status": "implemented"
     },
     "RE GET /api/runtime/snapshot/:id": {
-      "notes": "runtime snapshots: phase 2 of #81, after the K-line store",
-      "status": "declared-unsupported",
-      "tracking": "#81"
+      "notes": "#81: a port of C++ snapshot.cpp (RealityEngine_CI#287); live cross-runtime restore is its acceptance",
+      "status": "implemented"
     },
     "RE GET /api/runtime/snapshots": {
-      "notes": "runtime snapshots: phase 2 of #81, after the K-line store",
-      "status": "declared-unsupported",
-      "tracking": "#81"
+      "notes": "#81: a port of C++ snapshot.cpp (RealityEngine_CI#287); live cross-runtime restore is its acceptance",
+      "status": "implemented"
     },
     "RE GET /api/runtime/storage-footprint": {
       "status": "implemented"
@@ -425,14 +422,12 @@
       "status": "implemented"
     },
     "RE POST /api/runtime/restore": {
-      "notes": "runtime snapshots: phase 2 of #81, after the K-line store",
-      "status": "declared-unsupported",
-      "tracking": "#81"
+      "notes": "#81: a port of C++ snapshot.cpp (RealityEngine_CI#287); live cross-runtime restore is its acceptance",
+      "status": "implemented"
     },
     "RE POST /api/runtime/snapshot": {
-      "notes": "runtime snapshots: phase 2 of #81, after the K-line store",
-      "status": "declared-unsupported",
-      "tracking": "#81"
+      "notes": "#81: a port of C++ snapshot.cpp (RealityEngine_CI#287); live cross-runtime restore is its acceptance",
+      "status": "implemented"
     },
     "RE POST /api/sampler/sample": {
       "status": "implemented"
@@ -487,24 +482,19 @@
       "status": "implemented"
     },
     "RE-phase2 DELETE /api/runtime/snapshot/:id": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#2 (K-line snapshots, spec phase 2; no item yet)"
+      "status": "implemented"
     },
     "RE-phase2 GET /api/runtime/snapshot/:id": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#2 (K-line snapshots, spec phase 2; no item yet)"
+      "status": "implemented"
     },
     "RE-phase2 GET /api/runtime/snapshots": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#2 (K-line snapshots, spec phase 2; no item yet)"
+      "status": "implemented"
     },
     "RE-phase2 POST /api/runtime/restore": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#2 (K-line snapshots, spec phase 2; no item yet)"
+      "status": "implemented"
     },
     "RE-phase2 POST /api/runtime/snapshot": {
-      "status": "declared-unsupported",
-      "tracking": "jateeter/RealityEngine_Rust#2 (K-line snapshots, spec phase 2; no item yet)"
+      "status": "implemented"
     }
   },
   "schema": 1,

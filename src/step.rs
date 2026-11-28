@@ -253,6 +253,24 @@ impl StepState {
         self.history.truncate(self.controls.history_limit);
     }
 
+    /// A corpus-scope restore: the trajectory history is the snapshot's pairs
+    /// and the next push commits step `to + 1`; the step history and the
+    /// retained arbitration are dropped.
+    pub(crate) fn restore_history(
+        &mut self,
+        isre: Vec<TrajectoryEntry>,
+        osre: Vec<TrajectoryEntry>,
+        to: u64,
+    ) {
+        self.isre = isre.into();
+        self.osre = osre.into();
+        self.history.clear();
+        self.last_arbitration.clear();
+        self.retained.clear();
+        self.next_step = to + 1;
+        self.completed.send_replace(to as i64);
+    }
+
     fn pair(&self, step: u64) -> Option<(&TrajectoryEntry, &TrajectoryEntry)> {
         fn find(history: &VecDeque<TrajectoryEntry>, step: u64) -> Option<&TrajectoryEntry> {
             history.iter().find(|entry| entry.step_number == step)
@@ -1163,28 +1181,37 @@ impl Engine {
             message,
         })?;
         self.last_commit = at;
-        let kline_pair = self
-            .klines
-            .controls
-            .capture
-            .then(|| (isre.clone(), osre.clone()));
+        let pair = (isre.clone(), osre.clone());
         self.steps.commit(isre, osre);
         // Retained before the completion is published, so an observer woken
         // for step n finds n's records already there.
         self.steps.retain_arbitration(step_number, at, &records);
         self.steps.last_arbitration = records;
+        let ops: Vec<crate::kline::Op> = merges
+            .iter()
+            .map(|m| crate::kline::Op {
+                machine: m.machine_name.clone(),
+                region: (m.offset as i64, m.length as i64),
+                values: m.values.clone(),
+                sequence_ids: m.sequence_ids.clone(),
+            })
+            .collect();
+        // Snapshot retention (#287): every retained step's active list,
+        // contributions and clock, whether or not K-line capture is on.
+        let limit = self.steps.controls.history_limit;
+        self.retention.on_step(
+            step_number,
+            at.0,
+            pair.0.clone(),
+            pair.1.clone(),
+            ops.clone(),
+            &self.machines,
+            limit,
+        );
         // K-lines closed at this step are stored before its completion is
         // published (RealityEngine_CI#603).
-        if let Some((isre, osre)) = kline_pair {
-            let ops = merges
-                .iter()
-                .map(|m| crate::kline::Op {
-                    machine: m.machine_name.clone(),
-                    region: (m.offset as i64, m.length as i64),
-                    values: m.values.clone(),
-                    sequence_ids: m.sequence_ids.clone(),
-                })
-                .collect();
+        if self.klines.controls.capture {
+            let (isre, osre) = pair;
             self.capture_klines(
                 step_number as i64,
                 at.1,
