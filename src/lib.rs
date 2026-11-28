@@ -2583,6 +2583,7 @@ pub fn app(engine: Engine) -> Router {
         .route("/api/arbitration", get(arbitration::arbitration))
         .route("/api/runtime/snapshot", post(snapshot::capture))
         .route("/api/runtime/snapshots", get(snapshot::list))
+        .route("/api/runtime/snapshots/nearest", post(snapshot::nearest))
         .route(
             "/api/runtime/snapshot/{id}",
             get(snapshot::get).delete(snapshot::delete),
@@ -3766,6 +3767,22 @@ mod tests {
         assert_eq!(snap["kline"]["activeAfter"][0]["event"], "finish", "{snap}");
         let (_, listed) = send(&app, "GET", "/api/runtime/snapshots", None).await;
         assert_eq!(listed["snapshots"][0]["id"], json!(id));
+        // Nearest (#900): its own state finds it; malformed input is 422.
+        let state = &snap["kline"]["pairs"][0]["isre"];
+        let (status, near) = send(
+            &app,
+            "POST",
+            "/api/runtime/snapshots/nearest",
+            Some(json!({ "isre": { "length": state["length"], "nonZero": state["nonZero"] } })),
+        )
+        .await;
+        assert_eq!(status, StatusCode::OK, "{near}");
+        assert_eq!(near["snapshots"][0]["id"], json!(id), "{near}");
+        assert_eq!(near["snapshots"][0]["score"], json!(1), "{near}");
+        for bad in [json!({ "isre": "x" }), json!({ "isre": state, "limit": 0 })] {
+            let (status, _) = send(&app, "POST", "/api/runtime/snapshots/nearest", Some(bad)).await;
+            assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+        }
 
         // Never reset: step 1 with 0 fires `finish`.
         let reference = push(0.0).await;

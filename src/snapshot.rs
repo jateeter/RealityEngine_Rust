@@ -274,9 +274,9 @@ impl Snapshots {
         }
     }
 
-    /// `{id, digest, scope, span, machines}`, oldest first by `clocks.to.lamport`.
-    fn list(&self) -> Value {
-        let mut bodies: Vec<Value> = match &self.store {
+    /// Every stored body, in no particular order.
+    fn bodies(&self) -> Vec<Value> {
+        match &self.store {
             Store::File(dir) => fs::read_dir(dir)
                 .into_iter()
                 .flatten()
@@ -287,24 +287,103 @@ impl Snapshots {
                 })
                 .collect(),
             _ => self.memory.values().cloned().collect(),
-        };
+        }
+    }
+
+    /// `{id, digest, scope, span, machines}`, oldest first by `clocks.to.lamport`,
+    /// then id: every store lists alike.
+    fn list(&self) -> Value {
+        let mut bodies = self.bodies();
         bodies.sort_by(|a, b| {
             let l = |v: &Value| {
                 v["kline"]["clocks"]["to"]["lamport"]
                     .as_f64()
                     .unwrap_or(0.0)
             };
-            l(a).total_cmp(&l(b))
+            l(a).total_cmp(&l(b)).then_with(|| id_of(a).cmp(&id_of(b)))
         });
-        let out: Vec<Value> = bodies
+        let out: Vec<Value> = bodies.iter().map(summary).collect();
+        json!({ "snapshots": out })
+    }
+
+    /// The stored snapshots whose state is most like `query` (SURFACE_SPEC
+    /// "Nearest", RealityEngine_CI#900): scored by the sparse dot product,
+    /// above 0 only, highest first, then id, at most `limit`.
+    fn nearest(&self, query: &BTreeMap<i64, f64>, limit: usize) -> Value {
+        let mut scored: Vec<(f64, Value)> = Vec::new();
+        if !query.is_empty() {
+            for b in self.bodies() {
+                let score = dot(query, &state_of(&b));
+                if score > 0.0 {
+                    scored.push((score, b));
+                }
+            }
+        }
+        scored.sort_by(|a, b| {
+            b.0.total_cmp(&a.0)
+                .then_with(|| id_of(&a.1).cmp(&id_of(&b.1)))
+        });
+        let out: Vec<Value> = scored
             .iter()
-            .map(|b| {
-                json!({ "id": id_of(b), "digest": b["digest"], "scope": b["kline"]["scope"],
-                        "span": b["kline"]["span"], "machines": b["corpus"]["machines"] })
+            .take(limit)
+            .map(|(score, b)| {
+                let mut e = summary(b);
+                e["score"] = json!(score);
+                e
             })
             .collect();
         json!({ "snapshots": out })
     }
+}
+
+fn summary(b: &Value) -> Value {
+    json!({ "id": id_of(b), "digest": b["digest"], "scope": b["kline"]["scope"],
+            "span": b["kline"]["span"], "machines": b["corpus"]["machines"] })
+}
+
+/// A snapshot's state: the ISRE of the pair whose `stepNumber` is `span.to`;
+/// empty when there is none.
+fn state_of(body: &Value) -> BTreeMap<i64, f64> {
+    let kl = &body["kline"];
+    let to = kl["span"]["to"].as_f64();
+    let mut out = BTreeMap::new();
+    for p in kl["pairs"].as_array().into_iter().flatten() {
+        if p["stepNumber"].as_f64() != to {
+            continue;
+        }
+        for c in p["isre"]["nonZero"].as_array().into_iter().flatten() {
+            if let (Some(i), Some(v)) = (c["index"].as_f64(), c["value"].as_f64()) {
+                out.insert(i as i64, v);
+            }
+        }
+    }
+    out
+}
+
+/// A query `{length, nonZero: [{index, value}]}`; None when it is malformed.
+fn parse_state(isre: &Value) -> Option<BTreeMap<i64, f64>> {
+    let mut out = BTreeMap::new();
+    for c in isre.as_object()?.get("nonZero")?.as_array()? {
+        let index = c["index"].as_f64()?;
+        let value = c["value"].as_f64()?;
+        if index < 0.0 {
+            return None;
+        }
+        out.insert(index as i64, value);
+    }
+    Some(out)
+}
+
+/// Σ query[i]·state[i] over the cells both hold, summed in ascending cell
+/// order (the order is part of the contract: it can move the last bit).
+fn dot(query: &BTreeMap<i64, f64>, state: &BTreeMap<i64, f64>) -> f64 {
+    let mut sum = 0.0;
+    for (cell, value) in query {
+        if let Some(s) = state.get(cell) {
+            sum += value * s;
+        }
+    }
+    sum
 }
 
 fn reply(status: StatusCode, body: Value) -> Response {
@@ -704,6 +783,42 @@ pub(crate) async fn capture(State(engine): State<SharedEngine>, bytes: Bytes) ->
 }
 
 /// `GET /api/runtime/snapshots`.
+/// `POST /api/runtime/snapshots/nearest {isre, limit?}` (#900).
+pub(crate) async fn nearest(State(engine): State<SharedEngine>, bytes: Bytes) -> Response {
+    let body = body_of(&bytes);
+    let Ok(state) = engine.read() else {
+        return error(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "engine state is unavailable",
+        );
+    };
+    if !state.snapshots.enabled() {
+        return disabled();
+    }
+    let Some(query) = parse_state(&body["isre"]) else {
+        return error(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "isre is {length, nonZero: [{index, value}]}",
+        );
+    };
+    let limit = match &body["limit"] {
+        Value::Null => 5.0,
+        v => match v.as_f64() {
+            Some(n) if (1.0..=100.0).contains(&n) && n.fract() == 0.0 => n,
+            _ => {
+                return error(
+                    StatusCode::UNPROCESSABLE_ENTITY,
+                    "limit is a whole number from 1 to 100",
+                );
+            }
+        },
+    };
+    reply(
+        StatusCode::OK,
+        state.snapshots.nearest(&query, limit as usize),
+    )
+}
+
 pub(crate) async fn list(State(engine): State<SharedEngine>) -> Response {
     let Ok(state) = engine.read() else {
         return error(
