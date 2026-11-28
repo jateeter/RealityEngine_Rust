@@ -118,9 +118,9 @@ impl Selector {
 /// One trajectory entry: the dense vector, sparse and lossless.
 #[derive(Clone, Debug)]
 pub(crate) struct TrajectoryEntry {
-    step_number: u64,
-    length: usize,
-    non_zero: Vec<(usize, f64)>,
+    pub(crate) step_number: u64,
+    pub(crate) length: usize,
+    pub(crate) non_zero: Vec<(usize, f64)>,
 }
 
 impl TrajectoryEntry {
@@ -1163,11 +1163,37 @@ impl Engine {
             message,
         })?;
         self.last_commit = at;
+        let kline_pair = self
+            .klines
+            .controls
+            .capture
+            .then(|| (isre.clone(), osre.clone()));
         self.steps.commit(isre, osre);
         // Retained before the completion is published, so an observer woken
         // for step n finds n's records already there.
         self.steps.retain_arbitration(step_number, at, &records);
         self.steps.last_arbitration = records;
+        // K-lines closed at this step are stored before its completion is
+        // published (RealityEngine_CI#603).
+        if let Some((isre, osre)) = kline_pair {
+            let ops = merges
+                .iter()
+                .map(|m| crate::kline::Op {
+                    machine: m.machine_name.clone(),
+                    region: (m.offset as i64, m.length as i64),
+                    values: m.values.clone(),
+                    sequence_ids: m.sequence_ids.clone(),
+                })
+                .collect();
+            self.capture_klines(
+                step_number as i64,
+                at.1,
+                &step.machine_results,
+                &isre,
+                &osre,
+                ops,
+            );
+        }
         boundary(3);
         self.steps.publish(step_number);
         boundary(4);

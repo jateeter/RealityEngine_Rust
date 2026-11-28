@@ -491,6 +491,7 @@ dependencies = [
  "hyper-rustls",
  "hyper-util",
  "libc",
+ "ring",
  "rustls",
  "rustls-native-certs",
  "rustls-pki-types",

@@ -27,6 +27,9 @@ rustls-native-certs = "0.8"
 libc = "0.2.191"
 # The fallback when the system has no roots: an empty store, so plain HTTP
 # still works and only HTTPS fails, at its handshake.
+# SHA-256 for the K-line store and bundles (RealityEngine_CI#603), the
+# digest rustls already brings.
+ring = "0.17.14"
 rustls = { version = "0.23.46", default-features = false, features = ["ring", "std", "tls12"] }
 # PEM certificates, keys and CRLs (`PemObject`), for lane TLS.
 rustls-pki-types = { version = "1.15.1", features = ["std"] }

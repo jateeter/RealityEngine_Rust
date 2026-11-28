@@ -22,6 +22,7 @@ mod arbitration;
 mod auxiliary;
 mod clones;
 pub mod instance_clock;
+mod kline;
 mod machine_routes;
 mod machine_view;
 pub mod participant_clock;
@@ -295,6 +296,12 @@ pub struct Engine {
     /// The id this instance was launched as (`INSTANCE_ID`, e.g. `rust-1`):
     /// the middle segment of every clone id. Without it nothing is cloned.
     engine_instance: String,
+    /// K-lines (RealityEngine_CI#603, #81): the tracker and the instance's store.
+    klines: kline::Tracker,
+    /// The resident corpus's fingerprint (`sha256/resident-declared-v1`), and
+    /// the `mapping_version` it was computed at.
+    corpus_fingerprint: String,
+    fingerprint_version: Option<u64>,
 }
 
 /// The id a corpus file's machine gets, on every engine: `machine-` and the
@@ -1204,6 +1211,13 @@ impl Engine {
     }
 
     pub fn remove_machine(&mut self, id: &str) -> bool {
+        // Its open K-lines close `interrupted` ("machine-removed").
+        if self.klines.controls.capture
+            && let Some(name) = self.machines.get(id).map(|m| m.name.clone())
+            && let Err(error) = self.klines.on_machine_removed(&name)
+        {
+            kline_failed(&mut self.klines, &error);
+        }
         let removed = self.machines.remove(id).is_some();
         if removed {
             self.mapping_version += 1;
@@ -1306,6 +1320,21 @@ impl Engine {
                 json!(true),
             ),
             control(
+                "klineCapture",
+                json!(self.klines.controls.capture),
+                json!(false),
+            ),
+            control(
+                "klineFeedbackHops",
+                json!(self.klines.controls.feedback_hops),
+                json!(kline::FEEDBACK_HOPS_DEFAULT),
+            ),
+            control(
+                "klineStoreMaxBytes",
+                json!(self.klines.controls.store_max_bytes),
+                json!(kline::STORE_MAX_BYTES_DEFAULT),
+            ),
+            control(
                 "machineJsonSummary",
                 json!(self.machine_json_summary),
                 json!(false),
@@ -1400,6 +1429,39 @@ impl Engine {
             "includePerceptualSpace" => controls.include_perceptual_space = boolean()?,
             "machineJsonSummary" => self.machine_json_summary = boolean()?,
             "phaseDetail" => controls.phase_detail = boolean()?,
+            // Off stops capture and leaves the store untouched; on starts
+            // afresh, closing what the checkpoint holds (SURFACE_SPEC "Controls").
+            "klineCapture" => {
+                let on = boolean()?;
+                if on && !self.klines.controls.capture {
+                    if let Err(error) = self.klines.start_capture() {
+                        kline_failed(&mut self.klines, &error);
+                    }
+                } else if !on {
+                    self.klines.controls.capture = false;
+                }
+            }
+            "klineFeedbackHops" | "klineStoreMaxBytes" => {
+                let max = if name == "klineFeedbackHops" {
+                    kline::FEEDBACK_HOPS_MAX
+                } else {
+                    kline::STORE_MAX_BYTES_MAX
+                };
+                let n = value
+                    .as_f64()
+                    .filter(|n| *n >= 0.0 && *n <= max as f64 && n.fract() == 0.0)
+                    .ok_or_else(|| {
+                        EngineError::bad_request(format!(
+                            "{name} requires a whole-number `value` in [0, {max}]"
+                        ))
+                    })?;
+                if name == "klineFeedbackHops" {
+                    self.klines.controls.feedback_hops = n as u64;
+                } else {
+                    self.klines.controls.store_max_bytes = n as u64;
+                    self.klines.refresh_budget();
+                }
+            }
             _ => {
                 let value = boolean()?;
                 match body["machine"].as_str() {
@@ -1452,6 +1514,14 @@ impl Engine {
             }
             "machineJsonSummary" => self.machine_json_summary = false,
             "phaseDetail" => controls.phase_detail = defaults.phase_detail,
+            "klineCapture" => self.klines.controls.capture = false,
+            "klineFeedbackHops" => {
+                self.klines.controls.feedback_hops = kline::FEEDBACK_HOPS_DEFAULT
+            }
+            "klineStoreMaxBytes" => {
+                self.klines.controls.store_max_bytes = kline::STORE_MAX_BYTES_DEFAULT;
+                self.klines.refresh_budget();
+            }
             _ => self
                 .machines
                 .values_mut()
@@ -1827,6 +1897,12 @@ impl Engine {
     /// Every machine back to its initial Reality Events, and the step state
     /// to its start (C++ `PerceptualSpaceRuntime::reset`).
     fn reset_space(&mut self) {
+        // Every open K-line closes `interrupted` ("reset").
+        if self.klines.controls.capture
+            && let Err(error) = self.klines.on_reset()
+        {
+            kline_failed(&mut self.klines, &error);
+        }
         for machine in self.machines.values_mut() {
             machine.reset();
         }
@@ -1834,11 +1910,99 @@ impl Engine {
     }
 
     fn health(&self) -> Value {
-        json!({
+        let mut out = json!({
             "status": "healthy",
             "timestamp": now_ms(),
             "version": VERSION,
-        })
+        });
+        // The K-line store's budget warnings, when there are any: an
+        // unexported population is kept, never dropped, and the store still
+        // writes, so status stays (SURFACE_SPEC "The K-line store").
+        let warnings = self.klines.health_warnings();
+        if !warnings.is_empty() {
+            out["warnings"] = json!(warnings);
+        }
+        out
+    }
+
+    /// The fingerprint and longest path of the resident corpus, recomputed
+    /// when machines are added or removed.
+    fn refresh_corpus_facts(&mut self) {
+        if self.fingerprint_version == Some(self.mapping_version) {
+            return;
+        }
+        fn walk(
+            events: &BTreeMap<String, Event>,
+            id: &str,
+            seen: &mut std::collections::BTreeSet<String>,
+        ) -> i64 {
+            let Some(event) = events.get(id) else {
+                return 0;
+            };
+            seen.insert(id.to_owned());
+            let best = event
+                .next_ids
+                .iter()
+                .filter(|n| !seen.contains(*n))
+                .cloned()
+                .collect::<Vec<_>>()
+                .iter()
+                .map(|n| walk(events, n, seen))
+                .max()
+                .unwrap_or(0);
+            seen.remove(id);
+            best + 1
+        }
+        let mut declared = Vec::new();
+        let mut longest = 1;
+        for m in self.machines.values() {
+            let body = if m.raw.is_object() {
+                m.raw.clone()
+            } else {
+                json!({ "name": m.name })
+            };
+            declared.push((m.name.clone(), body));
+            for sequence in m.sequences.values() {
+                for (id, event) in &sequence.events {
+                    if event.initial {
+                        longest = longest.max(walk(&sequence.events, id, &mut Default::default()));
+                    }
+                }
+            }
+        }
+        self.corpus_fingerprint = kline::corpus_fingerprint(&declared);
+        self.klines.set_longest_path(longest);
+        self.fingerprint_version = Some(self.mapping_version);
+    }
+
+    /// K-lines that closed at this step are stored before its completion is
+    /// published (#603): where arbitration retention commits.
+    pub(crate) fn capture_klines(
+        &mut self,
+        step: i64,
+        commit: u64,
+        results: &serde_json::Map<String, Value>,
+        isre: &step::TrajectoryEntry,
+        osre: &step::TrajectoryEntry,
+        ops: Vec<kline::Op>,
+    ) {
+        if !self.klines.controls.capture {
+            return;
+        }
+        self.refresh_corpus_facts();
+        let view = kline::StepView {
+            step,
+            commit,
+            machines: &self.machines,
+            results,
+            isre,
+            osre,
+            ops,
+            fingerprint: self.corpus_fingerprint.clone(),
+        };
+        if let Err(error) = self.klines.on_step(&view) {
+            kline_failed(&mut self.klines, &error);
+        }
     }
 }
 
@@ -1941,6 +2105,137 @@ async fn engine_config(
 ) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
     let state = engine.read().map_err(|_| error_response(lock_error()))?;
     Ok(Json(json!({ "controls": state.controls() })))
+}
+
+/// A store that cannot be written stops capture rather than the engine, and
+/// says so; the steps themselves are unaffected.
+fn kline_failed(tracker: &mut kline::Tracker, error: &str) {
+    eprintln!("reality-engine: K-line capture stopped: {error}");
+    tracker.controls.capture = false;
+}
+
+/// The tracker and store for this instance: `<INSTANCE_KLINE_DIR>/<uuid>/`,
+/// else the clock directory's sibling `klines/`. A minted UUID keeps its
+/// K-lines in memory. `RE_KLINE_CAPTURE=1` turns capture on at boot.
+fn kline_tracker(clock: &Arc<InstanceClock>) -> Result<kline::Tracker, EngineError> {
+    let uuid = std::env::var("INSTANCE_UUID")
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    let dir = (!uuid.is_empty() && uuid == clock.instance()).then(|| {
+        let set = |name: &str| std::env::var(name).ok().filter(|v| !v.is_empty());
+        let parent = set("INSTANCE_KLINE_DIR")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| {
+                let clock_dir = set("INSTANCE_CLOCK_DIR")
+                    .map(std::path::PathBuf::from)
+                    .unwrap_or_else(|| {
+                        std::path::PathBuf::from(set("HOME").unwrap_or_else(|| ".".to_owned()))
+                            .join(".reality-engine")
+                            .join("clock")
+                    });
+                clock_dir
+                    .parent()
+                    .map(FsPath::to_path_buf)
+                    .unwrap_or_default()
+                    .join("klines")
+            });
+        parent.join(&uuid)
+    });
+    let store = kline::Store::open(dir.clone()).map_err(EngineError::internal)?;
+    let mut tracker = kline::Tracker::new(Arc::clone(clock), store);
+    if matches!(
+        std::env::var("RE_KLINE_CAPTURE").as_deref(),
+        Ok("1" | "true")
+    ) {
+        eprintln!(
+            "reality-engine: K-line capture on, store {}",
+            dir.as_ref()
+                .map_or("in memory".to_owned(), |d| d.display().to_string())
+        );
+        tracker.start_capture().map_err(EngineError::internal)?;
+    }
+    // A population over budget from an earlier run warns from boot.
+    tracker.refresh_budget();
+    Ok(tracker)
+}
+
+/// `GET /api/klines?outcome=&machine=&sequence=&since=&limit=`.
+async fn klines_list(
+    State(engine): State<SharedEngine>,
+    Query(query): Query<HashMap<String, String>>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let get = |key: &str| query.get(key).map(String::as_str).filter(|v| !v.is_empty());
+    let number = |key: &str, default: u64| match get(key) {
+        None => Some(default),
+        Some(v) => v.parse::<u64>().ok(),
+    };
+    let (Some(since), Some(limit)) = (number("since", 0), number("limit", 100)) else {
+        return Err(error_response(EngineError::bad_request(
+            "since and limit are non-negative integers",
+        )));
+    };
+    let state = engine.read().map_err(|_| error_response(lock_error()))?;
+    Ok(Json(state.klines.list(
+        get("outcome"),
+        get("machine"),
+        get("sequence"),
+        since,
+        limit.min(usize::MAX as u64) as usize,
+    )))
+}
+
+async fn klines_open(
+    State(engine): State<SharedEngine>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let state = engine.read().map_err(|_| error_response(lock_error()))?;
+    Ok(Json(state.klines.open_json()))
+}
+
+async fn klines_stats(
+    State(engine): State<SharedEngine>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let state = engine.read().map_err(|_| error_response(lock_error()))?;
+    Ok(Json(state.klines.stats()))
+}
+
+async fn kline_get(
+    State(engine): State<SharedEngine>,
+    Path(id): Path<String>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    let state = engine.read().map_err(|_| error_response(lock_error()))?;
+    state
+        .klines
+        .get(&id)
+        .map(Json)
+        .ok_or_else(|| error_response(EngineError::not_found(format!("no K-line {id}"))))
+}
+
+/// `POST /api/klines/export {outcome, since, machines}`: a `re-kline-bundle/1`.
+async fn klines_export(State(engine): State<SharedEngine>, body: Bytes) -> Response {
+    let body: Value = serde_json::from_slice(&body).unwrap_or(Value::Null);
+    let set = |key: &str| -> std::collections::BTreeSet<String> {
+        body[key]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|v| v.as_str().map(str::to_owned))
+            .collect()
+    };
+    let since = body["since"].as_f64().map_or(0, |n| n.max(0.0) as u64);
+    let Ok(mut state) = engine.write() else {
+        return error_response(lock_error()).into_response();
+    };
+    match state
+        .klines
+        .export_bundle(&set("outcome"), since, &set("machines"))
+    {
+        Ok(bundle) => (
+            [(axum::http::header::CONTENT_TYPE, "application/x-ndjson")],
+            bundle,
+        )
+            .into_response(),
+        Err(error) => error_response(EngineError::internal(error)).into_response(),
+    }
 }
 
 async fn engine_control(
@@ -2255,6 +2550,11 @@ pub fn app(engine: Engine) -> Router {
         .route("/api/engine/history", get(engine_history))
         .route("/api/engine/clock", get(engine_clock))
         .route("/api/arbitration", get(arbitration::arbitration))
+        .route("/api/klines", get(klines_list))
+        .route("/api/klines/open", get(klines_open))
+        .route("/api/klines/stats", get(klines_stats))
+        .route("/api/klines/export", post(klines_export))
+        .route("/api/klines/{id}", get(kline_get))
         .route("/api/perceive", post(step::perceive))
         .route("/api/engine/isre-history", get(step::isre_history))
         .route("/api/engine/osre-history", get(step::osre_history))
@@ -2525,6 +2825,9 @@ pub fn engine_from_environment() -> Result<Engine, EngineError> {
     let mut engine = Engine::new(dimension);
     engine.last_commit = (clock.lamport(), clock.commit());
     engine.clock = Arc::new(clock);
+    // K-lines (#603, #81): the store opens whatever capture says, so the
+    // routes always answer from it.
+    engine.klines = kline_tracker(&engine.clock)?;
     // SURFACE_SPEC.md, "POST /api/engine/clone/machine/:machineId": the id
     // this instance was launched as, the middle segment of a clone id.
     engine.engine_instance = std::env::var("INSTANCE_ID").unwrap_or_default();
@@ -2795,6 +3098,9 @@ mod tests {
                 engine("includeActiveRegions", json!(true)),
                 engine("includeMachineResults", json!(true)),
                 engine("includePerceptualSpace", json!(true)),
+                engine("klineCapture", json!(false)),
+                engine("klineFeedbackHops", json!(3)),
+                engine("klineStoreMaxBytes", json!(2147483648_u64)),
                 engine("machineJsonSummary", json!(false)),
                 engine("phaseDetail", json!(false)),
                 {
@@ -2825,6 +3131,119 @@ mod tests {
         );
         // A control the specification does not declare does not exist.
         let (status, _) = send(&app, "GET", "/api/engine/config/noSuchControl", None).await;
+        assert_eq!(status, StatusCode::NOT_FOUND);
+    }
+
+    /// K-lines (RealityEngine_CI#603, #81): off by default; with capture on, a
+    /// departure on `start` and the final `finish` close one `completed`
+    /// K-line, stored before the step's completion, with its path, sustain and
+    /// the open table; an abandoned path names its first failed comparison; a
+    /// reset closes what is open `interrupted`; and an export is a bundle whose
+    /// header hashes its record lines.
+    #[tokio::test]
+    async fn klines_are_captured_at_their_boundaries() {
+        let (app, _) = loaded_app();
+        let push = |v: f64| {
+            let app = app.clone();
+            async move {
+                send(
+                    &app,
+                    "POST",
+                    "/api/perceive",
+                    Some(json!({ "vector": [v] })),
+                )
+                .await
+            }
+        };
+        // Off: nothing is captured.
+        push(1.0).await;
+        push(0.0).await;
+        let (_, body) = send(&app, "GET", "/api/klines", None).await;
+        assert_eq!(body, json!({ "klines": [], "next": null }));
+
+        let (status, _) = send(
+            &app,
+            "PUT",
+            "/api/engine/config/klineCapture",
+            Some(json!({ "value": true })),
+        )
+        .await;
+        assert_eq!(status, StatusCode::OK);
+        push(1.0).await; // opens on `start`, holding `finish`
+        let (_, open) = send(&app, "GET", "/api/klines/open", None).await;
+        assert_eq!(open["open"][0]["held"], json!(["finish"]), "{open}");
+        push(0.0).await; // `finish` matches: completed
+        let (_, body) = send(&app, "GET", "/api/klines", None).await;
+        let klines = body["klines"].as_array().unwrap();
+        assert_eq!(klines.len(), 1, "{body}");
+        let k = &klines[0];
+        assert_eq!(k["outcome"], "completed");
+        assert_eq!(
+            k["focal"],
+            json!({ "machine": "two-step", "sequence": "sequence" })
+        );
+        let path: Vec<&str> = k["path"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|p| p["event"].as_str().unwrap())
+            .collect();
+        assert_eq!(path, ["start", "finish"]);
+        assert_eq!(k["sustain"], json!({ "through": 3, "ended": false }));
+        assert_eq!(k["scope"], json!(["two-step"]));
+        let id = k["id"].as_str().unwrap().to_owned();
+        let (status, one) = send(&app, "GET", &format!("/api/klines/{id}"), None).await;
+        assert_eq!((status, one["id"].clone()), (StatusCode::OK, json!(id)));
+
+        // `start` again (finish ends its sustain), then a value `finish`
+        // refuses: abandoned, with the comparison that failed.
+        push(1.0).await;
+        push(0.5).await;
+        let (_, body) = send(&app, "GET", "/api/klines?outcome=abandoned", None).await;
+        let abandoned = &body["klines"][0];
+        assert_eq!(
+            abandoned["difference"]["expected"],
+            json!(["finish"]),
+            "{body}"
+        );
+        assert_eq!(abandoned["difference"]["comparator"], "equals");
+        assert_eq!(abandoned["difference"]["value"], json!(0.5));
+        let (_, one) = send(&app, "GET", &format!("/api/klines/{id}"), None).await;
+        assert_eq!(one["sustain"]["ended"], json!(true), "{one}");
+
+        // A reset closes the open K-line interrupted.
+        push(1.0).await;
+        send(&app, "POST", "/api/engine/reset", Some(json!({}))).await;
+        let (_, body) = send(&app, "GET", "/api/klines?outcome=interrupted", None).await;
+        assert_eq!(body["klines"][0]["reason"], "reset", "{body}");
+
+        let (_, stats) = send(&app, "GET", "/api/klines/stats", None).await;
+        assert_eq!(
+            stats["byOutcome"],
+            json!({ "abandoned": 1, "completed": 1, "interrupted": 1 })
+        );
+
+        let request = Request::builder()
+            .method("POST")
+            .uri("/api/klines/export")
+            .header("content-type", "application/json")
+            .body(Body::from("{}"))
+            .unwrap();
+        let response = app.clone().oneshot(request).await.unwrap();
+        let bytes = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        let text = String::from_utf8(bytes.to_vec()).unwrap();
+        let (header, records) = text.split_once('\n').unwrap();
+        let header: Value = serde_json::from_str(header).unwrap();
+        assert_eq!(header["format"], "re-kline-bundle/1");
+        assert_eq!(
+            header["sha256"],
+            json!(kline::sha256_hex(records.as_bytes()))
+        );
+        assert!(text.ends_with('\n'));
+
+        let (status, _) = send(&app, "GET", "/api/klines?since=x", None).await;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        let (status, _) = send(&app, "GET", "/api/klines/no-such", None).await;
         assert_eq!(status, StatusCode::NOT_FOUND);
     }
 
